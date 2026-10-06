@@ -290,10 +290,17 @@ export function revealWithHint(
     };
   }
 
+  // واژه‌هایی که هنوز حرف پنهان دارند؛ اگر حروف یک واژه کامل آشکار شده باشد،
+  // راهنمای بعدی به واژه بعدی می‌رود تا راهنما بی‌اثر نشود.
+  const candidates = remaining.filter(candidate => nextRevealIndex(session, candidate) >= 0);
+  if (candidates.length === 0) {
+    return { status: 'blocked', session, reason: 'nothing_to_reveal' };
+  }
+
   const word =
     type === 'smart_help'
-      ? [...remaining].sort((a, b) => b.length - a.length)[0] ?? ''
-      : remaining[0] ?? '';
+      ? [...candidates].sort((a, b) => b.length - a.length)[0] ?? ''
+      : candidates[0] ?? '';
 
   const nextIndex = nextRevealIndex(session, word);
   if (nextIndex < 0) {

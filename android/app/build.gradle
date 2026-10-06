@@ -23,6 +23,19 @@ def enableProguardInReleaseBuilds = false
 
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+/**
+ * فونت‌های فارسی بخشی از رابط کاربری‌اند و باید در بسته باشند. Android فقط
+ * فونت‌های داخل `assets/fonts` بسته را می‌شناسد، پس پیش از هر ساخت از منبع
+ * واحد src/assets/fonts کپی می‌شوند تا هرگز بسته‌ای بدون فونت ساخته نشود.
+ */
+def copyFonts = tasks.register('copyFonts', Copy) {
+    from rootProject.file('../src/assets/fonts')
+    include '*.ttf'
+    into file('src/main/assets/fonts')
+}
+
+tasks.named('preBuild').configure { dependsOn(copyFonts) }
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion

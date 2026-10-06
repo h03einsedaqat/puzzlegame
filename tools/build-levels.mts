@@ -47,6 +47,9 @@ const SCHEDULE: { difficulty: Difficulty; count: number }[] = [
   { difficulty: 'expert', count: 10 },
 ];
 
+/** تعداد واژه اصلی در پازل چالش روزانه */
+const DAILY_TARGET_COUNT = 4;
+
 const TARGET_COUNT_BY_DIFFICULTY: Record<Difficulty, number> = {
   easy: 3,
   medium: 4,
@@ -147,6 +150,11 @@ function buildLevelCandidate(anchor: DictionaryWord): LevelCandidate | null {
 
   const score = scoreLetterSet(letters, solutions);
   const difficulty = difficultyFromScore(score);
+  // هر مرحله باید دست‌کم یک واژه امتیازی داشته باشد تا مفهوم «واژه‌های اضافه»
+  // در همه مسیر بازی حفظ شود.
+  if (solutions.length <= TARGET_COUNT_BY_DIFFICULTY[difficulty]) {
+    return null;
+  }
   return {
     anchor,
     letters,
@@ -251,7 +259,9 @@ function buildLevel(candidate: LevelCandidate, id: number, title: string, isTuto
 
 function buildDailyPuzzle(set: LetterSet, id: number, title: string): Level {
   const ordered = sortSolutions(set.solutions);
-  const targets = ordered.slice(0, 6);
+  // چهار واژه اصلی و بقیه امتیازی: چالش روزانه هم مثل مرحله‌های اصلی مفهوم
+  // «واژه امتیازی» را دارد.
+  const targets = ordered.slice(0, DAILY_TARGET_COUNT);
   const anchor = targets[0] ?? ordered[0] ?? '';
   const anchorEntry = DICTIONARY.find(entry => entry.word === anchor);
 
@@ -284,14 +294,23 @@ function pickTutorialCandidate(
     candidate =>
       !used.has(candidate.anchor.word) &&
       candidate.letters.length === 4 &&
+      candidate.solutions.length >= 3 &&
       candidate.solutions.length <= 6 &&
+      candidate.solutions.some(solution => solution.length === 3) &&
       candidate.solutions.every(
         solution => DICTIONARY.find(entry => entry.word === solution)?.tier === 'basic',
       ) &&
       friendlyCategories.has(candidate.anchor.category),
   );
 
-  options.sort((a, b) => a.score - b.score || a.anchor.word.localeCompare(b.anchor.word, 'fa'));
+  // بازی آموزشی باید ساده باشد اما یک واژه امتیازی هم داشته باشد تا هر دو
+  // مفهوم «همه واژه‌های اصلی» و «واژه امتیازی» در همان مرحله آموزش داده شود.
+  options.sort(
+    (a, b) =>
+      a.solutions.length - b.solutions.length ||
+      a.score - b.score ||
+      a.anchor.word.localeCompare(b.anchor.word, 'fa'),
+  );
   return options[0] ?? null;
 }
 
@@ -300,11 +319,13 @@ function pickLevelCandidates(): {
   usedAnchors: Set<string>;
   usedSignatures: Set<string>;
   thresholds: { medium: number; hard: number; expert: number };
+  candidateScores: number[];
 } {
   const candidates = DICTIONARY.map(buildLevelCandidate).filter(
     (candidate): candidate is LevelCandidate => candidate !== null,
   );
 
+  const candidateScores = candidates.map(candidate => candidate.score);
   const usedAnchors = new Set<string>();
   const usedSignatures = new Set<string>();
   const tutorial = pickTutorialCandidate(candidates, usedAnchors);
@@ -381,7 +402,11 @@ function pickLevelCandidates(): {
   if (tutorial) {
     levels.push(
       buildLevel(
-        { ...tutorial, difficulty: 'easy', targetCount: TARGET_COUNT_BY_DIFFICULTY.easy },
+        {
+          ...tutorial,
+          difficulty: 'easy',
+          targetCount: Math.max(1, tutorial.solutions.length - 1),
+        },
         1,
         LEVEL_TITLES[0] ?? 'شروعی تازه',
         true,
@@ -417,6 +442,7 @@ function pickLevelCandidates(): {
     usedAnchors,
     usedSignatures,
     thresholds: DIFFICULTY_THRESHOLDS,
+    candidateScores,
   };
 }
 
@@ -579,9 +605,25 @@ export function getDailyPuzzleByIndex(index: number): Level {
   writeSource('src/data/daily/dailyPuzzles.ts', `${header}\n${body}\n${footer}`);
 }
 
+function quantile(sortedValues: readonly number[], ratio: number): number {
+  if (sortedValues.length === 0) {
+    return 0;
+  }
+  const index = Math.min(sortedValues.length - 1, Math.floor(ratio * sortedValues.length));
+  return sortedValues[index] ?? 0;
+}
+
+/**
+ * گزارش کالیبراسیون سختی.
+ *
+ * آستانه‌های مدل باید روی صدک‌های ۳۰، ۶۰ و ۸۰ مجموعه نامزدها بنشینند تا
+ * ترتیب مرحله‌ها با سختی حس‌شده هم‌خوان باشد. اگر واژه‌نامه یا مدل تغییر کند،
+ * همین گزارش اعداد تازه را پیشنهاد می‌دهد.
+ */
 function reportCalibration(
   levels: readonly Level[],
   thresholds: { medium: number; hard: number; expert: number },
+  candidateScores: readonly number[],
 ): void {
   const distribution = levels.reduce<Record<string, number>>((accumulator, level) => {
     accumulator[level.difficulty] = (accumulator[level.difficulty] ?? 0) + 1;
@@ -597,6 +639,25 @@ function reportCalibration(
   console.log('منحنی مورد انتظار:', expected);
   console.log('آستانه‌های مدل سختی (کالیبره‌شده):', thresholds);
 
+  const sortedScores = [...candidateScores].sort((a, b) => a - b);
+  const suggested = {
+    medium: quantile(sortedScores, 0.3),
+    hard: quantile(sortedScores, 0.6),
+    expert: quantile(sortedScores, 0.8),
+  };
+  console.log(
+    `نامزدها: ${sortedScores.length} | بازه امتیاز: ${sortedScores[0] ?? 0}..${sortedScores[sortedScores.length - 1] ?? 0}`,
+  );
+  console.log(`صدک‌های مجموعه نامزدها (پیشنهاد کالیبراسیون): ${JSON.stringify(suggested)}`);
+  const drift = Math.abs(suggested.medium - thresholds.medium) > 1 ||
+    Math.abs(suggested.hard - thresholds.hard) > 1 ||
+    Math.abs(suggested.expert - thresholds.expert) > 1;
+  if (drift) {
+    console.warn(
+      'هشدار: آستانه‌های مدل با صدک‌های مجموعه نامزدها فاصله دارند؛ آستانه‌ها را بازکالیبره کن.',
+    );
+  }
+
   const matchesExpected = Object.entries(expected).every(
     ([difficulty, count]) => (distribution[difficulty] ?? 0) === count,
   );
@@ -606,7 +667,7 @@ function reportCalibration(
 }
 
 function main(): void {
-  const { levels, usedAnchors, usedSignatures, thresholds } = pickLevelCandidates();
+  const { levels, usedAnchors, usedSignatures, thresholds, candidateScores } = pickLevelCandidates();
 
   for (const level of levels) {
     const report = validateLevel(level);
@@ -633,7 +694,7 @@ function main(): void {
 
   writeLevelsFile(levels);
   writeDailyFile(puzzles);
-  reportCalibration(levels, thresholds);
+  reportCalibration(levels, thresholds, candidateScores);
 
   const totalSolutions = levels.reduce(
     (total, level) => total + level.targetWords.length + level.bonusWords.length,

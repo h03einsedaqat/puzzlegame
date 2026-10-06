@@ -33,15 +33,15 @@ export class SilentSoundBackend implements SoundBackend {
     return true;
   }
 
-  async preload(): Promise<void> {
+  async preload(_sources: Partial<Record<SoundEvent, SoundSource>>): Promise<void> {
     // هیچ فایلی بارگذاری نمی‌شود
   }
 
-  play(): void {
+  play(_event: SoundEvent): void {
     // بی‌صدا
   }
 
-  setEnabled(): void {
+  setEnabled(_enabled: boolean): void {
     // بی‌صدا
   }
 
@@ -102,7 +102,8 @@ export class SoundService {
   }
 
   play(event: SoundEvent): void {
-    if (!this.enabled) {
+    // رویدادی که فایل صوتی ندارد، به لایه پخش هم فرستاده نمی‌شود.
+    if (!this.enabled || this.sources[event] === undefined) {
       return;
     }
     this.backend.play(event);

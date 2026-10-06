@@ -138,11 +138,24 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     [state.records],
   );
 
+  /**
+   * مرحله‌ای که «ادامه بازی» باز می‌کند.
+   *
+   * اگر آخرین مرحله‌ای که بازیکن وارد آن شده هنوز تکمیل نشده باشد، همان ادامه
+   * داده می‌شود؛ ولی بعد از تکمیل یک مرحله، دکمه به مرحله بعد می‌رود نه مرحله‌ای
+   * که تازه تمام شده است.
+   */
+  const continueLevelId = useMemo(() => {
+    const lastPlayed = state.lastPlayedLevelId;
+    const lastCompleted = lastPlayed !== null && state.records.some(record => record.levelId === lastPlayed);
+    return lastPlayed === null || lastCompleted ? state.currentLevel : lastPlayed;
+  }, [state.currentLevel, state.lastPlayedLevelId, state.records]);
+
   const value = useMemo<ProgressContextValue>(
     () => ({
       progress: state,
       ready,
-      continueLevelId: state.lastPlayedLevelId ?? state.currentLevel,
+      continueLevelId,
       completedCount: state.records.length,
       isLevelUnlocked,
       isLevelCompleted,
@@ -156,6 +169,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     [
       state,
       ready,
+      continueLevelId,
       isLevelUnlocked,
       isLevelCompleted,
       getRecord,

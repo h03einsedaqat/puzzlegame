@@ -17,7 +17,7 @@ export function format(template: string, params: Record<string, string | number>
 }
 
 export function formatNumber(value: number): string {
-  const grouped = value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '٫');
+  const grouped = value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '٬');
   return toPersianDigits(grouped);
 }
 

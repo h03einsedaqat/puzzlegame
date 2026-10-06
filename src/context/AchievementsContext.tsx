@@ -53,12 +53,13 @@ export interface AchievementsContextValue {
   /** بررسی دستاوردها و بازگرداندن دستاوردهای تازه‌باز‌شده */
   sync: () => AchievementDefinition[];
   markSeen: () => void;
+  reset: () => Promise<void>;
 }
 
 const AchievementsContext = createContext<AchievementsContextValue | null>(null);
 
 function AchievementsStateProvider({ children }: { children: React.ReactNode }) {
-  const { state, dispatch } = usePersistentReducer(achievementsRepository, achievementsReducer);
+  const { state, dispatch, reset } = usePersistentReducer(achievementsRepository, achievementsReducer);
   const { profile, addCoins } = useProfile();
   const { progress: gameProgress } = useProgress();
   const daily = useDaily();
@@ -121,8 +122,9 @@ function AchievementsStateProvider({ children }: { children: React.ReactNode }) 
       newCount: state.unseenIds.length,
       sync,
       markSeen,
+      reset,
     }),
-    [achievements, stats, state.unlockedIds.length, state.unseenIds.length, sync, markSeen],
+    [achievements, stats, state.unlockedIds.length, state.unseenIds.length, sync, markSeen, reset],
   );
 
   return <AchievementsContext.Provider value={value}>{children}</AchievementsContext.Provider>;

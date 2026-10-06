@@ -112,11 +112,6 @@ export function normalizePersianText(raw: string): string {
   return result.replace(/[\s\u3000]+/g, ' ').trim();
 }
 
-/** حذف اعراب و یکسان‌سازی نویسه‌ها؛ برای مقایسه‌های تحمل‌پذیر */
-export function foldPersianWord(raw: string): string {
-  return normalizePersianWord(raw);
-}
-
 export function isPersianLetter(char: string): boolean {
   return PERSIAN_LETTER_SET.has(char) || EXTRA_LETTERS.has(char);
 }
@@ -139,11 +134,15 @@ export function lettersOf(word: string): string[] {
  * بنابراین با حروف «ا ب ا ر» کلمه «اااب» پذیرفته نمی‌شود.
  */
 export function isWordBuildable(word: string, availableLetters: readonly string[]): boolean {
+  const letters = lettersOf(word);
+  if (letters.length === 0) {
+    return false;
+  }
   const remaining = new Map<string, number>();
   for (const letter of availableLetters) {
     remaining.set(letter, (remaining.get(letter) ?? 0) + 1);
   }
-  for (const letter of lettersOf(word)) {
+  for (const letter of letters) {
     const count = remaining.get(letter) ?? 0;
     if (count <= 0) {
       return false;

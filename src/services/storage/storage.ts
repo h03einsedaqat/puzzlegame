@@ -29,15 +29,21 @@ export function createEnvelope<T>(data: T): StorageEnvelope<T> {
   };
 }
 
-async function readRaw(key: StorageKey): Promise<unknown> {
+interface RawRead {
+  parsed: unknown;
+  /** مقدار ذخیره‌شده JSON معتبر نبود؛ برای گزارش بازیابی لازم است */
+  corrupted: boolean;
+}
+
+async function readRaw(key: StorageKey): Promise<RawRead> {
   const raw = await AsyncStorage.getItem(key);
   if (raw === null) {
-    return undefined;
+    return { parsed: undefined, corrupted: false };
   }
   try {
-    return JSON.parse(raw) as unknown;
+    return { parsed: JSON.parse(raw) as unknown, corrupted: false };
   } catch {
-    return undefined;
+    return { parsed: undefined, corrupted: true };
   }
 }
 
@@ -46,7 +52,10 @@ export async function loadData<T>(
   fallback: T,
   migrate?: (data: unknown) => T | undefined,
 ): Promise<LoadResult<T>> {
-  const parsed = await readRaw(key);
+  const { parsed, corrupted } = await readRaw(key);
+  if (corrupted) {
+    return { data: fallback, recovered: true, migrated: false, found: true };
+  }
   if (parsed === undefined) {
     return { data: fallback, recovered: false, migrated: false, found: false };
   }
@@ -96,5 +105,6 @@ export async function clearAll(): Promise<void> {
 
 /** فقط برای تست‌ها و ابزار توسعه: خواندن خام یک کلید */
 export async function readRawKey(key: StorageKey): Promise<unknown> {
-  return readRaw(key);
+  const { parsed } = await readRaw(key);
+  return parsed;
 }

@@ -2,6 +2,8 @@ import { isPersianWord, lettersOf, normalizePersianWord } from '../../utils/pers
 import { WORDS } from './words';
 import type { WordCategory, WordEntry, WordTier } from './types';
 
+const ZWNJ = '\u200c';
+
 export const MIN_DICTIONARY_WORD_LENGTH = 3;
 export const MAX_DICTIONARY_WORD_LENGTH = 10;
 
@@ -25,6 +27,12 @@ function buildDictionary(entries: readonly WordEntry[]): {
   const rejected: string[] = [];
 
   for (const entry of entries) {
+    // واژه‌های دارای نیم‌فاصله هرگز روی کاشی‌های مرحله ساخته نمی‌شوند، پس
+    // وارد واژه‌نامه بازی نمی‌شوند تا شکل بی‌نیم‌فاصله‌شان پذیرفته نشود.
+    if (entry.word.includes(ZWNJ)) {
+      rejected.push(entry.word);
+      continue;
+    }
     const word = normalizePersianWord(entry.word);
     if (!isPersianWord(entry.word) || word.length > MAX_DICTIONARY_WORD_LENGTH || word.length < 2) {
       rejected.push(entry.word);
@@ -45,7 +53,7 @@ function buildDictionary(entries: readonly WordEntry[]): {
     });
   }
 
-  if (rejected.length > 0 && __DEV__) {
+  if (rejected.length > 0 && typeof __DEV__ !== 'undefined' && __DEV__) {
     console.warn(`واژه‌های نامعتبر در واژه‌نامه نادیده گرفته شدند: ${rejected.join('، ')}`);
   }
 

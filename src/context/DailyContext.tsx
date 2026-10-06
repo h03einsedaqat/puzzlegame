@@ -52,12 +52,13 @@ export interface DailyContextValue {
   rewardsLocked: boolean;
   completeChallenge: () => void;
   claimReward: () => DailyReward | null;
+  reset: () => Promise<void>;
 }
 
 const DailyContext = createContext<DailyContextValue | null>(null);
 
 export function DailyProvider({ children }: { children: React.ReactNode }) {
-  const { state, dispatch, ready } = usePersistentReducer(dailyRepository, dailyReducer);
+  const { state, dispatch, ready, reset } = usePersistentReducer(dailyRepository, dailyReducer);
   const { addCoins } = useProfile();
   const { analytics, clock } = useServices();
 
@@ -112,8 +113,21 @@ export function DailyProvider({ children }: { children: React.ReactNode }) {
       rewardsLocked,
       completeChallenge,
       claimReward,
+      reset,
     }),
-    [state, ready, today, puzzle, streak, reward, canClaim, rewardsLocked, completeChallenge, claimReward],
+    [
+      state,
+      ready,
+      today,
+      puzzle,
+      streak,
+      reward,
+      canClaim,
+      rewardsLocked,
+      completeChallenge,
+      claimReward,
+      reset,
+    ],
   );
 
   return <DailyContext.Provider value={value}>{children}</DailyContext.Provider>;

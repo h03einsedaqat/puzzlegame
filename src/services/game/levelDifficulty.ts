@@ -36,9 +36,9 @@ export interface DifficultyFactors {
  * دوباره کالیبره شوند.
  */
 export const DIFFICULTY_THRESHOLDS = {
-  medium: 39,
-  hard: 47,
-  expert: 52,
+  medium: 37,
+  hard: 42,
+  expert: 49,
 } as const;
 
 const RARE_LETTER_SET = new Set<string>(RARE_LETTERS);
