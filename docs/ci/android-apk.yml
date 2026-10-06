@@ -1,9 +1,10 @@
 name: Android APK
 
-# این گردش‌کار، بسته نصبی اندروید را روی سرور گیت‌هاب می‌سازد؛ برای کسی که
-# JDK و Android SDK روی رایانه‌اش نصب نیست، سریع‌ترین راه گرفتن APK است.
-# بسته خروجی با کلید debug امضا می‌شود: برای نصب و آزمایش روی گوشی مناسب است،
-# ولی برای بارگذاری در کافه‌بازار باید با کلید انتشار خودت بسازی
+# این گردش‌کار بسته نصبی اندروید را روی سرور گیت‌هاب می‌سازد؛ سریع‌ترین راه گرفتن
+# APK برای کسی که JDK و Android SDK روی رایانه‌اش نصب نیست.
+#
+# بسته خروجی با کلید debug امضا می‌شود: برای نصب و آزمایش روی گوشی مناسب است، ولی
+# برای بارگذاری در کافه‌بازار باید با کلید انتشار خودت بسازی
 # (راهنما: docs/BUILD_AND_RUN.md).
 
 on:
@@ -27,7 +28,7 @@ jobs:
   apk:
     name: Build release APK
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -45,20 +46,16 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Show Android SDK state
-        run: |
-          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          echo "SDK=$SDK"
-          "$SDK/cmdline-tools/latest/bin/sdkmanager" --list_installed | head -30 || true
-
       - name: Install Android SDK packages
         run: |
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          echo "Android SDK at: $SDK"
           SM="$SDK/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SM" --licenses > /dev/null 2>&1 || true
-          for pkg in "platform-tools" "platforms;android-37" "build-tools;37.0.0" "ndk;27.1.12297006"; do
-            echo "installing $pkg"
-            "$SM" "$pkg" || echo "skipped $pkg (gradle will try to fetch it)"
+          for pkg in "platform-tools" "platforms;android-37" "build-tools;37.0.0"; do
+            echo "::group::installing $pkg"
+            yes | "$SM" "$pkg" && echo "installed $pkg" || echo "could not install $pkg; Gradle will try to fetch it"
+            echo "::endgroup::"
           done
 
       - name: Cache Gradle
@@ -82,22 +79,32 @@ jobs:
 
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --stacktrace --no-daemon
 
-      - name: Report APK
+      - name: Inspect the APK
         working-directory: android
         run: |
           APK="app/build/outputs/apk/release/app-release.apk"
           ls -lh "$APK"
+          echo "— محتوای مهم داخل بسته —"
+          unzip -l "$APK" | grep -E 'index\.android\.bundle|assets/fonts/|lib/arm64-v8a/libreactnative|lib/arm64-v8a/libhermes' || true
+          echo "— اطلاعات بسته —"
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/37.0.0/aapt2 2>/dev/null || true)
+          if [ -n "$AAPT" ]; then "$AAPT" dump badging "$APK" | head -5; fi
+
+      - name: Write summary
+        working-directory: android
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
           {
             echo "### بسته نصبی آماده است"
             echo
-            echo "- فایل: \`app-release.apk\`"
+            echo "- فایل: \`app-release.apk\` (داخل فایل zip همین آرتیفکت)"
             echo "- اندازه: $(du -h "$APK" | cut -f1)"
             echo "- معماری‌ها: arm64-v8a, armeabi-v7a"
-            echo "- امضا: کلید debug (فقط برای نصب آزمایشی روی گوشی)"
+            echo "- امضا: کلید debug — برای نصب روی گوشی، نه برای بارگذاری در کافه‌بازار"
             echo
-            echo "برای انتشار در کافه‌بازار، با کلید خودت بساز: \`npm run android:apk:release\`"
+            echo "برای انتشار در کافه‌بازار با کلید خودت بساز: \`npm run android:apk:release\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload APK
