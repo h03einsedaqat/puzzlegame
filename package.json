@@ -24,6 +24,7 @@
     "levels:check": "tsx tools/check-levels.mts",
     "sounds:build": "tsx tools/build-sounds.mts",
     "icons:build": "tsx tools/build-icons.mts",
+    "android:preflight": "tsx tools/preflight.mts",
     "android:clean": "cd android && ./gradlew clean",
     "android:apk:release": "cd android && ./gradlew assembleRelease",
     "android:aab:release": "cd android && ./gradlew bundleRelease",

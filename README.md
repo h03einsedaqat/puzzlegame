@@ -5,14 +5,14 @@
 بازی کامل آفلاین است؛ دیکشنری، مرحله‌ها، پیشرفت و چالش روزانه همه روی خودِ دستگاه
 نگهداری می‌شوند و برنامه برای کار کردن به هیچ سروری نیاز ندارد.
 
-| موضوع | مقدار |
-| --- | --- |
-| نام برنامه | کلمه‌ساز |
-| نسخه | ۱.۰.۰ (versionCode ۱) |
-| بسته | `ir.kalamesaz.game` |
-| حداقل اندروید | ۷.۰ (API 24) |
-| هدف | Android 16 (API 36)، compileSdk 37 |
-| چارچوب | React Native 0.87.1 + TypeScript (strict) |
+| موضوع         | مقدار                                     |
+| ------------- | ----------------------------------------- |
+| نام برنامه    | کلمه‌ساز                                  |
+| نسخه          | ۱.۰.۰ (versionCode ۱)                     |
+| بسته          | `ir.kalamesaz.game`                       |
+| حداقل اندروید | ۷.۰ (API 24)                              |
+| هدف           | Android 16 (API 36)، compileSdk 37        |
+| چارچوب        | React Native 0.87.1 + TypeScript (strict) |
 
 > وضعیت: نسخه MVP کامل است (بازی، اقتصاد، چالش روزانه، دستاوردها، تنظیمات و آزمون‌ها).
 > تبلیغات و خرید درون‌برنامه‌ای عمداً غیرفعال‌اند و فقط زیرساخت آن‌ها آماده است.
@@ -81,35 +81,42 @@ platform 37 (راهنمای کامل در `docs/BUILD_AND_RUN.md`).
 ```bash
 npm install                # نصب وابستگی‌ها
 npm run fonts:link         # کپی فونت وزیرمتن به assets اندروید (در بیلد هم خودکار است)
-npm start                  # Metro
-npm run android            # نصب و اجرا روی دستگاه/شبیه‌ساز
-```
-
-ساخت فایل نصبی:
-
-```bash
-npm run android:apk:release   # خروجی: android/app/build/outputs/apk/release/app-release.apk
+npm run android:preflight  # بررسی Node، JDK، SDK و بسته‌های لازم
+npm run android:apk:release   # بسته مستقل: android/app/build/outputs/apk/release/app-release.apk
 npm run android:aab:release   # خروجی AAB برای کافه‌بازار
 ```
 
+برای اجرای زنده روی دستگاه در حال توسعه:
+
+```bash
+npm start                  # Metro
+npm run android            # ساخت و نصب روی دستگاه/شبیه‌ساز
+```
+
+بسته release مستقل است و بدون Metro روی گوشی اجرا می‌شود؛ بسته debug برای اجرا به
+Metro نیاز دارد (با `adb reverse tcp:8081 tcp:8081`). این تفاوت و همه مسیرهای نصب در
+`docs/BUILD_AND_RUN.md` توضیح داده شده است. اگر JDK و Android SDK روی رایانه‌ات نیست،
+گردش‌کار آماده `docs/ci/android-apk.yml` بسته را روی سرور گیت‌هاب می‌سازد.
+
 ## دستورها
 
-| دستور | کار |
-| --- | --- |
-| `npm start` | اجرای Metro |
-| `npm run android` | ساخت و نصب روی دستگاه |
-| `npm run typecheck` | بررسی تایپ‌ها با TypeScript strict |
-| `npm run lint` | ESLint |
-| `npm test` | همه آزمون‌ها |
-| `npm run test:coverage` | آزمون با گزارش پوشش (آستانه سراسری ۶۰٪) |
-| `npm run verify` | typecheck + lint + test؛ دروازه پیش از تحویل |
-| `npm run levels:build` | تولید `levels.ts` و `dailyPuzzles.ts` از واژه‌نامه |
-| `npm run levels:check` | اعتبارسنجی همه مرحله‌ها و پازل‌ها |
-| `npm run sounds:build` | تولید افکت‌های صوتی |
-| `npm run icons:build` | ساخت آیکون اجرا و آیکون پیشخان |
-| `npm run fonts:link` | کپی فونت‌ها به assets اندروید |
-| `npm run android:apk:release` | ساخت APK امضاشده |
-| `npm run android:aab:release` | ساخت AAB برای بازار |
+| دستور                         | کار                                                |
+| ----------------------------- | -------------------------------------------------- |
+| `npm start`                   | اجرای Metro                                        |
+| `npm run android`             | ساخت و نصب روی دستگاه                              |
+| `npm run typecheck`           | بررسی تایپ‌ها با TypeScript strict                 |
+| `npm run lint`                | ESLint                                             |
+| `npm test`                    | همه آزمون‌ها                                       |
+| `npm run test:coverage`       | آزمون با گزارش پوشش (آستانه سراسری ۶۰٪)            |
+| `npm run verify`              | typecheck + lint + test؛ دروازه پیش از تحویل       |
+| `npm run levels:build`        | تولید `levels.ts` و `dailyPuzzles.ts` از واژه‌نامه |
+| `npm run levels:check`        | اعتبارسنجی همه مرحله‌ها و پازل‌ها                  |
+| `npm run sounds:build`        | تولید افکت‌های صوتی                                |
+| `npm run icons:build`         | ساخت آیکون اجرا و آیکون پیشخان                     |
+| `npm run fonts:link`          | کپی فونت‌ها به assets اندروید                      |
+| `npm run android:preflight`   | بررسی محیط ساخت اندروید پیش از نخستین بیلد         |
+| `npm run android:apk:release` | ساخت APK امضاشده                                   |
+| `npm run android:aab:release` | ساخت AAB برای بازار                                |
 
 ## آزمون‌ها
 

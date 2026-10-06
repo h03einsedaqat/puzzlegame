@@ -1,11 +1,23 @@
 # راهنمای ساخت و نصب روی گوشی
 
-این سند دو مسیر دارد: نسخه آزمایشی سریع (برای دیدن بازی روی گوشی خودت) و نسخه
-انتشار امضاشده (برای فرستادن به کافه‌بازار).
+این سند سه مسیر دارد:
+
+1. **ساخت روی رایانه خودت** — کامل‌ترین راه؛ برای انتشار نهایی هم همین لازم است.
+2. **ساخت ابری روی گیت‌هاب** — اگر JDK و Android SDK روی رایانه‌ات نیست.
+3. **نصب روی گوشی** — با کابل یا بدون کابل، و کارهای بعدش.
+
+خلاصه سریع برای کسی که همه پیش‌نیازها را دارد:
+
+```bash
+npm install
+npm run android:preflight      # بررسی محیط: Node، JDK، SDK و بسته‌های لازم
+npm run android:apk:release    # بسته مستقل و قابل نصب روی گوشی
+adb install -r android/app/build/outputs/apk/release/app-release.apk
+```
 
 ---
 
-## ۰) پیش‌نیازهای یک‌بار برای همیشه
+## ۱) پیش‌نیازهای یک‌بار برای همیشه
 
 ### Node.js
 
@@ -22,21 +34,21 @@ React Native 0.87 با **JDK 17 یا 21** کار می‌کند. اگر Java ند
 - ویندوز/مک: [Adoptium Temurin 17](https://adoptium.net/temurin/releases/?version=17)
 - اوبونتو/دبیان: `sudo apt install openjdk-17-jdk`
 
-بررسی:
-
 ```bash
 java -version     # باید 17.x یا 21.x باشد
+echo $JAVA_HOME   # ویندوز: echo %JAVA_HOME%
 ```
 
 ### Android SDK
 
 ساده‌ترین راه، نصب [Android Studio](https://developer.android.com/studio) است؛
-هنگام نصب، «Android SDK» و «Android SDK Platform-Tools» را انتخاب کن. سپس در
+هنگام نصب «Android SDK» و «Android SDK Platform-Tools» را انتخاب کن. سپس در
 Android Studio → Settings → Languages & Frameworks → Android SDK:
 
-- **SDK Platforms**: تیک `Android 16 (API 36)` و در تب «Show Package Details»
-  گزینه `Android SDK Platform 37` را نصب کن.
-- **SDK Tools**: تیک `Android SDK Build-Tools 37`.
+- **SDK Platforms**: تب «Show Package Details» را بزن و `Android SDK Platform 37`
+  را نصب کن.
+- **SDK Tools**: `Android SDK Build-Tools 37` و `NDK (Side by side) 27.1.12297006`
+  را نصب کن.
 
 آدرس SDK را در فایل `android/local.properties` بگذار (این فایل در git نمی‌رود):
 
@@ -53,51 +65,125 @@ sdk.dir=/home/<نام کاربری>/Android/Sdk
 
 متغیر محیطی `ANDROID_HOME` هم باید به همین مسیر اشاره کند.
 
+### بررسی یک‌جای همه‌چیز
+
+```bash
+npm run android:preflight
+```
+
+این ابزار نسخه Node، نسخه JDK، مسیر SDK و بسته‌های دقیق SDK را از روی خودِ فایل‌های
+پروژه بررسی می‌کند و اگر چیزی کم باشد، دستور دقیق نصبش را چاپ می‌کند.
+
 ---
 
-## ۱) نسخه آزمایشی: نصب سریع روی گوشی
-
-### الف) با کابل USB
+## ۲) ساخت روی رایانه خودت
 
 ```bash
 npm install
 npm run fonts:link       # کپی فونت وزیرمتن به دارایی‌های اندروید
-npm run android          # ساخت + نصب + اجرای برنامه
+npm run android:apk:release
 ```
 
-گوشی باید «USB Debugging» روشن داشته باشد (Settings → About phone → روی Build
-number هفت بار بزن → Developer options → USB debugging).
+خروجی: `android/app/build/outputs/apk/release/app-release.apk`
 
-اگر برنامه نصب شد ولی صفحه سفید بود، Metro را جدا اجرا کن:
+این بسته **مستقل** است: کد جاوااسکریپت، صداها و فونت‌های فارسی داخلش هستند و برای
+اجرا به Metro یا اینترنت نیاز ندارد.
 
-```bash
-npm start                # در یک ترمینال
-npm run android          # در ترمینال دیگر
-```
+> اگر `android/keystore.properties` را نساخته باشی، بسته با کلید debug امضا می‌شود.
+> این برای نصب و تست روی گوشی خودت کاملاً کار می‌کند، ولی **برای کافه‌بازار باید با
+> کلید خودت امضا شود** (بخش ۵ همین سند).
 
-### ب) بدون کابل: ساخت فایل نصبی و کپی روی گوشی
-
-```bash
-npm run android:bundle:debug
-```
-
-خروجی: `android/app/build/outputs/apk/debug/app-debug.apk`
-
-این فایل را با کابل، بلوتوث یا پیام‌رسان به گوشی بفرست، روی گوشی لمس کن و
-«نصب از منابع نامعلوم» را برای همان برنامه (مثلاً فایل‌منیجر) اجازه بده.
-
-> نکته: نسخه debug بسته `ir.kalamesaz.game.debug` است و می‌تواند کنار نسخه اصلی
-> نصب شود. برای تست چند نفر لازم نیست امضا بسازی.
-
-اگر خواستی از ترمینال نصب کنی:
+برای ساخت بسته فروشگاه (AAB) و بسته‌های جدا برای هر معماری:
 
 ```bash
-adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+npm run android:aab:release
+npm run android:apk:splits
 ```
 
 ---
 
-## ۲) نسخه انتشار: امضاشده برای کافه‌بازار
+## ۳) ساخت ابری روی گیت‌هاب (بدون نصب JDK و Android SDK)
+
+اگر روی رایانه‌ات جاوا و SDK نداری، می‌توانی گیت‌هاب بسته را برایت بسازد. گیت‌هاب
+یک درخواست برای افزودن گردش‌کار (workflow) از این توکن نمی‌پذیرد، پس فقط یک‌بار
+خودت فایل آماده را سر جایش بگذار:
+
+```bash
+mkdir -p .github/workflows
+cp docs/ci/android-apk.yml .github/workflows/
+git add .github/workflows/android-apk.yml
+git commit -m "chore: add Android APK workflow"
+git push
+```
+
+(یا از صفحه گیت‌هاب: Add file → Create new file → مسیر
+`.github/workflows/android-apk.yml` → محتوای `docs/ci/android-apk.yml` را بچسبان →
+Commit.)
+
+از این پس با هر push روی `main` و شاخه‌های `arena/**`، بسته ساخته می‌شود. نتیجه را
+از اینجا بگیر:
+
+- صفحه گیت‌هاب → تب **Actions** → آخرین اجرای «Android APK» → بخش **Artifacts** →
+  `kalamesaz-apk`
+- یا با دستور: `gh run download --name kalamesaz-apk`
+
+فایل داخلش `app-release.apk` است؛ همان را روی گوشی نصب کن.
+
+> بسته‌ای که گیت‌هاب می‌سازد با کلید debug امضا شده و برای کافه‌بازار مناسب نیست؛
+> برای انتشار باید روی رایانه خودت و با کلید خودت بسازی (بخش ۵).
+
+---
+
+## ۴) نصب و اجرا روی گوشی
+
+### الف) با کابل USB
+
+```bash
+adb devices                                  # گوشی باید در فهرست باشد
+adb install -r android/app/build/outputs/apk/release/app-release.apk
+```
+
+اگر `adb` شناخته نشد، از مسیر کامل استفاده کن:
+`~/Android/Sdk/platform-tools/adb` (لینوکس) یا
+`%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe` (ویندوز).
+
+`-r` یعنی نصب روی نسخه قبلی بدون پاک‌کردن پیشرفت بازی.
+
+گوشی باید «USB Debugging» روشن داشته باشد: Settings → About phone → هفت بار روی
+Build number بزن → Developer options → USB debugging.
+
+### ب) بدون کابل
+
+فایل `app-release.apk` را با کابل، بلوتوث، تلگرام یا فضای ابری به گوشی بفرست،
+روی گوشی لمس کن و اگر پیام آمد، برای همان برنامه (مثلاً فایل‌منیجر) اجازه
+«نصب برنامه از منابع نامعلوم» را بده.
+
+### ج) حالت توسعه با Metro (فقط برای برنامه‌نویسی)
+
+نسخه debug بسته را با Metro اجرا می‌کند، پس برای نصب روی گوشی این مسیر را فقط اگر
+می‌خواهی کد را زنده تغییر بدهی استفاده کن:
+
+```bash
+npx react-native run-android        # ساخت، نصب و اجرا با Metro
+# یا جدا:
+npm start                           # ترمینال اول
+npm run android:bundle:debug        # بسته debug (شناسه ir.kalamesaz.game.debug)
+adb reverse tcp:8081 tcp:8081       # تا گوشی به Metro روی رایانه وصل شود
+```
+
+> بسته debug بدون `adb reverse` و بدون Metro صفحه سرخ «Unable to load script» نشان
+> می‌دهد؛ برای نصب روی گوشی دوستان و خانواده، همیشه از بسته **release** استفاده کن.
+
+### د) اولین اجرا
+
+1. صفحه خوش‌آمد و سه صفحه معرفی کوتاه می‌آید.
+2. «شروع بازی» را بزن؛ مرحله ۱ خودش نقش آموزش را دارد.
+3. حروف را با لمس انتخاب کن، با دکمه ثبت کلمه را بفرست.
+4. بعد از چند ثانیه، برنامه را کامل ببند و دوباره باز کن: پیشرفت باید سر جایش باشد.
+
+---
+
+## ۵) نسخه انتشار: امضاشده برای کافه‌بازار
 
 ### الف) ساخت کلید امضا (فقط یک‌بار در عمر برنامه)
 
@@ -129,7 +215,8 @@ keyPassword=<رمز کلید>
 ```
 
 مسیر `storeFile` نسبت به پوشه `android/app` خوانده می‌شود؛ اگر فایل کلید را جای
-دیگری گذاشتی، همین مسیر را اصلاح کن.
+دیگری گذاشتی، همین مسیر را اصلاح کن. بعد از این، `npm run android:preflight` باید
+بنویسد «امضای انتشار: با کلید خودت».
 
 ### ج) ساخت خروجی
 
@@ -143,19 +230,13 @@ npm run android:aab:release    # AAB (مسیر پیشنهادی کافه‌با�
 - `android/app/build/outputs/apk/release/app-release.apk`
 - `android/app/build/outputs/bundle/release/app-release.aab`
 
-برای بارگذاری چندبسته‌ای (APK جدا برای هر معماری CPU):
-
-```bash
-npm run android:apk:splits
-```
-
 ### د) نصب نسخه انتشار روی گوشی خودت
 
 ```bash
 adb install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
-اگر خطای «امضای متفاوت» گرفتی (چون نسخه debug قبلاً نصب بوده):
+اگر خطای «امضای متفاوت» گرفتی (چون نسخه debug یا نسخه امضاشده قبلی نصب بوده):
 
 ```bash
 adb uninstall ir.kalamesaz.game
@@ -164,17 +245,22 @@ adb uninstall ir.kalamesaz.game.debug
 
 ---
 
-## ۳) اگر روی گوشی درست بالا نیامد
+## ۶) اگر روی گوشی درست بالا نیامد
 
-| نشانه | علت احتمالی | راه‌حل |
-| --- | --- | --- |
-| صفحه سفید یا خطای «Unable to load script» | Metro در دسترس نیست | `npm start` را اجرا کن یا بسته release بساز |
-| متن‌ها پیش‌فرض اندروید هستند، نه وزیرمتن | فونت‌ها در بسته نیستند | `npm run fonts:link` و بعد ساخت دوباره بسته |
-| `SDK location not found` | `android/local.properties` نیست | مسیر SDK را در آن فایل بنویس |
-| `Unsupported class file major version` | JDK خیلی جدید | JDK 17 یا 21 نصب کن |
-| گریدل هنگام ساخت دارایی‌ها را دانلود نمی‌کند | بی‌اینترنتی/فیلترینگ | یک بار با اینترنت پایدار بساز؛ بعد از آن کش می‌شود |
-| برنامه فوراً بسته می‌شود | داده خراب از نسخه قبلی | برنامه را حذف و دوباره نصب کن (یا در برنامه «پاک‌کردن پیشرفت» را بزن) |
-| ساخت روی ویندوز: «The filename or extension is too long» | مسیر پروژه خیلی عمیق است | پروژه را در مسیری کوتاه مثل `C:\dev\kalamesaz` بگذار |
+| نشانه                                                    | علت احتمالی                     | راه‌حل                                                                |
+| -------------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| صفحه سفید یا «Unable to load script»                     | بسته debug بدون Metro نصب شده   | بسته release بساز و همان را نصب کن                                    |
+| متن‌ها پیش‌فرض اندروید هستند، نه وزیرمتن                 | فونت‌ها در بسته نیستند          | `npm run fonts:link` و بعد ساخت دوباره بسته                           |
+| `SDK location not found`                                 | `android/local.properties` نیست | مسیر SDK را در آن فایل بنویس                                          |
+| `Unsupported class file major version`                   | JDK خیلی جدید                   | JDK 17 یا 21 نصب کن و `JAVA_HOME` را عوض کن                           |
+| `NDK not found` روی یونیتی/ویندوز                        | NDK نصب نشده                    | در SDK Manager نسخه `27.1.12297006` را نصب کن                         |
+| گریدل هنگام ساخت دارایی‌ها را دانلود نمی‌کند             | بی‌اینترنتی/فیلترینگ            | یک بار با اینترنت پایدار بساز؛ بعد از آن در `~/.gradle` کش می‌شود     |
+| برنامه فوراً بسته می‌شود                                 | داده خراب از نسخه قبلی          | برنامه را حذف و دوباره نصب کن (یا در برنامه «پاک‌کردن پیشرفت» را بزن) |
+| ساخت روی ویندوز: «The filename or extension is too long» | مسیر پروژه خیلی عمیق است        | پروژه را در مسیری کوتاه مثل `C:\dev\kalamesaz` بگذار                  |
+| «INSTALL_FAILED_UPDATE_INCOMPATIBLE»                     | امضای بسته با نصب قبلی یکی نیست | نسخه قبلی را حذف کن (`adb uninstall ir.kalamesaz.game`)               |
+
+نمونه کارهایی که روی گوشی باید ببینی: لمس حروف، نوار پیشرفت واژه‌های هدف، صفحه
+نتیجه با ستاره و سکه، باز شدن «قلب» بعد از تمام‌شدن، و شمارش معکوس قلب بعدی.
 
 برای دیدن لاگ‌های گوشی:
 
@@ -186,12 +272,15 @@ adb logcat *:S ReactNative:V ReactNativeJS:V
 
 ---
 
-## ۴) پیش از انتشار
+## ۷) پیش از انتشار
 
 فهرست کامل کارها در `docs/BAZAAR_RELEASE_CHECKLIST.md` است. خلاصه حداقلی:
 
 ```bash
 npm run verify          # typecheck + lint + test
-npm run levels:check    # اعتبارسنجی داده مرحله‌ها
-npm run data:check      # همان بررسی، نام کوتاه‌تر
+npm run levels:check    # اعتبارسنجی مرحله‌ها و پازل‌های روزانه
+npm run android:preflight
 ```
+
+اسکرین‌شات‌ها و متن فروشگاه هم آماده‌اند: `docs/SCREENSHOT_PLAN.md` و
+`docs/STORE_LISTING.md`.
