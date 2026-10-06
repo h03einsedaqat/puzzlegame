@@ -11,7 +11,7 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
 export interface LevelMetadata {
   /** دسته موضوعی واژه‌های اصلی مرحله */
   category: string;
-  /** کلمه‌ای که مرحله حول آن ساخته شده؛ برای نمایش راهنما و آمار */
+  /** واژه‌ای که مرحله حول آن ساخته شده؛ از همه کاشی‌های مرحله استفاده می‌کند */
   anchorWord: string;
   /** مرحله آموزشی؛ برای مرحله ۱ فعال است */
   isTutorial?: boolean;
@@ -49,6 +49,8 @@ export interface FoundWord {
   score: number;
   coins: number;
   combo: number;
+  /** واژه‌ای که با راهنما آشکار شده بود */
+  revealed: boolean;
   foundAt: number;
 }
 
@@ -59,7 +61,6 @@ export type WordRejectionReason =
   | 'invalid_characters'
   | 'letters_unavailable'
   | 'not_in_dictionary'
-  | 'not_in_level'
   | 'already_found';
 
 export type WordValidation =
@@ -67,6 +68,14 @@ export type WordValidation =
   | { status: 'rejected'; word: string; reason: WordRejectionReason };
 
 export type HintType = 'reveal_letter' | 'reveal_word' | 'smart_help';
+
+export interface HintRecord {
+  type: HintType;
+  word: string;
+  /** برای راهنمای نوع حرف؛ null یعنی واژه کامل آشکار شده است */
+  letterIndex: number | null;
+  at: number;
+}
 
 export type SessionStatus = 'playing' | 'completed' | 'abandoned';
 
@@ -80,9 +89,7 @@ export interface GameSession {
   coinsEarned: number;
   combo: number;
   maxCombo: number;
-  hintsUsed: number;
-  /** حروف آشکارشده با راهنما، به ترتیب انتخاب */
-  hintedWords: string[];
+  hints: HintRecord[];
   startedAt: number;
   finishedAt: number | null;
   status: SessionStatus;
@@ -94,6 +101,15 @@ export interface GameRewards {
   targetWordsFound: number;
   bonusWordsFound: number;
   maxCombo: number;
+}
+
+/** پیشرفت بازیکن در یک مرحله */
+export interface LevelProgress {
+  foundTargets: number;
+  totalTargets: number;
+  foundBonus: number;
+  totalBonus: number;
+  isCompleted: boolean;
 }
 
 export interface LevelRecord {

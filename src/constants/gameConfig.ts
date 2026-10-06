@@ -23,7 +23,7 @@ export const GAME_CONFIG = {
     heartCostPerAttempt: 1,
     /** با تکمیل مرحله، قلب خرج‌شده برمی‌گردد تا تکرار دوباره تنبیه نشود */
     refundHeartOnComplete: true,
-    freeAttemptLevelIds: [1],
+    freeAttemptLevelIds: [1] as readonly number[],
     maxHeartsWithBonus: 5,
   },
 
@@ -89,7 +89,7 @@ export const GAME_CONFIG = {
     puzzleCount: 60,
     /** اگر بازیکن یک روز را از دست بدهد، استریک به این مقدار برمی‌گردد */
     streakResetValue: 0,
-    streakMilestones: [1, 3, 7, 14, 30],
+    streakMilestones: [1, 3, 7, 14, 30] as readonly number[],
   },
 
   progression: {

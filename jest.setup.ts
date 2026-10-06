@@ -3,9 +3,7 @@
 export {};
 
 declare global {
-  // eslint-disable-next-line no-var
   var __asyncStorageMock: Record<string, jest.Mock>;
-  // eslint-disable-next-line no-var
   var __resetAsyncStorage: () => void;
 }
 

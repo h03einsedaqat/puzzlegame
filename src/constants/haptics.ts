@@ -1,5 +1,3 @@
-import { Vibration } from 'react-native';
-
 /**
  * الگوهای لرزش. مدت‌ها کوتاه نگه داشته شده‌اند تا حس «فیدبک» بدهند و آزاردهنده نباشند.
  * نام‌ها با رویدادهای بازی هم‌راستا هستند.
@@ -20,5 +18,3 @@ export type HapticEvent = keyof typeof HAPTIC_PATTERNS;
 export function patternFor(event: HapticEvent): number | readonly number[] {
   return HAPTIC_PATTERNS[event];
 }
-
-export const vibrationApi = Vibration;

@@ -13,6 +13,7 @@ export interface UserProfile {
   /** زمان شروع تایمر قلب بعدی؛ null یعنی قلب‌ها پر است یا هرگز خرج نشده است */
   lastHeartRefillAt: number | null;
   totalWordsFound: number;
+  bonusWordsFound: number;
   totalGamesPlayed: number;
   totalGamesCompleted: number;
   totalHintsUsed: number;
