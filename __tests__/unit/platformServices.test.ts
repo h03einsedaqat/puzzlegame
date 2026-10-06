@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { HAPTIC_PATTERNS, patternFor } from '../../src/constants/haptics';
 import { AdService, NoopAdProvider, type AdProvider } from '../../src/services/ads/AdService';
 import { AnalyticsService, DevLogAnalyticsProvider, NoopAnalyticsProvider, type AnalyticsProvider } from '../../src/services/analytics/AnalyticsService';
@@ -122,6 +125,51 @@ describe('سرویس لرزش', () => {
     const { fake, cancelled } = driver();
     new VibrationService(true, fake).cancel();
     expect(cancelled()).toBe(1);
+  });
+
+  /**
+   * رگرسیون: روی اندروید اگر مجوز VIBRATE در Manifest نباشد، فراخوانی لرزش
+   * SecurityException می‌دهد و چون از ماژول بومی بالا می‌آید برنامه را می‌بندد؛
+   * بازیکن آن را به‌صورت «با هر لمس، برنامه بسته می‌شود» می‌دید. حالا لایه سرویس
+   * باید هر خطای درایور را در خودش خفه کند و هرگز به رابط کاربری نرساند.
+   */
+  it('خطای درایور لرزش را هرگز به رابط کاربری نمی‌دهد (بازی بدون لرزش ادامه می‌دهد)', () => {
+    const failing: VibrationDriver = {
+      vibrate: () => {
+        throw new Error('SecurityException: Requires VIBRATE permission');
+      },
+      cancel: () => {
+        throw new Error('SecurityException: Requires VIBRATE permission');
+      },
+    };
+    const service = new VibrationService(true, failing);
+
+    expect(() => service.trigger('button')).not.toThrow();
+    expect(() => service.trigger('letter_select')).not.toThrow();
+    expect(() => service.cancel()).not.toThrow();
+    expect(() => service.setEnabled(false)).not.toThrow();
+  });
+
+  it('سرویس پیش‌فرض هم با درایور بومی خطا نمی‌دهد', () => {
+    const service = createServices().vibration;
+    expect(() => service.trigger('button')).not.toThrow();
+    expect(() => service.cancel()).not.toThrow();
+  });
+});
+
+/**
+ * رگرسیون Manifest: مجوز VIBRATE باید در فایل اصلی AndroidManifest باشد؛
+ * نبودنش باعث بسته‌شدن برنامه روی هر لمس دکمه می‌شود.
+ */
+describe('Manifest اندروید', () => {
+  it('مجوز VIBRATE را اعلام می‌کند', () => {
+    const manifest = readFileSync(resolve(process.cwd(), 'android/app/src/main/AndroidManifest.xml'), 'utf8');
+    expect(manifest).toContain('android.permission.VIBRATE');
+  });
+
+  it('برای انتشار به اینترنت نیازی ندارد (بازی آفلاین است)', () => {
+    const manifest = readFileSync(resolve(process.cwd(), 'android/app/src/main/AndroidManifest.xml'), 'utf8');
+    expect(manifest).not.toContain('android.permission.INTERNET');
   });
 });
 
