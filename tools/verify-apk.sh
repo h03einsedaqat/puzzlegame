@@ -16,10 +16,12 @@
 #
 # استفاده:
 #   bash tools/verify-apk.sh <file.apk> [build-tools-dir]
+#   bash tools/verify-apk.sh --release [tag] [build-tools-dir]   # خودش از صفحه Releases می‌گیرد
 #
 # نمونه:
 #   bash tools/verify-apk.sh android/app/build/outputs/apk/release/app-release.apk
 #   bash tools/verify-apk.sh ~/Downloads/kalamesaz-1.0.0-arm.apk
+#   bash tools/verify-apk.sh --release               # همان فایلی که کاربر دانلود می‌کند
 #
 # کد خروج:
 #   0 = بسته سالم است، 1 = ایراد جدی (روی گوشی نصب نمی‌شود)، 2 = ابزار لازم پیدا نشد.
@@ -28,9 +30,40 @@ set -uo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 APK=${1:-}
+BT_ARG=${2:-}
+
+# حالت --release: همان فایلی که روی صفحه Releases منتشر شده را می‌گیرد و بررسی می‌کند
+if [ "$APK" = "--release" ]; then
+  RELEASE_TAG=${2:-apk-latest}
+  BT_ARG=${3:-}
+  if ! command -v gh >/dev/null 2>&1; then
+    echo "برای حالت --release به ابزار gh نیاز است (https://cli.github.com)" >&2
+    exit 2
+  fi
+  DL_DIR=$(mktemp -d)
+  echo "دانلود بسته «$RELEASE_TAG» از صفحه Releases و فایل sha256 (در صورت وجود)..."
+  gh release download "$RELEASE_TAG" -p '*.apk' -p '*.sha256' -D "$DL_DIR" --clobber >/dev/null 2>&1 || true
+  APK=$(ls "$DL_DIR"/*.apk 2>/dev/null | head -1)
+  if [ -z "$APK" ]; then
+    echo "هیچ فایل APK در انتشار «$RELEASE_TAG» پیدا نشد (یا دانلود ممکن نشد)." >&2
+    exit 2
+  fi
+  SUM_FILE="$APK.sha256"
+  if [ -f "$SUM_FILE" ]; then
+    EXPECTED=$(cut -d' ' -f1 < "$SUM_FILE")
+    ACTUAL=$(sha256sum "$APK" 2>/dev/null | cut -d' ' -f1)
+    if [ -n "$EXPECTED" ] && [ "$EXPECTED" = "$ACTUAL" ]; then
+      echo "✅ فایل دانلودشده با هش اعلام‌شده در همان صفحه یکی است."
+    else
+      echo "❌ فایل دانلودشده با هش اعلام‌شده یکی نیست؛ دانلود ناقص/خراب است." >&2
+    fi
+    echo
+  fi
+fi
 
 if [ -z "$APK" ]; then
   echo "استفاده: bash tools/verify-apk.sh <file.apk> [build-tools-dir]" >&2
+  echo "        bash tools/verify-apk.sh --release [tag] [build-tools-dir]" >&2
   exit 2
 fi
 
@@ -70,7 +103,7 @@ find_build_tools() {
   return 1
 }
 
-BT="$(find_build_tools "$APK" "${2:-}" 2>/dev/null || true)"
+BT="$(find_build_tools "$APK" "$BT_ARG" 2>/dev/null || true)"
 APKSIGNER="${BT:+$BT/apksigner}"
 ZIPALIGN="${BT:+$BT/zipalign}"
 AAPT2="${BT:+$BT/aapt2}"
