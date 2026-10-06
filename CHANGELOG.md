@@ -2,6 +2,28 @@
 
 قالب نسخه‌گذاری: [Semantic Versioning](https://semver.org/lang/fa/)
 
+## [منتشرنشده]
+
+### اصلاح شد
+
+- `npm run android:preflight` دیگر فقط به متغیرهای محیطی تکیه نمی‌کند: JDK را در
+  جاهای معمول نصب (از جمله JDK همراه Android Studio) می‌گردد و نسخه‌اش را درست از
+  خروجی `java -version` می‌خواند (خروجی روی stderr می‌آید)
+- خواندن نسخه‌های `android/build.gradle` هم مقدار رشته‌ای و هم مقدار عددی را
+  پشتیبانی می‌کند؛ `compileSdkVersion = 37` عدد خالی است و پیش‌تر باعث خطای خود
+  ابزار می‌شد
+- پیام‌های راهنما دستور دقیق و آماده کپی دارند: نصب JDK و SDK، تنظیم `JAVA_HOME` و
+  نصب بسته‌های SDK با `sdkmanager`
+
+### افزوده شد
+
+- `npm run android:preflight -- --fix` — اگر SDK در مسیر پیش‌فرض باشد، خودش
+  `android/local.properties` را می‌سازد یا خط `sdk.dir` را به‌روز می‌کند
+- نمایش مسیر SDK و اینکه از کدام منبع خوانده شده (متغیر محیطی یا
+  `android/local.properties`) و بررسی بسته‌های لازم (platform، build-tools، NDK)
+- اشاره به مسیر ساخت ابری روی گیت‌هاب در بخش «کارهای لازم»، برای کسانی که JDK و
+  Android SDK محلی ندارند
+
 ## [۱.۰.۰] — نسخه اول
 
 ### افزوده شد
