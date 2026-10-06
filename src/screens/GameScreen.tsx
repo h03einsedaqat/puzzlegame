@@ -264,10 +264,14 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     return strings.game.tutorialStepLetters;
   }, [activeLevel, session, word.length]);
 
-  const cheapestHintCost = useMemo(
-    () => (hintOptions.length > 0 ? Math.min(...hintOptions.map(option => option.cost)) : 0),
-    [hintOptions],
-  );
+  const cheapestHintCost = useMemo(() => {
+    if (hintOptions.length > 0) {
+      return Math.min(...hintOptions.map(option => option.cost));
+    }
+    // پیش از شروع نشست هم دکمه قیمت درست نشان می‌دهد (ارزان‌ترین راهنمای فعال).
+    const costs = GAME_CONFIG.hints.order.map(type => GAME_CONFIG.hints.costs[type]);
+    return costs.length > 0 ? Math.min(...costs) : 0;
+  }, [hintOptions]);
 
   const hintDescriptions = useMemo<Record<HintType, string>>(
     () => ({

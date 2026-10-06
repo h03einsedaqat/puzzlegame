@@ -293,6 +293,11 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
       <HeartRefillDialog
         visible={noHeartsVisible}
         onClose={() => setNoHeartsVisible(false)}
+        note={
+          hearts.nextRefillAt
+            ? format(strings.hearts.nextHeartIn, { time: countdown.text })
+            : undefined
+        }
       />
 
       <ConfirmDialog

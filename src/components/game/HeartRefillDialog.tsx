@@ -12,6 +12,8 @@ export interface HeartRefillDialogProps {
   onClose: () => void;
   /** پس از پر شدن موفق قلب‌ها؛ مثلاً برای ادامه بازی */
   onRefilled?: () => void;
+  /** توضیح تکمیلی زیر دکمه‌ها؛ مثل زمان پر شدن خودکار قلب بعدی */
+  note?: string;
 }
 
 /**
@@ -21,7 +23,7 @@ export interface HeartRefillDialogProps {
  * یا پر کردن فوری همه قلب‌ها با سکه. هزینه از پیکربندی بازی خوانده می‌شود و اگر
  * سکه کافی نباشد دکمه غیرفعال می‌شود تا بازیکن سرخورده نشود.
  */
-export function HeartRefillDialog({ visible, onClose, onRefilled }: HeartRefillDialogProps) {
+export function HeartRefillDialog({ visible, onClose, onRefilled, note }: HeartRefillDialogProps) {
   const { profile, hearts, spendCoins, fillHearts } = useProfile();
   const { sound, vibration } = useServices();
   const [error, setError] = useState<string | null>(null);
@@ -61,11 +63,18 @@ export function HeartRefillDialog({ visible, onClose, onRefilled }: HeartRefillD
         onClose();
       }}
       footer={
-        alreadyFull || canAfford ? null : (
-          <AppText variant="caption" color={colors.danger} align="center">
-            {error ?? strings.hearts.buyNotEnoughCoins}
-          </AppText>
-        )
+        <>
+          {note ? (
+            <AppText variant="caption" color={colors.textMuted} align="center">
+              {note}
+            </AppText>
+          ) : null}
+          {alreadyFull || canAfford ? null : (
+            <AppText variant="caption" color={colors.danger} align="center">
+              {error ?? strings.hearts.buyNotEnoughCoins}
+            </AppText>
+          )}
+        </>
       }
     />
   );
