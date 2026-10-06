@@ -1,0 +1,37 @@
+/** فهرست بسته رویدادهای تحلیلی؛ افزودن رویداد جدید فقط از همین‌جا انجام می‌شود. */
+export const ANALYTICS_EVENTS = [
+  'app_open',
+  'onboarding_start',
+  'onboarding_complete',
+  'level_start',
+  'level_complete',
+  'level_fail',
+  'level_abandon',
+  'word_correct',
+  'word_wrong',
+  'word_bonus',
+  'combo_achieved',
+  'hint_used',
+  'hint_blocked',
+  'heart_spent',
+  'heart_empty',
+  'hearts_refilled',
+  'daily_start',
+  'daily_complete',
+  'daily_locked',
+  'reward_claimed',
+  'streak_updated',
+  'achievement_unlocked',
+  'ad_started',
+  'ad_completed',
+  'ad_failed',
+  'purchase_started',
+  'purchase_completed',
+  'purchase_failed',
+  'settings_changed',
+  'progress_reset',
+] as const;
+
+export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];
+
+export type AnalyticsParams = Record<string, string | number | boolean | null | undefined>;

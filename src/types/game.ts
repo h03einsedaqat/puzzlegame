@@ -1,0 +1,104 @@
+/** درجه سختی مرحله. سختی از روی معیارهای مختلف محاسبه می‌شود، نه فقط تعداد حروف. */
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
+
+export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  easy: 'آسان',
+  medium: 'متوسط',
+  hard: 'سخت',
+  expert: 'حرفه‌ای',
+};
+
+export interface LevelMetadata {
+  /** دسته موضوعی واژه‌های اصلی مرحله */
+  category: string;
+  /** کلمه‌ای که مرحله حول آن ساخته شده؛ برای نمایش راهنما و آمار */
+  anchorWord: string;
+  /** مرحله آموزشی؛ برای مرحله ۱ فعال است */
+  isTutorial?: boolean;
+}
+
+export interface Level {
+  id: number;
+  title: string;
+  difficulty: Difficulty;
+  /** حروف قابل استفاده در مرحله، با تکرار (مثلاً «کتاب» → ک، ت، ا، ب) */
+  letters: string[];
+  /** واژه‌های اصلی؛ تکمیل مرحله به آن‌ها وابسته است */
+  targetWords: string[];
+  /** واژه‌های امتیازی؛ پیشرفت مرحله به آن‌ها وابسته نیست */
+  bonusWords: string[];
+  minWordLength: number;
+  maxWordLength: number;
+  scoreReward: number;
+  coinReward: number;
+  hintCost: number;
+  metadata: LevelMetadata;
+}
+
+/** یک کاشی حرف در صفحه بازی. id باعث می‌شود حروف تکراری مستقل انتخاب شوند. */
+export interface LetterTileData {
+  id: string;
+  char: string;
+}
+
+export type WordKind = 'target' | 'bonus';
+
+export interface FoundWord {
+  word: string;
+  kind: WordKind;
+  score: number;
+  coins: number;
+  combo: number;
+  foundAt: number;
+}
+
+export type WordRejectionReason =
+  | 'empty'
+  | 'too_short'
+  | 'too_long'
+  | 'invalid_characters'
+  | 'letters_unavailable'
+  | 'not_in_dictionary'
+  | 'not_in_level'
+  | 'already_found';
+
+export type WordValidation =
+  | { status: 'accepted'; word: string; kind: WordKind }
+  | { status: 'rejected'; word: string; reason: WordRejectionReason };
+
+export type HintType = 'reveal_letter' | 'reveal_word' | 'smart_help';
+
+export type SessionStatus = 'playing' | 'completed' | 'abandoned';
+
+export interface GameSession {
+  levelId: number;
+  tiles: LetterTileData[];
+  /** شناسه کاشی‌های انتخاب‌شده به ترتیب انتخاب */
+  selection: string[];
+  foundWords: FoundWord[];
+  score: number;
+  coinsEarned: number;
+  combo: number;
+  maxCombo: number;
+  hintsUsed: number;
+  /** حروف آشکارشده با راهنما، به ترتیب انتخاب */
+  hintedWords: string[];
+  startedAt: number;
+  finishedAt: number | null;
+  status: SessionStatus;
+}
+
+export interface GameRewards {
+  score: number;
+  coins: number;
+  targetWordsFound: number;
+  bonusWordsFound: number;
+  maxCombo: number;
+}
+
+export interface LevelRecord {
+  levelId: number;
+  bestScore: number;
+  completedAt: number;
+  attempts: number;
+}

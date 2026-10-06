@@ -1,0 +1,48 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+*.log
+.npm/
+.eslintcache
+
+# Android / Gradle
+build/
+.gradle/
+.idea/
+local.properties
+*.iml
+*.hprof
+.cxx/
+.kotlin/
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/assets/fonts/
+android/.cxx/
+
+# امضای انتشار: هرگز وارد مخزن نشود (فقط debug.keystore قالب مجاز است)
+*.jks
+*.keystore
+!android/app/debug.keystore
+keystore.properties
+android/keystore.properties
+
+# متغیرهای محیطی و کلیدها
+.env
+.env.*
+!.env.example
+
+# Bundle خروجی و پوشش تست
+*.jsbundle
+coverage/
+*.apk
+*.aab
+*.bin
+
+# Metro
+.metro-health-check*
+
+# iOS (پروژه فعلاً فقط Android است)
+**/Pods/
