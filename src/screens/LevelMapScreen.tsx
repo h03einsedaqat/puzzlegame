@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   worldHeader: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.primaryLight,
     alignSelf: 'flex-start',
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
@@ -182,8 +182,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   connector: {
-    width: 2,
+    // خط مسیر بین مرحله‌ها: نقطه‌چینِ طلایی، مثل مسیرِ بازی‌های کلمه‌ای
+    width: 6,
     height: spacing.lg,
-    backgroundColor: colors.border,
+    borderRadius: 3,
+    backgroundColor: colors.pathStep,
+    borderWidth: 1,
+    borderColor: colors.pathStepBorder,
   },
 });
