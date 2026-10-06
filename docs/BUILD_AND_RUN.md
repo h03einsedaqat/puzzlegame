@@ -133,32 +133,54 @@ npm run android:apk:splits
 
 ## ۳) ساخت ابری روی گیت‌هاب (بدون نصب JDK و Android SDK)
 
-اگر روی رایانه‌ات جاوا و SDK نداری، گیت‌هاب بسته را برایت می‌سازد. فایل آماده گردش‌کار
-در `docs/ci/android-apk.yml` است؛ فقط یک‌بار آن را در مخزن سر جایش بگذار. گیت‌هاب برای
-افزودن فایل زیر `.github/workflows/` دسترسی ویژه می‌خواهد، پس این یک قدم را خودت انجام
-بده (سه کلیک):
+اگر روی رایانه‌ات جاوا و SDK نداری، گیت‌هاب بسته را برایت می‌سازد و در صفحه Releases
+می‌گذارد. فایل آماده گردش‌کار در `docs/ci/android-apk.yml` است. گیت‌هاب برای افزودن فایل
+زیر `.github/workflows/` دسترسی ویژه می‌خواهد (توکن ربات‌های CI اجازه‌اش را ندارند)، پس
+این یک قدم را خودت انجام بده؛ دو راه دارد:
 
-1. این نشانی را باز کن؛ ویرایشگر با نام فایل از پیش پر شده باز می‌شود:
+**راه سریع (فقط یک Commit):** نشانی صفحه «ساخت فایل تازه» را باز کن و محتوا را در
+پارامتر `value` بگذار — ویرایشگر خودش نام و محتوا را پر می‌کند و فقط «Commit changes»
+می‌مانَد:
 
-   `https://github.com/<کاربر>/<مخزن>/new/main?filename=.github/workflows/android-apk.yml`
+```text
+https://github.com/<کاربر>/<مخزن>/new/main/.github/workflows
+    ?filename=android-apk.yml
+    &value=<محتوای percent-encoded فایل docs/ci/android-apk.yml>
+```
 
-2. محتوای `docs/ci/android-apk.yml` را از صفحه مخزن کپی کن و در ویرایشگر بچسبان.
-3. پایین صفحه «Commit changes» را بزن (روی شاخه `main`).
+برای ساختن همین آدرس به‌صورت خودکار (بدون کپی‌دستی متن فایل)، این یک‌خطی کافی است:
 
-از این پس دو راه برای ساختن بسته داری:
+```bash
+python3 -c "import urllib.parse as u;print('https://github.com/<کاربر>/<مخزن>/new/main/.github/workflows?filename=android-apk.yml&value='+u.quote(open('docs/ci/android-apk.yml',encoding='utf-8').read(),safe=''))"
+```
+
+**راه دستی:** فایل `.github/workflows/android-apk.yml` را بساز و محتوای
+`docs/ci/android-apk.yml` را در آن بچسبان.
+
+با همین Commit روی `main`، ساخت خودکار شروع می‌شود. از این پس:
 
 - **اجرای دستی (بدون هیچ push):** تب **Actions** → گردش‌کار «Android APK» →
   دکمه **Run workflow** → شاخه دلخواه را انتخاب کن → Run workflow.
 - **خودکار:** هر push روی `main` (و روی شاخه‌هایی که خودشان نسخه‌ای از این فایل را
   دارند) بسته را می‌سازد.
 
-نتیجه در همان صفحه اجرا، بخش **Artifacts** با نام `kalamesaz-apk` است؛ یا با دستور:
+خروجی‌ها:
 
-```bash
-gh run download --name kalamesaz-apk
-```
+- **صفحه Releases** با برچسب `apk-latest` و فایل `kalamesaz-1.0.0-arm.apk`؛ لینک
+  همیشه‌ثابت دانلود:
 
-داخل فایل zip، `app-release.apk` است؛ همان را روی گوشی نصب کن.
+  `https://github.com/<کاربر>/<مخزن>/releases/download/apk-latest/kalamesaz-1.0.0-arm.apk`
+
+  (این لینک با هر ساخت تازه روی همان نام به‌روز می‌شود.)
+
+- **آرتیفکت** `kalamesaz-apk` در صفحه اجرا (۳۰ روز می‌ماند):
+
+  ```bash
+  gh run download --name kalamesaz-apk
+  ```
+
+هر دو خروجی همان `app-release.apk` است؛ فایل `kalamesaz-1.0.0-arm.apk` فقط نام
+خوش‌دست‌تر همان بسته برای دانلود است.
 
 > بسته‌ای که گیت‌هاب می‌سازد با کلید debug امضا شده و برای کافه‌بازار مناسب نیست؛
 > برای انتشار باید روی رایانه خودت و با کلید خودت بسازی (بخش ۵).
