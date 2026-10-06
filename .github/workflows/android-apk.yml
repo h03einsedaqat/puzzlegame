@@ -1,0 +1,45 @@
+# ساخت و انتشار بسته نصبی اندروید روی سرور گیت‌هاب — جای این فایل: .github/workflows/android-apk.yml
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'arena/**']
+    paths-ignore: ['**/*.md', 'docs/**']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: Install Android SDK packages
+        run: |
+          SM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SM" --licenses > /dev/null 2>&1 || true
+          for p in platform-tools "platforms;android-37" "build-tools;37.0.0" "ndk;27.1.12297006"; do
+            yes | "$SM" "$p" || echo "skip $p"
+          done
+      - run: npm ci
+      - name: Build APK
+        run: cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kalamesaz-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+      - name: Publish on the Releases page
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk kalamesaz-1.0.0-arm.apk
+          gh release delete apk-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create apk-latest kalamesaz-1.0.0-arm.apk --title "kalamesaz 1.0.0 (APK)" --notes "Android 7+ (API 24). Debug-signed APK for sideloading."
