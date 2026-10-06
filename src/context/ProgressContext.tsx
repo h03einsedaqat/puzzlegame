@@ -9,13 +9,15 @@ import { useServices } from './ServicesContext';
 export interface LevelCompletionInput {
   levelId: number;
   score: number;
+  /** بهترین ستاره این اجرا (۰ تا ۳)؛ در رکورد مرحله به‌صورت بیشینه نگه داشته می‌شود */
+  stars?: number;
   completedAt?: number;
 }
 
 type ProgressAction =
   | HydrateAction<GameProgress>
   | { type: 'enterLevel'; levelId: number }
-  | { type: 'completeLevel'; input: Required<LevelCompletionInput> }
+  | { type: 'completeLevel'; input: LevelCompletionInput & { completedAt: number } }
   | { type: 'attempt'; levelId: number };
 
 function progressReducer(state: GameProgress, action: ProgressAction): GameProgress {
@@ -36,13 +38,15 @@ function progressReducer(state: GameProgress, action: ProgressAction): GameProgr
         ),
       };
     case 'completeLevel': {
-      const { levelId, score, completedAt } = action.input;
+      const { levelId, score, completedAt, stars } = action.input;
       const existing = state.records.find(record => record.levelId === levelId);
       const record: LevelRecord = {
         levelId,
         bestScore: Math.max(existing?.bestScore ?? 0, score),
         completedAt: existing?.completedAt ?? completedAt,
         attempts: (existing?.attempts ?? 0) + 1,
+        // ستاره بهترین اجرای بازیکن است و با تکرار ضعیف‌تر کم نمی‌شود.
+        stars: Math.max(existing?.stars ?? 0, stars ?? 0),
       };
       const records = existing
         ? state.records.map(entry => (entry.levelId === levelId ? record : entry))

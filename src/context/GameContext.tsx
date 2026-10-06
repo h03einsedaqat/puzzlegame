@@ -1,6 +1,6 @@
-import React, { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 
-import { GAME_CONFIG, hintCost, isHintEnabled } from '../constants';
+import { GAME_CONFIG, enabledHintTypes, hintCost, isHintEnabled } from '../constants';
 import {
   abandonGame,
   buildWord,
@@ -11,6 +11,8 @@ import {
   isLevelCompleted,
   removeLastLetter,
   removeLetter,
+  hintWordPattern,
+
   selectLetter,
   selectedTiles as selectSelectedTiles,
   submitWord as submitWordToEngine,
@@ -54,9 +56,43 @@ export type SubmitOutcome =
       rewards: GameRewards | null;
     };
 
+export type HintBlockedReason = 'completed' | 'nothing_to_reveal' | 'not_enough_coins' | 'disabled';
+
 export type HintRequestResult =
-  | { status: 'revealed'; type: HintType; word: string; letterIndex: number | null; cost: number }
-  | { status: 'blocked'; reason: 'completed' | 'nothing_to_reveal' | 'not_enough_coins' | 'disabled' };
+  | {
+      status: 'revealed';
+      type: HintType;
+      word: string;
+      letterIndex: number | null;
+      cost: number;
+      /** الگوی واژه با حروف آشکارشده؛ مثل «ب•ا••» */
+      pattern: string;
+      /** ترتیب کاشی‌هایی که بازیکن باید بزند تا این واژه ساخته شود */
+      tileIds: string[];
+    }
+  | { status: 'blocked'; reason: HintBlockedReason };
+
+/**
+ * راهنمای فعال: تا وقتی بازیکن واژه راهنمایی‌شده را پیدا نکرده، روی صفحه می‌ماند
+ * و روی چرخ حروف، کاشی بعدی را روشن می‌کند.
+ */
+export interface ActiveHint {
+  id: number;
+  type: HintType;
+  word: string;
+  pattern: string;
+  tileIds: string[];
+  cost: number;
+  at: number;
+}
+
+export interface HintOption {
+  type: HintType;
+  cost: number;
+  affordable: boolean;
+  /** توضیح یک‌خطی برای برگه راهنما */
+  available: boolean;
+}
 
 interface GameState {
   level: Level | null;
@@ -118,6 +154,11 @@ export interface GameContextValue {
   revealedLetters: RevealedWordLetters[];
   canUseHint: boolean;
   nextHintCost: number;
+  /** راهنمای فعال (برای روشن‌کردن کاشی‌ها روی چرخ) */
+  activeHint: ActiveHint | null;
+  /** همه راهنماهای قابل خرید با قیمت و وضعیت affordability */
+  hintOptions: HintOption[];
+  dismissHint: () => void;
   startGame: (level: Level) => void;
   abandonGame: () => void;
   leaveGame: () => void;
@@ -134,6 +175,7 @@ const GameContext = createContext<GameContextValue | null>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
+  const [activeHint, setActiveHint] = useState<ActiveHint | null>(null);
   const { profile, spendCoins } = useProfile();
   const coins = profile.coins;
   const { sound, vibration, analytics } = useServices();
@@ -142,6 +184,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const startGame = useCallback(
     (nextLevel: Level) => {
       dispatch({ type: 'start', level: nextLevel, session: createGame(nextLevel) });
+      setActiveHint(null);
       analytics.track('level_start', {
         levelId: nextLevel.id,
         difficulty: nextLevel.difficulty,
@@ -301,11 +344,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (outcome.status === 'blocked') {
         return { status: 'blocked', reason: outcome.reason };
       }
+      // هزینه راهنما همان لحظه از سکه‌ها کم می‌شود؛ اگر کسر نشد، راهنما هم داده نمی‌شود.
       if (!spendCoins(cost)) {
         return { status: 'blocked', reason: 'not_enough_coins' };
       }
 
+      const pattern = hintWordPattern(outcome.session, outcome.word);
       dispatch({ type: 'apply', session: outcome.session });
+      setActiveHint({
+        id: nextFeedbackId(),
+        type,
+        word: outcome.word,
+        pattern,
+        tileIds: outcome.tileIds,
+        cost,
+        at: Date.now(),
+      });
       sound.play('reward');
       vibration.trigger('reward');
       analytics.track('hint_used', { levelId: level.id, type, word: outcome.word, cost });
@@ -316,10 +370,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         word: outcome.word,
         letterIndex: outcome.letterIndex,
         cost,
+        pattern,
+        tileIds: outcome.tileIds,
       };
     },
     [analytics, coins, level, session, sound, spendCoins, vibration],
   );
+
+  const dismissHint = useCallback(() => setActiveHint(null), []);
+
+  // راهنما تا وقتی معتبر است که واژه‌اش پیدا نشده باشد؛ با پیداشدن یا شروع مرحله
+  // تازه، راهنمای فعال خودش پاک می‌شود تا کاشی‌های قدیمی روشن نمانند.
+  useEffect(() => {
+    if (!activeHint) {
+      return;
+    }
+    const found = session?.foundWords.some(entry => entry.word === activeHint.word) ?? false;
+    if (found || !session || session.levelId !== level?.id) {
+      setActiveHint(null);
+    }
+  }, [activeHint, level?.id, session]);
 
   const dismissFeedback = useCallback(() => dispatch({ type: 'clearFeedback' }), []);
 
@@ -370,6 +440,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const nextHintCost = hintCost('reveal_letter');
   const canUseHint = coins >= nextHintCost && session?.status === 'playing';
 
+  const hintOptions = useMemo<HintOption[]>(
+    () =>
+      enabledHintTypes().map(type => {
+        const cost = hintCost(type);
+        return {
+          type,
+          cost,
+          affordable: coins >= cost,
+          available: session?.status === 'playing',
+        };
+      }),
+    [coins, session?.status],
+  );
+
   const value = useMemo<GameContextValue>(
     () => ({
       level,
@@ -384,6 +468,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       revealedLetters,
       canUseHint,
       nextHintCost,
+      activeHint,
+      hintOptions,
+      dismissHint,
       startGame,
       abandonGame: abandonGameSession,
       leaveGame,
@@ -406,6 +493,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       revealedLetters,
       canUseHint,
       nextHintCost,
+      activeHint,
+      hintOptions,
+      dismissHint,
       startGame,
       abandonGameSession,
       leaveGame,

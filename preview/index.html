@@ -291,6 +291,195 @@
         opacity: 0.5;
       }
 
+
+      .guide {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        background: #fff4d6;
+        border: 2px solid var(--accent);
+        border-radius: 18px;
+        padding: 8px 12px;
+        margin: 0 auto;
+        max-width: 420px;
+        box-shadow: 0 6px 14px rgba(224, 142, 0, 0.18);
+      }
+      .guide.show {
+        display: flex;
+        animation: guideIn 0.3s ease-out;
+      }
+      @keyframes guideIn {
+        from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+        to { opacity: 1; transform: none; }
+      }
+      .guide .bulb {
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        background: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+      }
+      .guide .texts { flex: 1; }
+      .guide .cap { font-size: 11px; color: var(--muted); }
+      .guide .pattern {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--primary-dark, #4f35c4);
+        letter-spacing: 3px;
+      }
+      .guide .meta { font-size: 11px; color: var(--muted); }
+      .guide button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 18px;
+        cursor: pointer;
+      }
+
+      .tile.guide-next::after {
+        content: '';
+        position: absolute;
+        inset: -8px;
+        height: auto;
+        background: transparent;
+        border-radius: 50%;
+        border: 4px solid var(--accent);
+        animation: guidePulse 1.2s ease-in-out infinite;
+      }
+      @keyframes guidePulse {
+        0%, 100% { transform: scale(1); opacity: 0.95; }
+        50% { transform: scale(1.12); opacity: 0.55; }
+      }
+      .tile .step {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--success);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        display: grid;
+        place-items: center;
+      }
+
+      .sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+        z-index: 40;
+      }
+      .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+      .sheet {
+        position: fixed;
+        inset-inline: 0;
+        bottom: 0;
+        z-index: 41;
+        background: #fff;
+        border-radius: 28px 28px 0 0;
+        padding: 14px 18px 22px;
+        transform: translateY(105%);
+        transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+        box-shadow: 0 -12px 30px rgba(15, 23, 42, 0.25);
+        max-height: 82vh;
+        overflow-y: auto;
+      }
+      .sheet.show { transform: none; }
+      .sheet .handle {
+        width: 52px;
+        height: 5px;
+        border-radius: 999px;
+        background: #dbe4ef;
+        margin: 0 auto 12px;
+      }
+      .sheet-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .sheet-head h3 { margin: 0 0 4px; font-size: 19px; }
+      .sheet-head p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.7; }
+      .coin-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #fff4d6;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-weight: 700;
+        color: var(--accent-dark);
+        white-space: nowrap;
+      }
+      .hint-row {
+        border: 2px solid #e6eef7;
+        border-radius: 20px;
+        padding: 12px;
+        margin-bottom: 10px;
+        display: grid;
+        gap: 10px;
+      }
+      .hint-row.locked { opacity: 0.55; }
+      .hint-top { display: flex; gap: 10px; }
+      .hint-ico {
+        width: 40px;
+        height: 40px;
+        border-radius: 14px;
+        background: #ede7ff;
+        display: grid;
+        place-items: center;
+        font-size: 20px;
+      }
+      .hint-top strong { display: block; font-size: 15px; }
+      .hint-top span { font-size: 12px; color: var(--muted); line-height: 1.7; }
+      .hint-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .cost {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #fff4d6;
+        color: var(--accent-dark);
+        border-radius: 999px;
+        padding: 5px 12px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .hint-buy {
+        border: 0;
+        border-radius: 999px;
+        padding: 9px 22px;
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 14px;
+        color: #4a2500;
+        background: linear-gradient(180deg, #ffd35c, var(--gold));
+        box-shadow: 0 4px 0 #d99a12;
+        cursor: pointer;
+      }
+      .hint-buy:disabled {
+        background: #e6ecf3;
+        color: #8595a8;
+        box-shadow: 0 4px 0 #d3dce6;
+        cursor: not-allowed;
+      }
+      .tip-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #eef4ff;
+        border-radius: 16px;
+        padding: 10px 12px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
       .note {
         text-align: center;
         font-size: 12px;
@@ -367,6 +556,15 @@
 
       <div class="banner"><span id="banner"></span></div>
 
+      <div class="guide" id="guide">
+        <div class="bulb">💡</div>
+        <div class="texts">
+          <div class="cap">واژه‌ای که راهنما نشان می‌دهد</div>
+          <div class="pattern" id="guidePattern">••••</div>
+          <div class="meta" id="guideMeta"></div>
+        </div>
+        <button type="button" id="guideClose" aria-label="بستن راهنما">✕</button>
+      </div>
       <div class="slots" id="slots"></div>
 
       <div class="wheel-wrap">
@@ -387,6 +585,23 @@
       </div>
 
       <p class="note">انگشتت را روی حروف بکش (یا با ماوس بکش) و رهایش کن — کلمه خودش ثبت می‌شود</p>
+    </div>
+
+    <div class="sheet-backdrop" id="sheetBackdrop"></div>
+    <div class="sheet" id="sheet" role="dialog" aria-label="راهنمای هوشمند">
+      <div class="handle"></div>
+      <div class="sheet-head">
+        <div style="flex: 1">
+          <h3>راهنمای هوشمند</h3>
+          <p id="sheetMessage">هر راهنما همان لحظه از سکه‌هایت کم می‌شود؛ ارزان‌ترین راه را انتخاب کن.</p>
+        </div>
+        <div class="coin-pill">🪙 <span id="sheetCoins">۳۰</span></div>
+      </div>
+      <div id="hintRows"></div>
+      <div class="tip-box">
+        <span>ℹ️</span>
+        <span>با پیدا کردن کلمه‌ها، تکمیل مرحله‌ها و جایزه روزانه سکه می‌گیری.</span>
+      </div>
     </div>
 
     <div class="confetti" id="confetti"></div>
@@ -481,6 +696,7 @@
         tiles.forEach((tile, index) => tile.el.classList.toggle('selected', state.selection.includes(index)));
         renderSlots();
         renderLinks();
+        renderGuide();
         foundEl.textContent = `${toFa(state.found.length)}/${toFa(Object.keys(WORDS).length)}`;
       }
 
@@ -603,6 +819,11 @@
           state.coins += Math.round(points / 12);
           scoreEl.textContent = toFa(state.score);
           coinsEl.textContent = toFa(state.coins);
+          if (guideState.word === current) {
+            guideState.word = null;
+            guideState.tiles = [];
+            guideState.revealed = 0;
+          }
           showMessage(BONUS[current] ? `کلمه امتیازی! +${toFa(points)}` : `آفرین! +${toFa(points)}`);
           burst();
         } else {
@@ -634,13 +855,184 @@
         state.selection = [];
         render();
       });
-      document.getElementById('hint').addEventListener('click', () => {
+      /* ---------- راهنمای هوشمند (هم‌رفتار با برنامه اندروید) ---------- */
+      const HINTS = [
+        {
+          type: 'reveal_letter',
+          cost: 15,
+          icon: '💡',
+          title: 'حرف بعدی',
+          desc: 'یک حرف از نزدیک‌ترین واژه به تو آشکار می‌شود و روی چرخ روشن می‌شود.',
+          reveal: 1,
+        },
+        {
+          type: 'smart_help',
+          cost: 25,
+          icon: '✨',
+          title: 'راهنمای قدم‌به‌قدم',
+          desc: 'الگوی واژه و ترتیب حروفش نشان داده می‌شود؛ کاشی‌ها یکی‌یکی روی چرخ روشن می‌شوند.',
+          reveal: 0,
+        },
+        {
+          type: 'reveal_word',
+          cost: 45,
+          icon: '👁️',
+          title: 'آشکار کردن واژه',
+          desc: 'همه حروف یک واژه آشکار می‌شود؛ امتیاز آن واژه کمتر می‌شود.',
+          reveal: 99,
+        },
+      ];
+
+      const sheet = document.getElementById('sheet');
+      const sheetBackdrop = document.getElementById('sheetBackdrop');
+      const sheetCoins = document.getElementById('sheetCoins');
+      const sheetMessage = document.getElementById('sheetMessage');
+      const hintRows = document.getElementById('hintRows');
+      const guide = document.getElementById('guide');
+      const guidePattern = document.getElementById('guidePattern');
+      const guideMeta = document.getElementById('guideMeta');
+
+      const guideState = { word: null, tiles: [], revealed: 0 };
+
+      /** نزدیک‌ترین واژه به بازیکن: بیشترین حروف پیداشده، سپس کوتاه‌ترین */
+      function pickHintWord() {
         const remaining = Object.keys(WORDS).filter(candidate => !state.found.includes(candidate));
         if (remaining.length === 0) {
+          return null;
+        }
+        const known = word => word.split('').filter((char, index) => index < guideState.revealed || state.found.some(found => found.includes(char))).length;
+        return remaining.sort((a, b) => known(b) - known(a) || a.length - b.length)[0];
+      }
+
+      /** ترتیب کاشی‌های یک واژه روی چرخ */
+      function planTiles(word) {
+        const used = new Set();
+        const plan = [];
+        for (const char of word) {
+          const index = tiles.findIndex((tile, position) => !used.has(position) && tile.char === char);
+          if (index === -1) {
+            return [];
+          }
+          used.add(index);
+          plan.push(index);
+        }
+        return plan;
+      }
+
+      function patternFor(word, reveal) {
+        const shown = Math.max(reveal, 0);
+        return word
+          .split('')
+          .map((char, index) => (index < shown ? char : '•'))
+          .join('');
+      }
+
+      function renderGuide() {
+        if (!guideState.word) {
+          guide.classList.remove('show');
+          tiles.forEach(tile => {
+            tile.el.classList.remove('guide-next');
+            tile.el.querySelector('.step')?.remove();
+          });
+          return;
+        }
+        guide.classList.add('show');
+        guidePattern.textContent = patternFor(guideState.word, guideState.revealed);
+        const matched = guideState.tiles.filter(index => state.selection.includes(index)).length;
+        guideMeta.textContent = `${toFa(guideState.word.length)} حرفی · ${toFa(Math.max(0, guideState.word.length - matched))} حرف مانده`;
+
+        tiles.forEach(tile => {
+          tile.el.classList.remove('guide-next');
+          tile.el.querySelector('.step')?.remove();
+        });
+        const nextIndex = guideState.tiles.find(index => !state.selection.includes(index));
+        const nextTile = tiles[nextIndex];
+        if (nextTile) {
+          nextTile.el.classList.add('guide-next');
+        }
+        guideState.tiles.forEach((index, order) => {
+          if (state.selection.includes(index)) {
+            const badge = document.createElement('span');
+            badge.className = 'step';
+            badge.textContent = toFa(order + 1);
+            tiles[index].el.appendChild(badge);
+          }
+        });
+      }
+
+      function renderHintRows() {
+        sheetCoins.textContent = toFa(state.coins);
+        hintRows.innerHTML = '';
+        [...HINTS]
+          .sort((a, b) => a.cost - b.cost)
+          .forEach(hint => {
+            const affordable = state.coins >= hint.cost;
+            const row = document.createElement('div');
+            row.className = 'hint-row' + (affordable ? '' : ' locked');
+            row.innerHTML = `
+              <div class="hint-top">
+                <div class="hint-ico">${hint.icon}</div>
+                <div>
+                  <strong>${hint.title}</strong>
+                  <span>${hint.desc}</span>
+                </div>
+              </div>
+              <div class="hint-bottom">
+                <div class="cost">🪙 ${toFa(hint.cost)} سکه</div>
+                <button class="hint-buy" ${affordable ? '' : 'disabled'}>${affordable ? 'بخر' : 'سکه کافی نیست'}</button>
+              </div>`;
+            row.querySelector('.hint-buy').addEventListener('click', () => buyHint(hint.type));
+            hintRows.appendChild(row);
+          });
+      }
+
+      function openHintSheet() {
+        if (Object.keys(WORDS).every(word => state.found.includes(word))) {
           showMessage('همه کلمات پیدا شده است');
           return;
         }
-        showMessage(`یکی از کلمه‌ها با «${remaining[0][0]}» شروع می‌شود`, false);
+        sheetMessage.textContent = 'هر راهنما همان لحظه از سکه‌هایت کم می‌شود؛ ارزان‌ترین راه را انتخاب کن.';
+        renderHintRows();
+        sheet.classList.add('show');
+        sheetBackdrop.classList.add('show');
+      }
+
+      function closeHintSheet() {
+        sheet.classList.remove('show');
+        sheetBackdrop.classList.remove('show');
+      }
+
+      function buyHint(type) {
+        const hint = HINTS.find(entry => entry.type === type);
+        if (!hint) {
+          return;
+        }
+        if (state.coins < hint.cost) {
+          sheetMessage.textContent = 'با پیدا کردن کلمه‌ها، تکمیل مرحله‌ها و جایزه روزانه سکه می‌گیری.';
+          return;
+        }
+        const word = pickHintWord();
+        if (!word) {
+          showMessage('همه کلمات پیدا شده است');
+          return;
+        }
+
+        state.coins -= hint.cost;
+        coinsEl.textContent = toFa(state.coins);
+        guideState.word = word;
+        guideState.tiles = planTiles(word);
+        guideState.revealed = hint.reveal >= 99 ? word.length : Math.min(hint.reveal, word.length);
+        sheetMessage.textContent = `${toFa(hint.cost)} سکه کم شد`;
+        renderHintRows();
+        renderGuide();
+        showMessage('راهنما فعال شد؛ کاشی‌های روشن را به ترتیب بزن');
+      }
+
+      document.getElementById('hint').addEventListener('click', openHintSheet);
+      sheetBackdrop.addEventListener('click', closeHintSheet);
+      document.getElementById('guideClose').addEventListener('click', () => {
+        guideState.word = null;
+        renderGuide();
       });
 
       window.addEventListener('resize', sizeWheel);

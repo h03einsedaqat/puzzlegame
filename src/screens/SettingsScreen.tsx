@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { APP_INFO } from '../constants/appInfo';
 import { strings } from '../constants';
 import { useAchievements, useDaily, useProfile, useProgress, useServices, useSettings } from '../context';
+import { APP_INFO } from '../constants/appInfo';
+import { openStorePage, shareText } from '../services';
 import { colors, radius, spacing } from '../theme';
 import { format } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
@@ -32,6 +33,7 @@ export function SettingsScreen({ navigation }: RootScreenProps<'Settings'>) {
   const { reset: resetAchievements } = useAchievements();
   const { analytics, sound } = useServices();
   const [resetVisible, setResetVisible] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const resetAll = useCallback(async () => {
     setResetVisible(false);
@@ -40,6 +42,25 @@ export function SettingsScreen({ navigation }: RootScreenProps<'Settings'>) {
     sound.play('button_press');
     navigation.navigate('Home');
   }, [analytics, daily, navigation, resetAchievements, resetProfile, resetProgress, sound]);
+
+  const handleShare = useCallback(async () => {
+    analytics.track('share_app');
+    const done = await shareText({
+      title: strings.settings.shareLabel,
+      message: format(strings.settings.shareMessage, { link: strings.settings.storeUrl }),
+    });
+    setActionMessage(done ? null : strings.errors.genericBody);
+  }, [analytics]);
+
+  const handleRate = useCallback(async () => {
+    analytics.track('rate_app');
+    const opened = await openStorePage(
+      strings.settings.storeUrl,
+      `bazaar://details?id=${APP_INFO.packageName}`,
+    );
+    setActionMessage(opened ? null : strings.settings.rateUnavailable);
+    sound.play('button_press');
+  }, [analytics, sound]);
 
   return (
     <ScreenContainer>
@@ -100,7 +121,31 @@ export function SettingsScreen({ navigation }: RootScreenProps<'Settings'>) {
             label={strings.achievements.title}
             onPress={() => navigation.navigate('Achievements')}
           />
+          <LinkRow
+            icon="grid"
+            label={strings.settings.statsLabel}
+            description={strings.settings.statsDescription}
+            onPress={() => navigation.navigate('Stats')}
+          />
+          <LinkRow
+            icon="gift"
+            label={strings.settings.shareLabel}
+            description={strings.settings.shareDescription}
+            onPress={handleShare}
+          />
+          <LinkRow
+            icon="star"
+            label={strings.settings.rateLabel}
+            description={strings.settings.rateDescription}
+            onPress={handleRate}
+          />
         </View>
+
+        {actionMessage ? (
+          <AppText variant="caption" color={colors.textMuted} align="center">
+            {actionMessage}
+          </AppText>
+        ) : null}
 
         <Card variant="surface" padding="lg" style={styles.dangerCard}>
           <View style={styles.dangerHeader}>
@@ -149,10 +194,12 @@ export function SettingsScreen({ navigation }: RootScreenProps<'Settings'>) {
 interface LinkRowProps {
   icon: React.ComponentProps<typeof Icon>['name'];
   label: string;
+  /** توضیح یک‌خطی زیر عنوان؛ در ردیف‌های اشتراک‌گذاری و امتیاز پرش می‌کند */
+  description?: string;
   onPress: () => void;
 }
 
-function LinkRow({ icon, label, onPress }: LinkRowProps) {
+function LinkRow({ icon, label, description, onPress }: LinkRowProps) {
   const { sound, vibration } = useServices();
   return (
     <PressableScale
@@ -162,13 +209,18 @@ function LinkRow({ icon, label, onPress }: LinkRowProps) {
         onPress();
       }}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={description ? `${label}، ${description}` : label}
     >
       <View style={styles.linkRow}>
         <Icon name={icon} size={20} color={colors.primary} />
-        <AppText variant="bodyStrong" style={styles.linkLabel}>
-          {label}
-        </AppText>
+        <View style={styles.linkTexts}>
+          <AppText variant="bodyStrong">{label}</AppText>
+          {description ? (
+            <AppText variant="caption" color={colors.textMuted}>
+              {description}
+            </AppText>
+          ) : null}
+        </View>
         <Icon name="chevron" size={18} color={colors.textMuted} />
       </View>
     </PressableScale>
@@ -194,6 +246,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
+  },
+  linkTexts: {
+    flex: 1,
+    gap: 1,
   },
   linkLabel: {
     flex: 1,

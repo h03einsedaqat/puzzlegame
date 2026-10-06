@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DIFFICULTY_LABELS } from '../../types';
+import { MAX_STARS } from '../../services/game/levelRating';
 import { colors, radius, shadows, spacing } from '../../theme';
 import { toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
@@ -17,6 +18,8 @@ export interface LevelNodeProps {
   onPress: (levelId: number) => void;
   /** بهترین امتیاز ثبت‌شده برای این مرحله */
   bestScore?: number;
+  /** بهترین ستاره این مرحله (۰ تا ۳) */
+  stars?: number;
   accessibilityLabel: string;
 }
 
@@ -27,7 +30,14 @@ export interface LevelNodeProps {
  * باز (سفید) و قفل (خاکستری با قفل). مسیر بین گره‌ها با خط‌های عمودی رسم
  * می‌شود تا حرکت روی نقشه قابل دنبال‌کردن باشد.
  */
-export function LevelNode({ summary, state, onPress, bestScore, accessibilityLabel }: LevelNodeProps) {
+export function LevelNode({
+  summary,
+  state,
+  onPress,
+  bestScore,
+  stars = 0,
+  accessibilityLabel,
+}: LevelNodeProps) {
   const isLocked = state === 'locked';
 
   const background =
@@ -69,7 +79,23 @@ export function LevelNode({ summary, state, onPress, bestScore, accessibilityLab
         <AppText variant="caption" color={colors.textMuted}>
           {DIFFICULTY_LABELS[summary.difficulty as Difficulty]} · {toPersianDigits(summary.targetCount)} کلمه
         </AppText>
-        {bestScore !== undefined && bestScore > 0 ? (
+        {state === 'completed' ? (
+          <View style={styles.starsRow}>
+            {Array.from({ length: MAX_STARS }).map((_, index) => (
+              <Icon
+                key={index}
+                name="star"
+                size={13}
+                color={index < stars ? colors.star : colors.border}
+              />
+            ))}
+            {bestScore !== undefined && bestScore > 0 ? (
+              <AppText variant="caption" color={colors.textSecondary}>
+                {toPersianDigits(bestScore)}
+              </AppText>
+            ) : null}
+          </View>
+        ) : bestScore !== undefined && bestScore > 0 ? (
           <AppText variant="caption" color={colors.textSecondary}>
             {toPersianDigits(bestScore)}
           </AppText>
@@ -104,5 +130,10 @@ const styles = StyleSheet.create({
   },
   title: {
     lineHeight: 20,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
 });

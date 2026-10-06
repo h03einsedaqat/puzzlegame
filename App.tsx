@@ -2,6 +2,7 @@ import React from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import {
   AchievementsProvider,
@@ -22,24 +23,26 @@ import {
  */
 function App() {
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" />
-      <ServicesProvider>
-        <SettingsProvider>
-          <ProfileProvider>
-            <ProgressProvider>
-              <DailyProvider>
-                <AchievementsProvider>
-                  <GameProvider>
-                    <RootNavigator />
-                  </GameProvider>
-                </AchievementsProvider>
-              </DailyProvider>
-            </ProgressProvider>
-          </ProfileProvider>
-        </SettingsProvider>
-      </ServicesProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <StatusBar barStyle="dark-content" />
+        <ServicesProvider>
+          <SettingsProvider>
+            <ProfileProvider>
+              <ProgressProvider>
+                <DailyProvider>
+                  <AchievementsProvider>
+                    <GameProvider>
+                      <RootNavigator />
+                    </GameProvider>
+                  </AchievementsProvider>
+                </DailyProvider>
+              </ProgressProvider>
+            </ProfileProvider>
+          </SettingsProvider>
+        </ServicesProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 

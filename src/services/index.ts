@@ -109,6 +109,10 @@ export {
   markAchievementsSeen,
 } from './game/achievementService';
 export type { AchievementStats } from './game/achievementService';
+export { computeStars, starLabel, averageStars, MAX_STARS } from './game/levelRating';
+export type { StarInput } from './game/levelRating';
+export { shareText, openStorePage } from './share/ShareService';
+export type { SharePayload } from './share/ShareService';
 export {
   computeDifficultyScore,
   difficultyFromScore,

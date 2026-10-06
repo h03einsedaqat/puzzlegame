@@ -7,7 +7,7 @@ import { useProfile, useProgress, useServices } from '../context';
 import { colors, radius, spacing } from '../theme';
 import { format } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { HeartRefillDialog } from '../components/game/HeartRefillDialog';
 import { FeedbackBanner } from '../components/ui/FeedbackBanner';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
@@ -84,6 +84,7 @@ export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
           state={state}
           onPress={startLevel}
           bestScore={getRecord(summary.id)?.bestScore}
+          stars={getRecord(summary.id)?.stars ?? 0}
           accessibilityLabel={accessibilityLabel}
         />
       );
@@ -143,14 +144,9 @@ export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
         )}
       />
 
-      <ConfirmDialog
+      <HeartRefillDialog
         visible={noHeartsVisible}
-        title={strings.hearts.noHeartsTitle}
-        body={strings.hearts.noHeartsBody}
-        confirmLabel={strings.common.gotIt}
-        cancelLabel={strings.common.close}
-        onConfirm={() => setNoHeartsVisible(false)}
-        onCancel={() => setNoHeartsVisible(false)}
+        onClose={() => setNoHeartsVisible(false)}
       />
     </ScreenContainer>
   );

@@ -17,6 +17,10 @@ export interface ConfirmDialogProps {
   /** دکمه سوم اختیاری؛ مثل «تماشای تبلیغ» برای دریافت قلب */
   extraLabel?: string;
   onExtra?: () => void;
+  /** محتوای اختیاری زیر دکمه‌ها؛ پیام خطا یا توضیح هزینه */
+  footer?: React.ReactNode;
+  /** وقتی هزینه پرداخت‌نشدنی است، دکمه تأیید غیرفعال می‌ماند */
+  confirmDisabled?: boolean;
 }
 
 /**
@@ -36,6 +40,8 @@ export function ConfirmDialog({
   destructive = false,
   extraLabel,
   onExtra,
+  footer,
+  confirmDisabled = false,
 }: ConfirmDialogProps) {
   return (
     <Modal
@@ -65,9 +71,12 @@ export function ConfirmDialog({
               variant={destructive ? 'secondary' : 'primary'}
               size="medium"
               onPress={onConfirm}
+              disabled={confirmDisabled}
             />
             <Button label={cancelLabel} variant="ghost" size="medium" onPress={onCancel} />
           </View>
+
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
         </Pressable>
       </Pressable>
     </Modal>
@@ -96,5 +105,8 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: spacing.lg,
     gap: spacing.sm,
+  },
+  footer: {
+    marginTop: spacing.sm,
   },
 });

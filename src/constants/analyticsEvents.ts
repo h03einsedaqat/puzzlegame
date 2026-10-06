@@ -30,6 +30,10 @@ export const ANALYTICS_EVENTS = [
   'purchase_failed',
   'settings_changed',
   'progress_reset',
+  'share_app',
+  'rate_app',
+  'hearts_bought',
+  'stats_opened',
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENTS)[number];

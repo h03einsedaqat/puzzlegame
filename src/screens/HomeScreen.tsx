@@ -15,6 +15,7 @@ import { AppText } from '../components/ui/AppText';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { HeartRefillDialog } from '../components/game/HeartRefillDialog';
 import { Icon } from '../components/ui/Icon';
 import { IconButton } from '../components/ui/IconButton';
 import { ProgressBar } from '../components/ui/ProgressBar';
@@ -289,18 +290,9 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
         </AppText>
       </ScrollView>
 
-      <ConfirmDialog
+      <HeartRefillDialog
         visible={noHeartsVisible}
-        title={strings.hearts.noHeartsTitle}
-        body={
-          hearts.nextRefillAt
-            ? `${strings.hearts.noHeartsBody} ${format(strings.hearts.nextHeartIn, { time: countdown.text })}`
-            : strings.hearts.noHeartsBody
-        }
-        confirmLabel={strings.common.gotIt}
-        cancelLabel={strings.common.close}
-        onConfirm={() => setNoHeartsVisible(false)}
-        onCancel={() => setNoHeartsVisible(false)}
+        onClose={() => setNoHeartsVisible(false)}
       />
 
       <ConfirmDialog

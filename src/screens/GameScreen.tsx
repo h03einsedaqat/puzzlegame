@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 
-import { GAME_CONFIG, hintCost, strings } from '../constants';
+import { GAME_CONFIG, strings } from '../constants';
+import { computeStars } from '../services';
 import { useAchievements, useDaily, useGame, useProfile, useProgress } from '../context';
 import { getLevelById, getNextLevelId } from '../data/levels/levels';
 import { calculateLevelRewards } from '../services/game/gameEngine';
@@ -11,13 +12,15 @@ import { AppText } from '../components/ui/AppText';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FeedbackBanner } from '../components/ui/FeedbackBanner';
+import { HintSheet } from '../components/ui/HintSheet';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { FoundWordsList } from '../components/game/FoundWordsList';
 import { GameHeader } from '../components/game/GameHeader';
+import { HintGuide } from '../components/game/HintGuide';
 import { LetterWheel } from '../components/game/LetterWheel';
 import { WordSlots } from '../components/game/WordSlots';
 import type { GameFeedback } from '../context';
-import type { Level, WordRejectionReason } from '../types';
+import type { HintType, Level, WordRejectionReason } from '../types';
 import type { ResultParams, ResultWordSummary, RootScreenProps } from '../navigation/types';
 
 function rejectionMessage(reason: WordRejectionReason, level: Level): string {
@@ -89,15 +92,17 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     submit,
     requestHint,
     dismissFeedback,
-    canUseHint,
-    nextHintCost,
+    activeHint,
+    hintOptions,
+    dismissHint,
   } = useGame();
 
   const [hintMessage, setHintMessage] = useState<{ text: string; tone: 'success' | 'error' | 'info'; id: number } | null>(null);
   // هنگام کشیدن حروف، اسکرول صفحه خاموش می‌شود تا دو حرکت با هم قاطی نشوند.
   const [isDraggingLetters, setIsDraggingLetters] = useState(false);
   const [leaveVisible, setLeaveVisible] = useState(false);
-  const [noCoinsVisible, setNoCoinsVisible] = useState(false);
+  const [hintSheetVisible, setHintSheetVisible] = useState(false);
+  const [hintSheetMessage, setHintSheetMessage] = useState<string | null>(null);
   const completedRef = useRef(false);
   const bestScoreBeforeRef = useRef<number>(0);
 
@@ -129,17 +134,27 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   }, [submit]);
 
   const handleHint = useCallback(() => {
-    const result = requestHint('reveal_letter');
-    if (result.status === 'blocked') {
-      if (result.reason === 'not_enough_coins') {
-        setNoCoinsVisible(true);
+    setHintSheetMessage(null);
+    setHintSheetVisible(true);
+  }, []);
+
+  /** خرید راهنما از برگه: سکه همان‌جا کم می‌شود و نتیجه به بازیکن گفته می‌شود */
+  const handleHintSelect = useCallback(
+    (type: HintType) => {
+      const result = requestHint(type);
+      if (result.status === 'blocked') {
+        if (result.reason === 'not_enough_coins') {
+          setHintSheetMessage(strings.game.hintEarnCoinsTip);
+          return;
+        }
+        setHintSheetMessage(strings.game.hintAlreadyApplied);
         return;
       }
-      setHintMessage({ text: strings.game.hintAlreadyApplied, tone: 'info', id: Date.now() });
-      return;
-    }
-    setHintMessage({ text: strings.game.hintApplied, tone: 'success', id: Date.now() });
-  }, [requestHint]);
+      setHintSheetMessage(format(strings.game.hintSpent, { cost: result.cost }));
+      setHintMessage({ text: strings.game.hintApplied, tone: 'success', id: Date.now() });
+    },
+    [requestHint],
+  );
 
   const confirmLeave = useCallback(() => {
     setLeaveVisible(false);
@@ -182,9 +197,18 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
       hintsUsed: session.hints.length,
     });
 
+    const hintsUsed = session.hints.length;
+    const stars = computeStars({
+      targetFound: rewards.targetWordsFound,
+      targetTotal: activeLevel.targetWords.length,
+      bonusFound: rewards.bonusWordsFound,
+      bonusTotal: activeLevel.bonusWords.length,
+      hintsUsed,
+    });
+
     const nextLevelId = getNextLevelId(activeLevel.id);
     if (!isDaily) {
-      completeLevel({ levelId: activeLevel.id, score: session.score });
+      completeLevel({ levelId: activeLevel.id, score: session.score, stars });
     } else {
       completeChallenge();
     }
@@ -203,6 +227,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
       bonusFound: rewards.bonusWordsFound,
       bonusTotal: activeLevel.bonusWords.length,
       words,
+      hintsUsed,
+      stars,
       isNewBestScore: session.score > bestScoreBeforeRef.current,
       unlockedLevelId: nextLevelId,
       nextLevelId,
@@ -237,6 +263,33 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     }
     return strings.game.tutorialStepLetters;
   }, [activeLevel, session, word.length]);
+
+  const cheapestHintCost = useMemo(
+    () => (hintOptions.length > 0 ? Math.min(...hintOptions.map(option => option.cost)) : 0),
+    [hintOptions],
+  );
+
+  const hintDescriptions = useMemo<Record<HintType, string>>(
+    () => ({
+      reveal_letter: strings.game.hintRevealLetterDesc,
+      smart_help: strings.game.hintSmartHelpDesc,
+      reveal_word: strings.game.hintRevealWordDesc,
+    }),
+    [],
+  );
+
+  /** چند کاشی از نقشه راهنما را بازیکن تا الان زده است (برای نمایش «حرف مانده») */
+  const hintMatchedCount = useMemo(() => {
+    if (!activeHint) {
+      return 0;
+    }
+    const selection = session?.selection ?? [];
+    let matched = 0;
+    while (matched < activeHint.tileIds.length && selection.includes(activeHint.tileIds[matched] as string)) {
+      matched += 1;
+    }
+    return matched;
+  }, [activeHint, session?.selection]);
 
   if (!activeLevel) {
     return (
@@ -308,6 +361,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           </View>
         ) : null}
 
+        <HintGuide hint={activeHint} matchedCount={hintMatchedCount} onDismiss={dismissHint} />
+
         <WordSlots
           selected={selectedTiles}
           maxLength={activeLevel.maxWordLength}
@@ -327,6 +382,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           foundCount={progress.foundTargets}
           totalCount={progress.totalTargets}
           onDragStateChange={setIsDraggingLetters}
+          guideTileIds={activeHint?.tileIds}
           accessibilityLabel={strings.game.lettersHint}
         />
 
@@ -342,14 +398,14 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
             style={styles.controlButton}
           />
           <Button
-            label={strings.game.hintButton}
+            label={format(strings.game.hintButtonWithCost, { cost: toPersianDigits(cheapestHintCost) })}
             variant="secondary"
             size="medium"
             icon="bulb"
             fullWidth={false}
-            disabled={!canUseHint}
+            disabled={!session || session.status !== 'playing'}
             onPress={handleHint}
-            accessibilityLabel={format(strings.accessibility.hintButton, { cost: hintCost('reveal_letter') })}
+            accessibilityLabel={format(strings.accessibility.hintButton, { cost: toPersianDigits(cheapestHintCost) })}
             style={styles.controlButton}
           />
           <Button
@@ -375,6 +431,16 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
         </View>
       </ScrollView>
 
+      <HintSheet
+        visible={hintSheetVisible}
+        options={hintOptions}
+        coins={profile.coins}
+        descriptions={hintDescriptions}
+        lastMessage={hintSheetMessage}
+        onSelect={handleHintSelect}
+        onClose={() => setHintSheetVisible(false)}
+      />
+
       <ConfirmDialog
         visible={leaveVisible}
         title={strings.game.leaveTitle}
@@ -383,16 +449,6 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
         cancelLabel={strings.common.cancel}
         onConfirm={confirmLeave}
         onCancel={() => setLeaveVisible(false)}
-      />
-
-      <ConfirmDialog
-        visible={noCoinsVisible}
-        title={strings.game.noCoinsForHint}
-        body={format(strings.game.useHintBody, { cost: nextHintCost })}
-        confirmLabel={strings.common.gotIt}
-        cancelLabel={strings.common.later}
-        onConfirm={() => setNoCoinsVisible(false)}
-        onCancel={() => setNoCoinsVisible(false)}
       />
     </ScreenContainer>
   );

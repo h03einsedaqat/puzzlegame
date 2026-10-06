@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PanResponder, StyleSheet, View } from 'react-native';
+import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Polygon } from 'react-native-svg';
 
 import { strings } from '../../constants';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { colors, radius, spacing } from '../../theme';
 import { format, toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
@@ -30,6 +31,11 @@ export interface LetterWheelProps {
    * موقتاً خاموش می‌کند تا کشیدن حروف با اسکرول صفحه قاطی نشود.
    */
   onDragStateChange?: (dragging: boolean) => void;
+  /**
+   * راهنمای گام‌به‌گام: ترتیب کاشی‌هایی که باید زده شوند. کاشی «بعدی» با حلقه
+   * چشمک‌زن طلایی روشن می‌شود و کاشی‌های پشت‌سرهم‌زده‌شده شماره می‌گیرند.
+   */
+  guideTileIds?: readonly string[];
 }
 
 const DEFAULT_TILE = 58;
@@ -72,6 +78,7 @@ export function LetterWheel({
   foundCount = 0,
   totalCount = 0,
   onDragStateChange,
+  guideTileIds,
 }: LetterWheelProps) {
   const [finger, setFinger] = useState<Point | null>(null);
   const originRef = useRef<Point>({ x: 0, y: 0 });
@@ -80,6 +87,40 @@ export function LetterWheel({
 
   const center = { x: diameter / 2, y: diameter / 2 };
   const progressRatio = totalCount > 0 ? Math.max(0, Math.min(1, foundCount / totalCount)) : 0;
+
+  // راهنمای فعال: کاشی بعدی که باید زده شود و کاشی‌هایی که بازیکن طبق نقشه زده است.
+  const guide = useMemo(() => {
+    if (!guideTileIds || guideTileIds.length === 0) {
+      return { nextTileId: null as string | null, matched: 0, planned: [] as readonly string[] };
+    }
+    let matched = 0;
+    while (matched < guideTileIds.length && selectedIds.includes(guideTileIds[matched] as string)) {
+      matched += 1;
+    }
+    return {
+      nextTileId: (guideTileIds[matched] ?? null) as string | null,
+      matched,
+      planned: guideTileIds,
+    };
+  }, [guideTileIds, selectedIds]);
+
+  const reducedMotion = useReducedMotion();
+  const guidePulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reducedMotion || !guide.nextTileId) {
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(guidePulse, { toValue: 1, duration: 620, useNativeDriver: true }),
+        Animated.timing(guidePulse, { toValue: 0, duration: 620, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [guide.nextTileId, guidePulse, reducedMotion]);
+
+  const guideScale = guidePulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
   const orbit = Math.max(tileSize * 1.6, diameter / 2 - tileSize / 2 - 6);
 
   /** جای هر کاشی روی دایره؛ از بالا شروع و ساعتگرد ادامه پیدا می‌کند */
@@ -285,15 +326,27 @@ export function LetterWheel({
             },
           ]}
         >
-          <LetterTile
-            tileId={position.id}
-            char={position.char}
-            size={tileSize}
-            selected={selectedIds.includes(position.id)}
-            disabled={disabled}
-            onPress={onTilePress}
-            accessibilityLabel={format(strings.accessibility.letterTile, { letter: position.char })}
-          />
+          <Animated.View style={position.id === guide.nextTileId ? { transform: [{ scale: guideScale }] } : undefined}>
+            <LetterTile
+              tileId={position.id}
+              char={position.char}
+              size={tileSize}
+              selected={selectedIds.includes(position.id)}
+              disabled={disabled}
+              onPress={onTilePress}
+              accessibilityLabel={format(strings.accessibility.letterTile, { letter: position.char })}
+            />
+          </Animated.View>
+          {guide.planned.indexOf(position.id) >= 0 && guide.planned.indexOf(position.id) < guide.matched ? (
+            <View pointerEvents="none" style={[styles.stepBadge, { top: -6, right: -6 }]}>
+              <AppText variant="caption" color={colors.textInverse} allowFontScaling={false}>
+                {toPersianDigits(guide.planned.indexOf(position.id) + 1)}
+              </AppText>
+            </View>
+          ) : null}
+          {position.id === guide.nextTileId ? (
+            <View pointerEvents="none" style={[styles.guideRing, { width: tileSize + 14, height: tileSize + 14 }]} />
+          ) : null}
         </View>
       ))}
     </View>
@@ -320,6 +373,22 @@ const styles = StyleSheet.create({
   },
   tileSlot: {
     position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guideRing: {
+    position: 'absolute',
+    borderRadius: radius.pill,
+    borderWidth: 4,
+    borderColor: colors.accent,
+    opacity: 0.9,
+  },
+  stepBadge: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    borderRadius: radius.pill,
+    backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
   },

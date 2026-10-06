@@ -249,15 +249,26 @@ export type HintOutcome =
       word: string;
       /** شماره حرف آشکارشده؛ برای راهنمای واژه‌ی کامل null است */
       letterIndex: number | null;
+      /**
+       * نقشه کاشی‌ها: ترتیب کاشی‌هایی که بازیکن باید بزند تا این واژه ساخته شود.
+       * رابط کاربری با این فهرست، کاشی بعدی را روی چرخ روشن می‌کند تا راهنما
+       * «قدم‌به‌قدم» و واقعاً کمک‌کننده باشد (نه فقط یک حرف آشکار).
+       */
+      tileIds: string[];
     }
   | { status: 'blocked'; session: GameSession; reason: 'completed' | 'nothing_to_reveal' };
 
 /**
- * راهنما.
+ * راهنمای هوشمند.
  *
- * reveal_letter: آشکار کردن حرف بعدی نخستین واژه‌ای که بازیکن پیدا نکرده است.
- * reveal_word: آشکار کردن کامل واژه (امتیاز کاهش‌یافته و بدون سکه).
- * smart_help: نشان دادن بلندترین واژه باقی‌مانده همراه با حرف بعدی آن.
+ * انتخاب واژه بر پایه «نزدیک‌ترین واژه به تکمیل» است: واژه‌ای که بیشترین حرف
+ * آشکارشده را دارد (بازیکن با آن درگیر است) و در صورت تساوی کوتاه‌ترین واژه.
+ * به این ترتیب راهنماهای پشت‌سرهم روی یک واژه جمع می‌شوند و بازیکن واقعاً یک
+ * واژه کامل می‌گیرد، نه چند حرف پراکنده از چند واژه.
+ *
+ * reveal_letter: آشکار کردن حرف بعدی واژه هدف (ارزان‌ترین راهنما).
+ * smart_help: همان واژه هدف، همراه با حرف بعدی و نقشه کامل کاشی‌ها برای ساخت آن.
+ * reveal_word: آشکار کردن کامل واژه (گران‌ترین راهنما).
  */
 export function revealWithHint(
   session: GameSession,
@@ -276,8 +287,8 @@ export function revealWithHint(
   }
 
   if (type === 'reveal_word') {
-    const word = remaining[0] ?? '';
-    if (isWordRevealed(session, word)) {
+    const word = pickHintWord(session, remaining);
+    if (!word || isWordRevealed(session, word)) {
       return { status: 'blocked', session, reason: 'nothing_to_reveal' };
     }
     const record: HintRecord = { type, word, letterIndex: null, at: now };
@@ -287,6 +298,7 @@ export function revealWithHint(
       type,
       word,
       letterIndex: null,
+      tileIds: planWordTiles(session, word),
     };
   }
 
@@ -297,13 +309,9 @@ export function revealWithHint(
     return { status: 'blocked', session, reason: 'nothing_to_reveal' };
   }
 
-  const word =
-    type === 'smart_help'
-      ? [...candidates].sort((a, b) => b.length - a.length)[0] ?? ''
-      : candidates[0] ?? '';
-
+  const word = pickHintWord(session, candidates) ?? '';
   const nextIndex = nextRevealIndex(session, word);
-  if (nextIndex < 0) {
+  if (!word || nextIndex < 0) {
     return { status: 'blocked', session, reason: 'nothing_to_reveal' };
   }
 
@@ -314,7 +322,64 @@ export function revealWithHint(
     type,
     word,
     letterIndex: nextIndex,
+    tileIds: planWordTiles(session, word),
   };
+}
+
+/**
+ * انتخاب واژه هدف راهنما.
+ *
+ * نخست واژه‌ای که بازیکن بیشترین حرفش را آشکار کرده (یعنی رویش کار می‌کند)،
+ * بعد کوتاه‌ترین واژه (سریع‌ترین برد) و در پایان ترتیب طبیعی مرحله. با این
+ * چیدمان، راهنمای پشت‌سرهم یک واژه را کامل می‌کند و بازیکن حس پیشرفت می‌گیرد.
+ */
+export function pickHintWord(session: GameSession, candidates: readonly string[]): string | null {
+  if (candidates.length === 0) {
+    return null;
+  }
+  const ranked = [...candidates].sort((a, b) => {
+    const revealedDiff = revealedIndices(session, b).size - revealedIndices(session, a).size;
+    if (revealedDiff !== 0) {
+      return revealedDiff;
+    }
+    if (a.length !== b.length) {
+      return a.length - b.length;
+    }
+    return candidates.indexOf(a) - candidates.indexOf(b);
+  });
+  return ranked[0] ?? null;
+}
+
+/**
+ * نقشه کاشی‌ها برای ساخت یک واژه.
+ *
+ * حروف واژه به‌ترتیب روی کاشی‌های موجود مرحله سوار می‌شوند (هر کاشی یک‌بار).
+ * اگر واژه با کاشی‌های موجود نساخته شود، فهرست کوتاه‌تر برمی‌گردد. رابط کاربری
+ * با همین فهرست، کاشی بعدی را روشن می‌کند.
+ */
+export function planWordTiles(session: GameSession, word: string): string[] {
+  const used = new Set<string>();
+  const plan: string[] = [];
+
+  for (const char of word) {
+    const tile = session.tiles.find(candidate => candidate.char === char && !used.has(candidate.id));
+    if (!tile) {
+      continue;
+    }
+    used.add(tile.id);
+    plan.push(tile.id);
+  }
+
+  return plan;
+}
+
+/** نمایش الگوی واژه با حرف‌های آشکارشده؛ مثل «ب•ا••» برای واژه «بیابان» */
+export function hintWordPattern(session: GameSession, word: string): string {
+  const revealed = revealedIndices(session, word);
+  const fullyRevealed = isWordRevealed(session, word);
+  return [...word]
+    .map((char, index) => (fullyRevealed || revealed.has(index) ? char : '•'))
+    .join('');
 }
 
 /** حرف آشکارشده بعدی یک واژه؛ ‎-۱ یعنی همه حروف آشکار شده‌اند */
