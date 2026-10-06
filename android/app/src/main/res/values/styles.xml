@@ -1,0 +1,12 @@
+<resources>
+
+    <!-- قالب روشن ثابت است؛ بازی تم تیره ندارد و ظاهر باید در همه دستگاه‌ها یکسان باشد. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="android:windowBackground">@color/status_bar</item>
+        <item name="android:statusBarColor">@color/status_bar</item>
+        <item name="android:navigationBarColor">@color/brand_surface</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+</resources>

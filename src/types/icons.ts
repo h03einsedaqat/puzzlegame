@@ -1,0 +1,35 @@
+/**
+ * فهرست بسته آیکون‌های برنامه. همه آیکون‌ها در یک مجموعه واحد رسم می‌شوند تا
+ * ظاهر بازی یکپارچه بماند و از ایموجی به‌عنوان آیکون استفاده نشود.
+ */
+export type IconName =
+  | 'heart'
+  | 'heartFilled'
+  | 'coin'
+  | 'star'
+  | 'bulb'
+  | 'settings'
+  | 'back'
+  | 'sound'
+  | 'soundOff'
+  | 'vibrate'
+  | 'lock'
+  | 'check'
+  | 'play'
+  | 'calendar'
+  | 'gift'
+  | 'trophy'
+  | 'info'
+  | 'shield'
+  | 'chevron'
+  | 'close'
+  | 'refresh'
+  | 'home'
+  | 'grid'
+  | 'flame'
+  | 'word'
+  | 'sparkle'
+  | 'clock'
+  | 'eye'
+  | 'medal'
+  | 'success';

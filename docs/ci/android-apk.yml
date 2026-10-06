@@ -1,0 +1,116 @@
+name: Android APK
+
+# این گردش‌کار بسته نصبی اندروید را روی سرور گیت‌هاب می‌سازد؛ سریع‌ترین راه گرفتن
+# APK برای کسی که JDK و Android SDK روی رایانه‌اش نصب نیست.
+#
+# بسته خروجی با کلید debug امضا می‌شود: برای نصب و آزمایش روی گوشی مناسب است، ولی
+# برای بارگذاری در کافه‌بازار باید با کلید انتشار خودت بسازی
+# (راهنما: docs/BUILD_AND_RUN.md).
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'arena/**'
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: Build release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK packages
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          echo "Android SDK at: $SDK"
+          SM="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SM" --licenses > /dev/null 2>&1 || true
+          for pkg in "platform-tools" "platforms;android-37" "build-tools;37.0.0"; do
+            echo "::group::installing $pkg"
+            yes | "$SM" "$pkg" && echo "installed $pkg" || echo "could not install $pkg; Gradle will try to fetch it"
+            echo "::endgroup::"
+          done
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/app/build.gradle') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Verify project
+        run: |
+          npx tsc --noEmit
+          npx eslint .
+          npx jest
+          npm run data:check
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --stacktrace --no-daemon
+
+      - name: Inspect the APK
+        working-directory: android
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          ls -lh "$APK"
+          echo "— محتوای مهم داخل بسته —"
+          unzip -l "$APK" | grep -E 'index\.android\.bundle|assets/fonts/|lib/arm64-v8a/libreactnative|lib/arm64-v8a/libhermes' || true
+          echo "— اطلاعات بسته —"
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/37.0.0/aapt2 2>/dev/null || true)
+          if [ -n "$AAPT" ]; then "$AAPT" dump badging "$APK" | head -5; fi
+
+      - name: Write summary
+        working-directory: android
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          {
+            echo "### بسته نصبی آماده است"
+            echo
+            echo "- فایل: \`app-release.apk\` (داخل فایل zip همین آرتیفکت)"
+            echo "- اندازه: $(du -h "$APK" | cut -f1)"
+            echo "- معماری‌ها: arm64-v8a, armeabi-v7a"
+            echo "- امضا: کلید debug — برای نصب روی گوشی، نه برای بارگذاری در کافه‌بازار"
+            echo
+            echo "برای انتشار در کافه‌بازار با کلید خودت بساز: \`npm run android:apk:release\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kalamesaz-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
