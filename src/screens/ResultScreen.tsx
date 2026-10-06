@@ -11,6 +11,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Icon } from '../components/ui/Icon';
+import { ConfettiCelebration } from '../components/ui/ConfettiCelebration';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { HeartCounter } from '../components/game/HeartCounter';
 import type { RootScreenProps } from '../navigation/types';
@@ -58,6 +59,8 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
 
   return (
     <ScreenContainer>
+      {/* لحظه برد: بارش کاغذرنگی روی صفحه (بدون گرفتن لمس دکمه‌ها) */}
+      <ConfettiCelebration active={completionRatio >= 1} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <View style={[styles.heroBadge, completionRatio >= 1 ? styles.heroBadgeComplete : styles.heroBadgePartial]}>

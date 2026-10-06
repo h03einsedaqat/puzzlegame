@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { colors, radius, shadows, spacing, typography } from '../../theme';
+import { colors, shadows, spacing, typography } from '../../theme';
 import { AppText } from '../ui/AppText';
 import { PressableScale } from '../ui/PressableScale';
 import type { LetterTileData } from '../../types';
@@ -56,9 +56,19 @@ export function WordSlots({
             accessibilityRole="button"
             accessibilityLabel={tile.char}
           >
-            <View style={[styles.slot, styles.filledSlot, { width: slotSize, height: slotSize }]}>
+            <View style={[styles.slot, styles.filledSlot, { width: slotSize, height: slotSize, borderRadius: Math.round(slotSize * 0.32) }]}>
               <AppText
-                style={[typography.wordSlot, { fontSize: Math.round(slotSize * 0.5), lineHeight: Math.round(slotSize * 0.66) }]}
+                style={[
+                  typography.wordSlot,
+                  {
+                    fontSize: Math.round(slotSize * 0.54),
+                    lineHeight: Math.round(slotSize * 0.7),
+                    color: colors.slotText,
+                    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+                    textShadowOffset: { width: 0, height: 1 },
+                    textShadowRadius: 1,
+                  },
+                ]}
                 allowFontScaling={false}
               >
                 {tile.char}
@@ -73,8 +83,11 @@ export function WordSlots({
               {
                 width: slotSize,
                 height: slotSize,
+                borderRadius: Math.round(slotSize * 0.32),
+                borderWidth: isNext ? 2.5 : 2,
                 borderColor: isNext ? colors.slotActiveBorder : colors.slotBorder,
                 borderStyle: isNext ? 'solid' : 'dashed',
+                backgroundColor: isNext ? colors.primaryLight : 'rgba(255, 255, 255, 0.65)',
               },
             ]}
           >
@@ -103,14 +116,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   slot: {
-    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   filledSlot: {
-    backgroundColor: colors.slotBackground,
-    borderWidth: 1.5,
-    borderColor: colors.slotActiveBorder,
+    backgroundColor: colors.slotFilledBackground,
+    borderWidth: 2,
+    borderColor: colors.accentDark,
+    borderBottomWidth: 4,
     ...shadows.soft,
   },
 });

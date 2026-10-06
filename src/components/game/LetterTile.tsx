@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useServices } from '../../context';
-import { colors, radius, shadows, typography } from '../../theme';
+import { colors, radius, typography } from '../../theme';
 import { AppText } from '../ui/AppText';
 import { PressableScale } from '../ui/PressableScale';
 
@@ -22,9 +22,11 @@ export interface LetterTileProps {
 /**
  * کاشی حرف.
  *
- * حروف تکراری هرکدام کاشی مستقل دارند و انتخاب هر کاشی مستقل از دیگری است؛
- * بنابراین رنگ کاشی انتخاب‌شده تغییر می‌کند و حرف همچنان روی صفحه می‌ماند.
- * اندازه فونت و کاشی با هم مقیاس می‌شوند تا در صفحه‌های کوچک هم خوانا بماند.
+ * ظاهر «آب‌نباتی»: کاشی قهوه‌ایِ گرم با لبه پایینیِ تیره‌تر (حس سه‌بعدی)، برقِ
+ * ملایم در بالای کاشی و حرفِ طلاییِ درشت. با انتخاب‌شدن، کاشی فیروزه‌ای می‌شود و
+ * کمی بزرگ‌تر می‌نشیند تا معلوم باشد چه حرفی در حال استفاده است.
+ *
+ * حروف تکراری هرکدام کاشی مستقل دارند، پس انتخاب هر کاشی مستقل از دیگری است.
  */
 export function LetterTile({
   char,
@@ -51,9 +53,11 @@ export function LetterTile({
     ? colors.tileSelectedBackground
     : hinted
       ? colors.tileHintBackground
-      : colors.tileBackground;
-
+      : colors.tileDeep;
+  const edge = selected ? colors.tileSelectedBorder : hinted ? colors.tileHintBorder : colors.tileDeepShadow;
   const textColor = selected ? colors.tileSelectedText : colors.tileText;
+
+  const edgeWidth = Math.max(3, Math.round(size * 0.09));
 
   return (
     <PressableScale
@@ -70,15 +74,36 @@ export function LetterTile({
             width: size,
             height: size,
             backgroundColor: background,
-            borderColor: selected || hinted ? undefined : colors.tileBorder,
-            borderWidth: selected || hinted ? 0 : 1.5,
+            borderColor: edge,
+            borderBottomWidth: edgeWidth,
+            borderRadius: Math.round(size * 0.3),
+            transform: [{ scale: selected ? 1.08 : 1 }],
           },
         ]}
       >
+        {/* برقِ بالای کاشی */}
+        <View
+          pointerEvents="none"
+          style={[
+            styles.gloss,
+            {
+              borderTopLeftRadius: Math.round(size * 0.3),
+              borderTopRightRadius: Math.round(size * 0.3),
+              height: Math.round(size * 0.42),
+            },
+          ]}
+        />
         <AppText
           style={[
             typography.letter,
-            { fontSize: Math.round(size * 0.44), lineHeight: Math.round(size * 0.6), color: textColor },
+            {
+              fontSize: Math.round(size * 0.5),
+              lineHeight: Math.round(size * 0.68),
+              color: textColor,
+              textShadowColor: selected ? 'rgba(0, 0, 0, 0.28)' : 'rgba(78, 44, 18, 0.55)',
+              textShadowOffset: { width: 0, height: 2 },
+              textShadowRadius: 1,
+            },
           ]}
           allowFontScaling={false}
         >
@@ -91,9 +116,17 @@ export function LetterTile({
 
 const styles = StyleSheet.create({
   tile: {
-    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.tile,
+    borderWidth: 2,
+  },
+  gloss: {
+    position: 'absolute',
+    top: 2,
+    left: 4,
+    right: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderTopLeftRadius: radius.md,
+    borderTopRightRadius: radius.md,
   },
 });

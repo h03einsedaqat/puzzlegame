@@ -65,15 +65,22 @@ jest.mock('react-native-safe-area-context', () => require('react-native-safe-are
 /** react-native-svg در محیط تست به View ساده تبدیل می‌شود. */
 jest.mock('react-native-svg', () => {
   const React = require('react');
-  const { View } = require('react-native');
+  const { Text, View } = require('react-native');
 
-  const host = (name: string) => {
-    const Component = (props: Record<string, unknown>) => React.createElement(View, props);
+  const host = (name: string, base: unknown = View) => {
+    const Component = (props: Record<string, unknown>) => React.createElement(base as never, props);
     Component.displayName = `Svg${name}`;
     return Component;
   };
 
+  // متنِ داخل SVG باید مثل متن واقعی رندر شود، وگرنه رندرکننده تست شکایت می‌کند
+  // که «رشته متن داخل View آمده است».
+  const hostText = (name: string) => host(name, Text);
+
   const module: Record<string, unknown> = { __esModule: true };
+  for (const name of ['Text', 'TSpan', 'Title', 'Desc']) {
+    module[name] = hostText(name);
+  }
   for (const name of [
     'Svg',
     'Circle',
@@ -84,8 +91,6 @@ jest.mock('react-native-svg', () => {
     'Polygon',
     'Polyline',
     'Rect',
-    'Text',
-    'TSpan',
     'Defs',
     'LinearGradient',
     'RadialGradient',

@@ -1,5 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+/* eslint-disable @typescript-eslint/no-var-requires */
+// خواندن فایل Manifest بدون نیاز به تایپ‌های Node؛ مسیر نسبت به ریشه مخزن است
+// (jest همیشه از ریشه پروژه اجرا می‌شود).
+const fs = require('fs') as { readFileSync: (path: string, encoding: string) => string };
+const MANIFEST_PATH = 'android/app/src/main/AndroidManifest.xml';
 
 import { HAPTIC_PATTERNS, patternFor } from '../../src/constants/haptics';
 import { AdService, NoopAdProvider, type AdProvider } from '../../src/services/ads/AdService';
@@ -163,12 +166,12 @@ describe('سرویس لرزش', () => {
  */
 describe('Manifest اندروید', () => {
   it('مجوز VIBRATE را اعلام می‌کند', () => {
-    const manifest = readFileSync(resolve(process.cwd(), 'android/app/src/main/AndroidManifest.xml'), 'utf8');
+    const manifest = fs.readFileSync(MANIFEST_PATH, 'utf8');
     expect(manifest).toContain('android.permission.VIBRATE');
   });
 
   it('برای انتشار به اینترنت نیازی ندارد (بازی آفلاین است)', () => {
-    const manifest = readFileSync(resolve(process.cwd(), 'android/app/src/main/AndroidManifest.xml'), 'utf8');
+    const manifest = fs.readFileSync(MANIFEST_PATH, 'utf8');
     expect(manifest).not.toContain('android.permission.INTERNET');
   });
 });

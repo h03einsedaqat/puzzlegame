@@ -34,7 +34,7 @@ export const faStrings = {
 
   onboarding: {
     slide1Title: 'حروف را انتخاب کن',
-    slide1Body: 'روی کاشی‌های حروف بزن و کنار هم بچین تا یک کلمه ساخته شود.',
+    slide1Body: 'انگشتت را روی حروف بکش (یا یکی‌یکی بزن) و کلمه را بساز.',
     slide2Title: 'کلمه بساز',
     slide2Body: 'با دکمه «بررسی» کلمه‌ات را ثبت کن؛ هر کلمه درست امتیاز و سکه می‌دهد.',
     slide3Title: 'جایزه بگیر',
@@ -77,6 +77,8 @@ export const faStrings = {
 
   game: {
     lettersHint: 'حروف را انتخاب کن',
+    wheelHint: 'کلمه‌ها',
+    dragHint: 'انگشتت را روی حروف بکش و کلمه بساز',
     slotsEmpty: 'کلمه را اینجا ببین',
     clearButton: 'پاک کردن',
     submitButton: 'بررسی',
@@ -95,8 +97,8 @@ export const faStrings = {
     tooLong: 'این کلمه از حروف مرحله بلندتر است',
     invalidCharacters: 'فقط حروف فارسی مجاز است',
     emptyWord: 'اول چند حرف انتخاب کن',
-    tutorialStepLetters: 'روی حروف بزن تا کلمه ساخته شود.',
-    tutorialStepSubmit: 'حالا دکمه «بررسی» را بزن.',
+    tutorialStepLetters: 'انگشتت را روی حروف بکش یا روی آن‌ها بزن.',
+    tutorialStepSubmit: 'انگشتت را برداری، کلمه خودش ثبت می‌شود؛ یا دکمه «بررسی» را بزن.',
     tutorialStepNext: 'همه کلمات مرحله را پیدا کن تا جایزه بگیری.',
     allWordsFound: 'همه کلمات مرحله پیدا شد!',
     leaveTitle: 'از مرحله خارج می‌شوی؟',

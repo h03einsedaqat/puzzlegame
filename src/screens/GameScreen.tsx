@@ -14,7 +14,7 @@ import { FeedbackBanner } from '../components/ui/FeedbackBanner';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { FoundWordsList } from '../components/game/FoundWordsList';
 import { GameHeader } from '../components/game/GameHeader';
-import { LetterGrid } from '../components/game/LetterGrid';
+import { LetterWheel } from '../components/game/LetterWheel';
 import { WordSlots } from '../components/game/WordSlots';
 import type { GameFeedback } from '../context';
 import type { Level, WordRejectionReason } from '../types';
@@ -250,7 +250,11 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   }
 
   const slotsWidth = Math.min(width - spacing.lg * 2, 420);
-  const tileSize = Math.min(72, Math.max(50, Math.floor((Math.min(width, 620) - spacing.lg * 2 - 24) / 5)));
+  // چرخ حروف: روی صفحه‌های کوچک کمی جمع‌وجورتر و روی صفحه‌های بزرگ‌تر تا ۳۳۰ پیکسل.
+  const wheelSize = Math.min(Math.max(width - spacing.xl * 2, 240), 330);
+  // با حروف کمتر جای بیشتری برای هر کاشی هست؛ با ۹ حرف هم از چرخ بیرون نمی‌زند.
+  const letterCount = session?.tiles.length ?? 6;
+  const tileSize = Math.round(Math.min(66, Math.max(46, wheelSize * (letterCount <= 5 ? 0.2 : letterCount <= 7 ? 0.18 : 0.155))));
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
@@ -305,12 +309,18 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           onRemove={removeTile}
         />
 
-        <LetterGrid
+        <LetterWheel
           tiles={session?.tiles ?? []}
-          tileSize={tileSize}
           selectedIds={session?.selection ?? []}
           onTilePress={selectTile}
+          onTileRemove={removeTile}
+          onAutoSubmit={submit}
           disabled={session?.status !== 'playing'}
+          diameter={wheelSize}
+          tileSize={tileSize}
+          foundCount={progress.foundTargets}
+          totalCount={progress.totalTargets}
+          accessibilityLabel={strings.game.lettersHint}
         />
 
         <View style={styles.controls}>
