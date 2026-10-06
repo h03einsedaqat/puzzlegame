@@ -157,6 +157,19 @@ python3 -c "import urllib.parse as u;print('https://github.com/<کاربر>/<م�
 **راه دستی:** فایل `.github/workflows/android-apk.yml` را بساز و محتوای
 `docs/ci/android-apk.yml` را در آن بچسبان.
 
+همین کار برای گردش‌کار بازبینی هم لازم است (یک‌بار؛ اختیاری ولی توصیه‌شده). با همان
+روش، فقط نام فایل و منبع را عوض کن:
+
+```bash
+python3 -c "import urllib.parse as u;print('https://github.com/<کاربر>/<مخزن>/new/main/.github/workflows?filename=apk-verify.yml&value='+u.quote(open('docs/ci/apk-verify.yml',encoding='utf-8').read(),safe=''))"
+```
+
+**نکته:** اگر `.github/workflows/android-apk.yml` را قبلاً ساخته‌ای، محتوایش را با
+نسخه تازه `docs/ci/android-apk.yml` عوض کن. نسخه تازه بسته را **پیش از انتشار** با
+`zipalign`/`apksigner`/`aapt2` بررسی می‌کند (اگر سالم نباشد چیزی روی صفحه Releases عوض
+نمی‌شود)، فایل `.sha256` و حجم/هش را منتشر می‌کند و صفحه Releases را حذف و از نو
+نمی‌سازد تا لینک دانلود هیچ‌وقت خالی نماند.
+
 با همین Commit روی `main`، ساخت خودکار شروع می‌شود. از این پس:
 
 - **اجرای دستی (بدون هیچ push):** تب **Actions** → گردش‌کار «Android APK» →
@@ -171,7 +184,16 @@ python3 -c "import urllib.parse as u;print('https://github.com/<کاربر>/<م�
 
   `https://github.com/<کاربر>/<مخزن>/releases/download/apk-latest/kalamesaz-1.0.0-arm.apk`
 
-  (این لینک با هر ساخت تازه روی همان نام به‌روز می‌شود.)
+  (این لینک با هر ساخت تازه روی همان نام به‌روز می‌شود.) روی همین صفحه، **حجم دقیق** و
+  **SHA-256** بسته نوشته می‌شود و فایل `kalamesaz-1.0.0-arm.apk.sha256` هم گذاشته
+  می‌شود؛ با آن می‌توانی بفهمی دانلودت کامل شده یا نه (بخش ۴ و
+  `docs/INSTALL_TROUBLESHOOTING.md`).
+
+- گردش‌کار اختیاری **«Verify published APK»** (`docs/ci/apk-verify.yml`): همان فایلی را
+  که کاربر دانلود می‌کند از صفحه Releases می‌گیرد و با ابزارهای رسمی اندروید بررسی
+  می‌کند و گزارش را در `docs/ci-reports/` می‌گذارد. یک‌بار که آن را هم مثل گردش‌کار
+  ساخت افزودی، از این پس با هر تغییر در گردش‌کارها/اسناد یا با زدن دکمه **Run
+  workflow** اجرا می‌شود.
 
 - **آرتیفکت** `kalamesaz-apk` در صفحه اجرا (۳۰ روز می‌ماند):
 
@@ -188,6 +210,18 @@ python3 -c "import urllib.parse as u;print('https://github.com/<کاربر>/<م�
 ---
 
 ## ۴) نصب و اجرا روی گوشی
+
+پیش از فرستادن بسته به گوشی، یک‌بار سلامت خودِ فایل را بسنج (سالم بودن zip، امضای
+v1/v2/v3، ترازبندی و مانیفست) تا اگر مشکلی هست همان‌جا معلوم شود، نه روی گوشی:
+
+```bash
+bash tools/verify-apk.sh android/app/build/outputs/apk/release/app-release.apk
+# یا: npm run apk:verify -- android/app/build/outputs/apk/release/app-release.apk
+```
+
+اگر گوشی هنگام نصب گفت «App not installed as package appears to be invalid»، راهنمای
+کامل در [`INSTALL_TROUBLESHOOTING.md`](INSTALL_TROUBLESHOOTING.md) است (سنجش حجم و
+SHA-256 برای تشخیص دانلود ناقص، مشکل امضا، نسخه اندروید و Play Protect).
 
 ### الف) با کابل USB
 
@@ -282,6 +316,13 @@ npm run android:aab:release    # AAB (مسیر پیشنهادی کافه‌با�
 
 - `android/app/build/outputs/apk/release/app-release.apk`
 - `android/app/build/outputs/bundle/release/app-release.aab`
+
+> در `android/app/build.gradle` روی هر دو پیکربندی امضا مقدار `enableV1Signing true`
+> گذاشته شده است. این خط را حذف نکن: AGP وقتی `minSdkVersion` بزرگ‌تر یا مساوی ۲۴
+> باشد امضای v1 (JAR) را خودش خاموش می‌کند و بعضی نصب‌کننده‌های گوشی، بسته‌ای که فقط
+> امضای v2 دارد را با پیام «App not installed as package appears to be invalid» رد
+> می‌کنند. برای اطمینان، بعد از ساخت بگو `bash tools/verify-apk.sh <apk>` باید بنویسد
+> «امضای v1 (JAR) هم سالم است».
 
 ### د) نصب نسخه انتشار روی گوشی خودت
 

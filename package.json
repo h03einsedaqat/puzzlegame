@@ -25,6 +25,7 @@
     "sounds:build": "tsx tools/build-sounds.mts",
     "icons:build": "tsx tools/build-icons.mts",
     "android:preflight": "tsx tools/preflight.mts",
+    "apk:verify": "bash tools/verify-apk.sh",
     "android:clean": "cd android && ./gradlew clean",
     "android:apk:release": "cd android && ./gradlew assembleRelease",
     "android:aab:release": "cd android && ./gradlew bundleRelease",

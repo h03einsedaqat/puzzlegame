@@ -1,0 +1,141 @@
+# بررسی بسته نصبی منتشرشده روی صفحه Releases — جای فایل:
+# .github/workflows/apk-verify.yml
+#
+# چرا وجود دارد: روی گوشی خطای «App not installed as package appears to be invalid»
+# دیده شده. این گردش‌کار همان فایلی را که کاربر دانلود می‌کند از صفحه Releases
+# می‌گیرد و با ابزارهای رسمی اندروید (zipalign / apksigner / aapt2) بررسی می‌کند تا
+# روشن شود مشکل از خودِ فایل است یا از دانلود ناقص/گوشی.
+#
+# اجرا: تب Actions → «Verify published APK» → Run workflow
+# خروجی: گزارش در مسیر docs/ci-reports/ به شاخه‌ای که گردش‌کار از آن اجرا شده push می‌شود.
+name: Verify published APK
+
+on:
+  # اجرای دستی از تب Actions (پس از ادغام در شاخه پیش‌فرض هم در دسترس است)
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'برچسب انتشار روی صفحه Releases'
+        required: false
+        default: 'apk-latest'
+  # به‌طور خودکار: هر بار گردش‌کار ساخت یا اسناد عوض شود، بسته منتشرشده بازبینی می‌شود
+  push:
+    branches: [main, 'arena/**']
+    paths:
+      - '.github/workflows/apk-verify.yml'
+      - '.github/workflows/android-apk.yml'
+      - 'tools/verify-apk.sh'
+      - 'docs/**'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+
+      - name: Download the published asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          TAG="${{ inputs.tag }}"
+          DIR="$RUNNER_TEMP/dl"
+          rm -rf "$DIR" && mkdir -p "$DIR"
+          ok=0
+          for i in 1 2 3 4 5; do
+            if gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p '*' -D "$DIR" --clobber; then ok=1; break; fi
+            echo "::warning::تلاش $i برای دانلود ناموفق بود؛ دوباره تلاش می‌کنم..."
+            sleep 10
+          done
+          [ "$ok" = 1 ] || { echo "::error::دانلود بسته از صفحه Releases ممکن نشد"; exit 1; }
+          ls -l "$DIR"
+          echo "DIR=$DIR" >> "$GITHUB_ENV"
+
+      - name: Install Android build-tools
+        run: |
+          set -uo pipefail
+          SM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SM" --licenses >/dev/null 2>&1 || true
+          for p in "build-tools;36.0.0" "build-tools;35.0.0" "build-tools;34.0.0"; do
+            yes | "$SM" "$p" >/dev/null 2>&1 || true
+          done
+          echo "build-tools موجود:"; ls "$ANDROID_HOME/build-tools" || true
+
+      - name: Verify the APK
+        id: verify
+        run: |
+          set -uo pipefail
+          APK=$(ls "$DIR"/*.apk 2>/dev/null | head -1 || true)
+          if [ -z "$APK" ]; then
+            echo "::error::هیچ فایل APK در صفحه Releases نبود — فقط فایل zip آرتیفکت وجود دارد؟"
+            ls -l "$DIR"; exit 1
+          fi
+          {
+            echo "# گزارش بررسی بسته منتشرشده"
+            echo
+            echo "- تاریخ (UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "- اجرا: [$GITHUB_RUN_ID](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
+            echo "- شاخه/کامیت: \`$GITHUB_REF_NAME\` / \`${GITHUB_SHA::12}\`"
+            echo "- برچسب انتشار: \`${{ inputs.tag }}\`"
+            echo "- فایل دانلودشده: \`$(basename "$APK")\` — $(wc -c < "$APK" | tr -d ' ') بایت"
+            echo "- SHA-256 فایل دانلودشده: \`$(sha256sum "$APK" | cut -d' ' -f1)\`"
+            echo
+            if [ -f "$APK.sha256" ]; then
+              echo "## تطابق SHA-256 با فایل اعلام‌شده در Releases"
+              echo
+              echo '```'
+              echo "اعلام‌شده : $(cut -d' ' -f1 < "$APK.sha256")"
+              echo "بسته دانلودشده: $(sha256sum "$APK" | cut -d' ' -f1)"
+              echo '```'
+              echo
+              if [ "$(cut -d' ' -f1 < "$APK.sha256")" = "$(sha256sum "$APK" | cut -d' ' -f1)" ]; then
+                echo "✅ فایل روی سرور گیت‌هاب با نسخه سالم یکی است."
+              else
+                echo "❌ فایل روی سرور با نسخه‌ای که گردش‌کار گزارش کرده فرق دارد."
+              fi
+              echo
+            fi
+            echo "## بررسی کامل"
+            echo
+            if bash tools/verify-apk.sh "$APK" > "$RUNNER_TEMP/full.txt" 2>&1; then
+              echo "verdict=ok" >> "$GITHUB_OUTPUT"
+            else
+              echo "verdict=fail" >> "$GITHUB_OUTPUT"
+            fi
+            cat "$RUNNER_TEMP/full.txt"
+          } > "$RUNNER_TEMP/report.md" 2>&1
+          cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/report.md"
+
+      - name: Publish the report on the branch
+        run: |
+          set -uo pipefail
+          mkdir -p docs/ci-reports
+          # نام فایل با شماره اجرا یکتاست تا اجراهای هم‌زمان با هم تعارض نکنند.
+          cp "$RUNNER_TEMP/report.md" "docs/ci-reports/apk-verify-$GITHUB_RUN_ID.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ci-reports
+          git commit -m "docs(ci): گزارش بررسی بسته نصبی [$GITHUB_RUN_ID] [skip ci]" || echo "تغییری برای commit نبود"
+          for i in 1 2 3; do
+            if git push origin "HEAD:refs/heads/$GITHUB_REF_NAME" 2>/dev/null; then
+              echo "گزارش روی شاخه $GITHUB_REF_NAME منتشر شد."; exit 0
+            fi
+            echo "push ناموفق بود (تلاش $i)؛ شاخه را به‌روز می‌کنم و دوباره تلاش می‌کنم..."
+            git fetch origin "$GITHUB_REF_NAME" >/dev/null 2>&1 || true
+            git rebase FETCH_HEAD >/dev/null 2>&1 || { git rebase --abort >/dev/null 2>&1 || true; break; }
+            sleep 5
+          done
+          echo "::warning::push گزارش ممکن نشد؛ گزارش کامل در خلاصه همین اجرا (Summary) هست"
+
+      - name: Fail if the package is not installable
+        if: steps.verify.outputs.verdict == 'fail'
+        run: |
+          echo "::error::بسته منتشرشده روی صفحه Releases سالم نیست (به گزارش بالا نگاه کن)."
+          exit 1
