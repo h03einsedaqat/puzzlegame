@@ -20,6 +20,8 @@ export type { HintedWord } from './game/FoundWordsList';
 export { GameHeader } from './game/GameHeader';
 export { HeartCounter } from './game/HeartCounter';
 export { LetterGrid } from './game/LetterGrid';
+export { LetterWheel, type LetterWheelProps } from './game/LetterWheel';
+export { ConfettiCelebration, type ConfettiCelebrationProps } from './ui/ConfettiCelebration';
 export { LetterTile } from './game/LetterTile';
 export { LevelNode } from './game/LevelNode';
 export type { LevelNodeState } from './game/LevelNode';

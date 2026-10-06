@@ -94,6 +94,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   } = useGame();
 
   const [hintMessage, setHintMessage] = useState<{ text: string; tone: 'success' | 'error' | 'info'; id: number } | null>(null);
+  // هنگام کشیدن حروف، اسکرول صفحه خاموش می‌شود تا دو حرکت با هم قاطی نشوند.
+  const [isDraggingLetters, setIsDraggingLetters] = useState(false);
   const [leaveVisible, setLeaveVisible] = useState(false);
   const [noCoinsVisible, setNoCoinsVisible] = useState(false);
   const completedRef = useRef(false);
@@ -272,7 +274,11 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
         backLabel={strings.common.back}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={!isDraggingLetters}
+      >
         <View style={styles.bannerArea}>
           {feedback ? (
             <FeedbackBanner
@@ -320,6 +326,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           tileSize={tileSize}
           foundCount={progress.foundTargets}
           totalCount={progress.totalTargets}
+          onDragStateChange={setIsDraggingLetters}
           accessibilityLabel={strings.game.lettersHint}
         />
 
