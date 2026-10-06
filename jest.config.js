@@ -2,6 +2,9 @@
 module.exports = {
   preset: '@react-native/jest-preset',
   setupFiles: ['<rootDir>/jest.setup.ts'],
+  transform: {
+    '^.+\\.(wav|mp3|ogg|m4a|aac)$': '@react-native/jest-preset/jest/assetFileTransformer.js',
+  },
   transformIgnorePatterns: [
     'node_modules/(?!(?:@react-native|react-native|@react-navigation|react-native-screens|react-native-safe-area-context|react-native-svg|@react-native-async-storage)/)',
   ],
@@ -22,5 +25,6 @@ module.exports = {
       lines: 60,
     },
   },
+  testMatch: ['**/__tests__/**/*.test.{ts,tsx}'],
   testPathIgnorePatterns: ['/node_modules/', '/android/', '/tools/'],
 };
