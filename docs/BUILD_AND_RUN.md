@@ -104,30 +104,32 @@ npm run android:apk:splits
 
 ## ۳) ساخت ابری روی گیت‌هاب (بدون نصب JDK و Android SDK)
 
-اگر روی رایانه‌ات جاوا و SDK نداری، می‌توانی گیت‌هاب بسته را برایت بسازد. افزودن فایل
-گردش‌کار به گیت‌هاب دسترسی ویژه می‌خواهد، پس فقط یک‌بار خودت فایل آماده را سر جایش
-بگذار:
+اگر روی رایانه‌ات جاوا و SDK نداری، گیت‌هاب بسته را برایت می‌سازد. فایل آماده گردش‌کار
+در `docs/ci/android-apk.yml` است؛ فقط یک‌بار آن را در مخزن سر جایش بگذار. گیت‌هاب برای
+افزودن فایل زیر `.github/workflows/` دسترسی ویژه می‌خواهد، پس این یک قدم را خودت انجام
+بده (سه کلیک):
+
+1. این نشانی را باز کن؛ ویرایشگر با نام فایل از پیش پر شده باز می‌شود:
+
+   `https://github.com/<کاربر>/<مخزن>/new/main?filename=.github/workflows/android-apk.yml`
+
+2. محتوای `docs/ci/android-apk.yml` را از صفحه مخزن کپی کن و در ویرایشگر بچسبان.
+3. پایین صفحه «Commit changes» را بزن (روی شاخه `main`).
+
+از این پس دو راه برای ساختن بسته داری:
+
+- **اجرای دستی (بدون هیچ push):** تب **Actions** → گردش‌کار «Android APK» →
+  دکمه **Run workflow** → شاخه دلخواه را انتخاب کن → Run workflow.
+- **خودکار:** هر push روی `main` (و روی شاخه‌هایی که خودشان نسخه‌ای از این فایل را
+  دارند) بسته را می‌سازد.
+
+نتیجه در همان صفحه اجرا، بخش **Artifacts** با نام `kalamesaz-apk` است؛ یا با دستور:
 
 ```bash
-mkdir -p .github/workflows
-cp docs/ci/android-apk.yml .github/workflows/
-git add .github/workflows/android-apk.yml
-git commit -m "chore: add Android APK workflow"
-git push
+gh run download --name kalamesaz-apk
 ```
 
-(یا از صفحه گیت‌هاب: Add file → Create new file → مسیر
-`.github/workflows/android-apk.yml` → محتوای `docs/ci/android-apk.yml` را بچسبان →
-Commit.)
-
-از این پس با هر push روی `main` و شاخه‌های `arena/**`، بسته ساخته می‌شود. نتیجه را
-از اینجا بگیر:
-
-- صفحه گیت‌هاب → تب **Actions** → آخرین اجرای «Android APK» → بخش **Artifacts** →
-  `kalamesaz-apk`
-- یا با دستور: `gh run download --name kalamesaz-apk`
-
-فایل داخلش `app-release.apk` است؛ همان را روی گوشی نصب کن.
+داخل فایل zip، `app-release.apk` است؛ همان را روی گوشی نصب کن.
 
 > بسته‌ای که گیت‌هاب می‌سازد با کلید debug امضا شده و برای کافه‌بازار مناسب نیست؛
 > برای انتشار باید روی رایانه خودت و با کلید خودت بسازی (بخش ۵).
