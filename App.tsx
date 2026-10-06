@@ -1,34 +1,46 @@
 import React from 'react';
-import { StatusBar, StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { RootNavigator } from './src/navigation/RootNavigator';
+import {
+  AchievementsProvider,
+  DailyProvider,
+  GameProvider,
+  ProfileProvider,
+  ProgressProvider,
+  ServicesProvider,
+  SettingsProvider,
+} from './src/context';
+
 /**
- * پوسته‌ی برنامه. در ادامه‌ی پروژه، Provider‌های وضعیت، سرویس‌ها و ناوبری در
- * همین فایل سوار می‌شوند.
+ * پوسته برنامه.
+ *
+ * ترتیب تأمین‌کننده‌ها مهم است: سرویس‌ها نخست ساخته می‌شوند، سپس تنظیمات
+ * (چون صدا و لرزش را کنترل می‌کند)، بعد پروفایل و پیشرفت، سپس چالش روزانه،
+ * دستاوردها (وابسته به استریک) و در پایان وضعیت بازی.
  */
 function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.container}>
-        <Text style={styles.title}>کلمه‌ساز</Text>
-      </View>
+      <ServicesProvider>
+        <SettingsProvider>
+          <ProfileProvider>
+            <ProgressProvider>
+              <DailyProvider>
+                <AchievementsProvider>
+                  <GameProvider>
+                    <RootNavigator />
+                  </GameProvider>
+                </AchievementsProvider>
+              </DailyProvider>
+            </ProgressProvider>
+          </ProfileProvider>
+        </SettingsProvider>
+      </ServicesProvider>
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F7F3EA',
-    direction: 'rtl',
-  },
-  title: {
-    fontSize: 28,
-    color: '#2F2A3F',
-  },
-});
 
 export default App;

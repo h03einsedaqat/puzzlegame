@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 
 import type { Repository } from '../services/storage/repositories';
 
@@ -20,6 +21,9 @@ export interface PersistentReducerResult<S, A> {
  * الگوی مشترک همه بخش‌های ذخیره‌شده برنامه: بارگذاری یک‌باره از مخزن، اجرای
  * reducer خالص و ذخیره‌ی تأخیری (debounce) تغییرات. ذخیره تأخیری از نوشتن‌های
  * پرشمار روی حافظه در زمان بازی جلوگیری می‌کند.
+ *
+ * نوشتن‌های معلق در دو لحظه فوراً ذخیره می‌شوند تا پیشرفت کاربر از دست نرود:
+ * رفتن برنامه به پس‌زمینه (احتمال بسته‌شدن توسط سیستم) و پیاده‌شدن درخت رابط.
  */
 export function usePersistentReducer<S, A>(
   repository: Repository<S>,
@@ -31,6 +35,21 @@ export function usePersistentReducer<S, A>(
   const [recovered, setRecovered] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextSave = useRef(true);
+  const pending = useRef(false);
+  const latest = useRef(state);
+  latest.current = state;
+
+  const flush = useCallback(() => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    if (!pending.current) {
+      return;
+    }
+    pending.current = false;
+    repository.save(latest.current).catch(() => undefined);
+  }, [repository]);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +63,11 @@ export function usePersistentReducer<S, A>(
         dispatch({ type: '__hydrate', state: result.data } as unknown as A);
         setRecovered(result.recovered);
         setReady(true);
+        // داده خراب یا ناسازگار با مقدار پیش‌فرض جبران شده است؛ همان مقدار
+        // سالم روی حافظه نوشته می‌شود تا هر بار دوباره جبران لازم نباشد.
+        if (result.recovered) {
+          repository.save(result.data).catch(() => undefined);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -66,20 +90,37 @@ export function usePersistentReducer<S, A>(
     if (timer.current) {
       clearTimeout(timer.current);
     }
+    pending.current = true;
     timer.current = setTimeout(() => {
-      repository.save(state).catch(() => undefined);
+      timer.current = null;
+      pending.current = false;
+      repository.save(latest.current).catch(() => undefined);
     }, SAVE_DEBOUNCE_MS);
 
     return () => {
       if (timer.current) {
         clearTimeout(timer.current);
+        timer.current = null;
       }
     };
   }, [state, ready, repository]);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (status: AppStateStatus) => {
+      if (status !== 'active') {
+        flush();
+      }
+    });
+    return () => {
+      subscription.remove();
+      flush();
+    };
+  }, [flush]);
+
   const reset = useCallback(async () => {
     await repository.clear();
     skipNextSave.current = true;
+    pending.current = false;
     dispatch({ type: '__hydrate', state: repository.createDefault() } as unknown as A);
   }, [repository]);
 
