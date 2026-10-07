@@ -1,7 +1,6 @@
 import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { useServices } from '../../context';
 import { colors, radius, typography } from '../../theme';
 import { AppText } from '../ui/AppText';
 import { PressableScale } from '../ui/PressableScale';
@@ -38,16 +37,17 @@ export function LetterTile({
   tileId,
   accessibilityLabel,
 }: LetterTileProps) {
-  const { sound, vibration } = useServices();
-
+  /**
+   * صدا و لرزش اینجا پخش نمی‌شود؛ بازخورد لمسی یک‌جا در `GameContext` و بر پایه
+   * تغییر واقعی انتخاب انجام می‌شود. پیش‌تر هم کاشی و هم زمینه بازی صدا می‌زدند
+   * و صدای دوتایی شنیده می‌شد.
+   */
   const handlePress = useCallback(() => {
     if (disabled) {
       return;
     }
-    sound.play('letter_select');
-    vibration.trigger('letter_select');
     onPress(tileId);
-  }, [disabled, onPress, sound, tileId, vibration]);
+  }, [disabled, onPress, tileId]);
 
   const background = selected
     ? colors.tileSelectedBackground

@@ -14,20 +14,28 @@ export interface WordSlotsProps {
   onRemove: (tileId: string) => void;
   /** حرف‌هایی که با راهنما آشکار شده‌اند و در جای خود نمایش داده می‌شوند */
   revealedLetters?: readonly string[];
+  /** اندازه پیشنهادی هر جای خالی؛ از چیدمان صفحه می‌آید */
+  size?: number;
 }
 
 const MIN_SLOTS = 3;
-const MAX_SLOTS = 6;
+/**
+ * سقف جاهای خالی برابر بیشترین طول واژه در مرحله‌هاست (۷ حرف).
+ * پیش‌تر این عدد ۶ بود و در مرحله‌های ۷ حرفی، حرف آخر انتخاب‌شده جایی برای
+ * دیده‌شدن نداشت؛ یعنی بازیکن حرف می‌زد و «گم» می‌شد.
+ */
+const MAX_SLOTS = 9;
 const GAP = spacing.sm;
-const MIN_SLOT_SIZE = 34;
+const MIN_SLOT_SIZE = 30;
 const MAX_SLOT_SIZE = 48;
 
 /**
  * جای خالی واژه.
  *
  * تعداد جای‌ها با پیشرفت انتخاب رشد می‌کند (از سه جای خالی تا سقف طول واژه در
- * مرحله) و اندازه هر جای خالی با عرض موجود تنظیم می‌شود. لمس هر جای پر‌شده،
- * همان حرف را برمی‌گرداند.
+ * مرحله) و اندازه هر جای خالی با عرض موجود و ارتفاع چیدمان تنظیم می‌شود؛ اندازه
+ * هرگز طوری بزرگ نمی‌شود که از عرض صفحه بیرون بزند. لمس هر جای پر‌شده، همان حرف
+ * را برمی‌گرداند.
  */
 export const WordSlots = React.memo(function WordSlots({
   selected,
@@ -35,13 +43,20 @@ export const WordSlots = React.memo(function WordSlots({
   availableWidth,
   onRemove,
   revealedLetters = [],
+  size,
 }: WordSlotsProps) {
-  const slotCount = Math.max(MIN_SLOTS, Math.min(MAX_SLOTS, maxLength, Math.max(selected.length, MIN_SLOTS)));
+  const slotCount = Math.max(
+    MIN_SLOTS,
+    Math.min(MAX_SLOTS, Math.max(maxLength, MIN_SLOTS), Math.max(selected.length, MIN_SLOTS)),
+  );
 
   const slotSize = useMemo(() => {
     const usable = Math.max(0, availableWidth - GAP * (slotCount - 1));
-    return Math.max(MIN_SLOT_SIZE, Math.min(MAX_SLOT_SIZE, Math.floor(usable / slotCount)));
-  }, [availableWidth, slotCount]);
+    // اندازه هرگز از سهم عرض صفحه بیشتر نمی‌شود؛ پس هیچ‌وقت ردیف بیرون نمی‌زند.
+    const byWidth = Math.max(20, Math.floor(usable / slotCount));
+    const wanted = size ?? MAX_SLOT_SIZE;
+    return Math.max(MIN_SLOT_SIZE, Math.min(MAX_SLOT_SIZE, wanted, byWidth));
+  }, [availableWidth, size, slotCount]);
 
   const slots = Array.from({ length: slotCount }, (_, index) => selected[index]);
 

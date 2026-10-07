@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { BackHandler } from 'react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 
 import { strings } from '../../src/constants';
 import { format } from '../../src/utils/format';
@@ -77,4 +78,50 @@ it('خروج از مرحله با دکمه بازگشت، ورود دوباره 
   expect(submit.props.accessibilityState?.disabled).toBeFalsy();
 
   view.unmount();
+});
+
+it('دکمه بازگشت اندروید گفت‌وگوی خروج را باز می‌کند؛ لغو در مرحله می‌ماند و تأیید بیرون می‌برد', async () => {
+  // دکمه بازگشت سخت‌افزاری فقط روی اندروید وجود دارد؛ در آزمون، همان
+  // شنونده‌ای که صفحه بازی ثبت می‌کند نگه داشته و مستقیم صدا زده می‌شود.
+  const backHandlers: (() => boolean | null | undefined)[] = [];
+  const spy = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_name, handler) => {
+    backHandlers.push(handler as () => boolean | null | undefined);
+    return { remove: jest.fn() };
+  });
+
+  try {
+    const view = await launchApp();
+    await completeOnboarding();
+
+    await fireEvent.press(screen.getByText(strings.home.playNewButton));
+    await waitFor(() => expect(screen.getByText(strings.game.tutorialStepLetters)).toBeTruthy());
+
+    await typeWord(LEVEL_ONE.targetWords[0]![0]!);
+    expect(backHandlers.length).toBeGreaterThan(0);
+
+    // فشردن دکمه بازگشت: رویداد باید «مصرف‌شده» گزارش شود و دیالوگ باز شود
+    await act(async () => {
+      expect(backHandlers[backHandlers.length - 1]!()).toBe(true);
+    });
+    await waitFor(() => expect(screen.getByText(strings.game.leaveTitle)).toBeTruthy());
+
+    // لغو: بازیکن در همان مرحله می‌ماند و انتخابش دست‌نخورده است
+    await fireEvent.press(screen.getByText(strings.common.cancel));
+    await waitFor(() => expect(screen.queryByText(strings.game.leaveTitle)).toBeNull());
+    expect(screen.getByLabelText(strings.accessibility.submitButton)).toBeTruthy();
+
+    // تأیید: از مرحله بیرون می‌رویم و مرحله نیمه‌کاره رها می‌شود
+    await act(async () => {
+      backHandlers[backHandlers.length - 1]!();
+    });
+    await waitFor(() => expect(screen.getByText(strings.game.leaveTitle)).toBeTruthy());
+    await fireEvent.press(screen.getByText(strings.common.confirm));
+    await waitFor(() => expect(screen.getByText(strings.home.playButton)).toBeTruthy(), {
+      timeout: 8000,
+    });
+
+    view.unmount();
+  } finally {
+    spy.mockRestore();
+  }
 });

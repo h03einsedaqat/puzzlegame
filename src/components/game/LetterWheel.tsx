@@ -1,10 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, StyleSheet, View, type GestureResponderEvent } from 'react-native';
-import Svg, { Circle, Polygon } from 'react-native-svg';
+import React, { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Svg, { Circle, Polyline } from 'react-native-svg';
 
 import { strings } from '../../constants';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { applyWheelTouch, nearestTileId, resolveWheelTouch } from '../../services/game/wheelGesture';
+import { useWheelGestures, type WheelPointerStore } from '../../hooks/useWheelGestures';
+import {
+  computeWheelGeometry,
+  positionOf,
+  preferredTileSizeFor,
+  type WheelGeometry,
+} from '../../services/game/wheelGesture';
 import { colors, radius } from '../../theme';
 import { format, toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
@@ -13,110 +20,86 @@ import type { LetterTileData } from '../../types';
 
 export interface LetterWheelProps {
   tiles: readonly LetterTileData[];
+  /** انتخاب فعلی بازی؛ منبع حقیقت رندر */
   selectedIds: readonly string[];
+  /** لمس ساده یک حرف (دکمه کاشی؛ برای دسترس‌پذیری و صفحه‌های بزرگ‌متن) */
   onTilePress: (tileId: string) => void;
-  /** برداشتن کاشی از انتخاب (برای برگشتن روی حرف قبلی هنگام کشیدن) */
-  onTileRemove: (tileId: string) => void;
-  /** با برداشتن انگشت پس از یک «کشیدن»، خودش کلمه را ثبت می‌کند (مثل بازی‌های کلمه‌ای) */
-  onAutoSubmit: () => void;
+  /** دنباله انتخاب در طول کشیدن؛ یک‌جا و قطعی نوشته می‌شود */
+  onSelectionChange: (tileIds: readonly string[]) => void;
+  /** برداشتن انگشت پس از یک کشیدن واقعی؛ واژه باید ثبت شود */
+  onRelease: (tileIds: readonly string[]) => void;
   disabled?: boolean;
-  /** قطر چرخ؛ معمولاً از عرض و ارتفاع صفحه می‌آید */
+  /** قطر چرخ؛ از چیدمان صفحه می‌آید */
   diameter?: number;
-  tileSize?: number;
+  /** اندازه کاشی پیشنهادی؛ هندسه در صورت نیاز آن را کوچک‌تر می‌کند */
+  preferredTileSize?: number;
   accessibilityLabel?: string;
-  /** پیشرفت کلمه‌های اصلی مرحله؛ حلقه وسط چرخ را پر می‌کند */
   foundCount?: number;
   totalCount?: number;
-  /**
-   * راهنمای گام‌به‌گام: ترتیب کاشی‌هایی که باید زده شوند. کاشی «بعدی» با حلقه
-   * چشمک‌زن طلایی روشن می‌شود و کاشی‌های پشت‌سرهم‌زده‌شده شماره می‌گیرند.
-   */
+  /** ترتیب کاشی‌هایی که باید زده شوند (راهنمای گام‌به‌گام) */
   guideTileIds?: readonly string[];
-  /**
-   * هنگام شروع/پایان کشیدن انگشت خبر می‌دهد. صفحه بازی با این سیگنال، ثبت خودکار
-   * را تا برداشتن انگشت متوقف می‌کند تا وسط کشیدن واژه ثبت نشود.
-   */
+  /** هنگام شروع/پایان کشیدن خبر می‌دهد تا ثبت خودکار معلق شود */
   onDragStateChange?: (dragging: boolean) => void;
 }
 
-const DEFAULT_TILE = 58;
-/** فاصله کمینه بین دو به‌روزرسانی ردیاب انگشت (میلی‌ثانیه)؛ روی گوشی ضعیف روان می‌ماند */
-const FINGER_THROTTLE_MS = 50;
-/** آستانه شروع کشیدن: کمتر از این، لمس ساده است و به کاشی می‌رسد */
-const DRAG_THRESHOLD = 6;
-
-interface Point {
-  x: number;
-  y: number;
-}
-
-/** تنها چیزی که از View لازم داریم: اندازه‌گیری جای دقیق چرخ روی صفحه */
-interface Measurable {
-  measureInWindow?: (callback: (x: number, y: number, width: number, height: number) => void) => void;
-  measure?: (
-    callback: (x: number, y: number, width: number, height: number, pageX: number, pageY: number) => void,
-  ) => void;
-}
+const DEFAULT_DIAMETER = 300;
 
 /**
- * چرخ حروف — حروف دور یک دایره می‌نشینند و با **کشیدن انگشت** روی آن‌ها کلمه
- * ساخته می‌شود؛ با برداشتن انگشت کلمه خودش ثبت می‌شود. لمس تک‌تک حروف هم کار
- * می‌کند (برای دسترس‌پذیری و صفحه‌های بزرگ‌متن).
+ * چرخ حروف.
  *
- * نکته‌های مهمی که این نسخه رعایت می‌کند تا روی گوشی واقعی هیچ‌وقت «گیر» نکند:
- *   ۱) جای چرخ روی صفحه در **شروع هر کشیدن** دوباره اندازه‌گیری می‌شود
- *      (`measureInWindow`)؛ پس اگر چیدمان صفحه جابه‌جا شود — مثلاً نوار راهنما
- *      بالای چرخ ظاهر شود یا سرصفحه ارتفاعش عوض شود — محدوده لمس همچنان دقیق است.
- *   ۲) انتخاب در همان لحظه در یک `ref` نگه داشته می‌شود، نه در وضعیت React؛ پس
- *      کشیدن سریع هیچ حرفی را جا نمی‌گذارد.
- *   ۳) `onPanResponderTerminationRequest` هرگز اجازه نمی‌دهد والد (اسکرول یا
- *      هر جزء دیگر) وسط کشیدن، گرفتن انگشت را از چرخ بگیرد.
+ * حروف دور یک دایره می‌نشینند؛ با لمس یک حرف انتخاب می‌شود و با کشیدن انگشت
+ * روی چند حرف، واژه ساخته می‌شود. با برداشتن انگشت پس از کشیدن، خودِ چرخ خبر
+ * می‌دهد که واژه باید ثبت شود.
+ *
+ * سه تصمیم معماری که پایداری این بخش را می‌سازند:
+ *
+ *   ۱) **یک سطح تعاملی، نه چند تا.** کل چرخ یک `GestureDetector` است و کشیدن
+ *      فقط از همین یک مسیر می‌آید. کاشی‌ها دیگر با کشیدن رقابت نمی‌کنند؛
+ *      دکمه‌های کاشی فقط برای لمس ساده و صفحه‌خوان‌ها هستند و به‌محض فعال‌شدن
+ *      ژست کشیدن، سیستم به‌صورت بومی لمس آن‌ها را لغو می‌کند.
+ *   ۲) **یک دستگاه مختصات.** هندسه کاشی‌ها و نقطه انگشت هر دو در مختصات خودِ
+ *      چرخ‌اند (`event.x/y` دستگیره ژست نسبت به همین نما گزارش می‌شود)؛ پس نه
+ *      `measureInWindow` غیرهمگام لازم است و نه `pageX - origin`.
+ *   ۳) **انتخاب در لایه لمس، رندر در React.** دنباله انتخاب در ماشین حالت خالص
+ *      نگه داشته می‌شود و نقطه انگشت با حداکثر یک بار در هر فریم منتشر می‌شود؛
+ *      پس کشیدن سریع نه حرفی را جا می‌گذارد و نه کاشی‌ها را دوباره رندر می‌کند.
  */
-export function LetterWheel({
+export const LetterWheel = React.memo(function LetterWheel({
   tiles,
   selectedIds,
   onTilePress,
-  onTileRemove,
-  onAutoSubmit,
+  onSelectionChange,
+  onRelease,
   disabled = false,
-  diameter = 300,
-  tileSize = DEFAULT_TILE,
+  diameter = DEFAULT_DIAMETER,
+  preferredTileSize,
   accessibilityLabel,
   foundCount = 0,
   totalCount = 0,
   guideTileIds,
   onDragStateChange,
 }: LetterWheelProps) {
-  const [finger, setFinger] = useState<Point | null>(null);
-  const containerRef = useRef<React.ComponentRef<typeof View> | null>(null);
-  const draggingRef = useRef(false);
-  const lastFingerAtRef = useRef(0);
+  const preferred = useMemo(
+    () => preferredTileSize ?? preferredTileSizeFor(diameter, Math.max(tiles.length, 1)),
+    [diameter, preferredTileSize, tiles.length],
+  );
 
-  const center = { x: diameter / 2, y: diameter / 2 };
-  const progressRatio = totalCount > 0 ? Math.max(0, Math.min(1, foundCount / totalCount)) : 0;
+  const geometry = useMemo(
+    () => computeWheelGeometry({ tiles, diameter, preferredTileSize: preferred }),
+    [diameter, preferred, tiles],
+  );
 
-  /** ترتیب کاشی‌ها روی دایره با زاویه؛ از بالا و ساعتگرد */
-  const positions = useMemo(() => {
-    const count = Math.max(tiles.length, 1);
-    const orbit = Math.max(tileSize * 1.55, diameter / 2 - tileSize / 2 - 6);
-    return tiles.map((tile, index) => {
-      const angle = -Math.PI / 2 + (index * 2 * Math.PI) / count;
-      return {
-        id: tile.id,
-        char: tile.char,
-        x: center.x + orbit * Math.cos(angle),
-        y: center.y + orbit * Math.sin(angle),
-      };
-    });
-  }, [center.x, center.y, diameter, tileSize, tiles]);
+  const { gesture, pointer } = useWheelGestures({
+    enabled: !disabled,
+    geometry,
+    selection: selectedIds,
+    onSelectionChange,
+    onRelease,
+    onDragStateChange,
+  });
 
-  const positionById = useMemo(() => {
-    const map = new Map<string, Point>();
-    for (const position of positions) {
-      map.set(position.id, { x: position.x, y: position.y });
-    }
-    return map;
-  }, [positions]);
+  const progressRatio =
+    totalCount > 0 ? Math.max(0, Math.min(1, foundCount / totalCount)) : 0;
 
   // راهنمای فعال: کاشی بعدی که باید زده شود و کاشی‌هایی که بازیکن طبق نقشه زده است.
   const guide = useMemo(() => {
@@ -149,184 +132,70 @@ export function LetterWheel({
     loop.start();
     return () => loop.stop();
   }, [guide.nextTileId, guidePulse, reducedMotion]);
-  const guideScale = guidePulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
-
-  /**
-   * آینه‌ی انتخاب در یک ref.
-   * کشیدن سریع‌تر از چرخه رندر است؛ اگر هر لمس منتظر به‌روزشدن وضعیت React
-   * بماند، حرف‌ها جا می‌افتند و اصلاح اشتباه کار نمی‌کند.
-   */
-  const selectionRef = useRef<readonly string[]>(selectedIds);
-  useEffect(() => {
-    selectionRef.current = selectedIds;
-  }, [selectedIds]);
-
-  const stateRef = useRef({
-    disabled,
-    positions,
-    tileSize,
-    onTilePress,
-    onTileRemove,
-    onAutoSubmit,
-    onDragStateChange,
-  });
-  useEffect(() => {
-    stateRef.current = {
-      disabled,
-      positions,
-      tileSize,
-      onTilePress,
-      onTileRemove,
-      onAutoSubmit,
-      onDragStateChange,
-    };
-  }, [
-    disabled,
-    onAutoSubmit,
-    onDragStateChange,
-    onTilePress,
-    onTileRemove,
-    positions,
-    tileSize,
-  ]);
-
-  /** اگر مرحله تمام شد یا صفحه عوض شد، کشیدن نیمه‌کاره رها می‌شود */
-  useEffect(() => {
-    if (disabled) {
-      draggingRef.current = false;
-      setFinger(null);
-      stateRef.current.onDragStateChange?.(false);
-    }
-  }, [disabled]);
-
-  const handlePoint = useCallback((point: Point) => {
-    const { positions: current, tileSize: size, onTilePress: select, onTileRemove: remove } =
-      stateRef.current;
-    const tileId = nearestTileId(current, size, point);
-    const action = resolveWheelTouch(selectionRef.current, tileId);
-    if (action.type === 'none') {
-      return;
-    }
-    selectionRef.current = applyWheelTouch(selectionRef.current, action);
-    if (action.type === 'add') {
-      select(action.tileId);
-    } else {
-      remove(action.tileId);
-    }
-  }, []);
-
-  /**
-   * جای چرخ روی صفحه.
-   * `locationX/locationY` روی اندروید نسبت به «عنصری که لمس رویش شروع شده» گزارش
-   * می‌شود (کاشی یا خود چرخ)، پس قابل اتکا نیست؛ از مختصات صفحه منهای جای چرخ
-   * استفاده می‌کنیم و این اندازه‌گیری در شروع هر کشیدن تازه می‌شود.
-   */
-  const originRef = useRef<Point>({ x: 0, y: 0 });
-  const refreshOrigin = useCallback(() => {
-    const node = containerRef.current as unknown as Measurable | null;
-    if (node?.measureInWindow) {
-      node.measureInWindow((x, y) => {
-        originRef.current = { x, y };
-      });
-      return;
-    }
-    node?.measure?.((_x, _y, _width, _height, pageX, pageY) => {
-      originRef.current = { x: pageX, y: pageY };
-    });
-  }, []);
-
-  /** نقطه لمس نسبت به چرخ */
-  const pointFrom = useCallback((event: GestureResponderEvent): Point => {
-    return {
-      x: event.nativeEvent.pageX - originRef.current.x,
-      y: event.nativeEvent.pageY - originRef.current.y,
-    };
-  }, []);
-
-  const refreshOriginRef = useRef(refreshOrigin);
-  useEffect(() => {
-    refreshOriginRef.current = refreshOrigin;
-  }, [refreshOrigin]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onStartShouldSetPanResponderCapture: () => false,
-      onMoveShouldSetPanResponder: (_event, gesture) =>
-        !stateRef.current.disabled && Math.hypot(gesture.dx, gesture.dy) > DRAG_THRESHOLD,
-      onMoveShouldSetPanResponderCapture: () => false,
-      // وسط کشیدن، گرفتن انگشت هرگز به والد داده نمی‌شود؛ همین یک خط جلوی
-      // «گیرکردن» چرخ روی گوشی را می‌گیرد.
-      onPanResponderTerminationRequest: () => false,
-      onShouldBlockNativeResponder: () => true,
-      onPanResponderGrant: event => {
-        draggingRef.current = true;
-        stateRef.current.onDragStateChange?.(true);
-        // اندازه‌گیری تازه در شروع کشیدن؛ بعد از این، نقطه‌ها درست حساب می‌شوند.
-        refreshOriginRef.current();
-        const point = pointFrom(event);
-        lastFingerAtRef.current = Date.now();
-        setFinger(point);
-        handlePoint(point);
-      },
-      onPanResponderMove: event => {
-        const point = pointFrom(event);
-        // ردیاب انگشت با نرخ محدود به‌روز می‌شود تا کشیدن روی گوشی ضعیف کند نشود؛
-        // انتخاب حروف اما بی‌درنگ و بدون محدودیت انجام می‌شود.
-        const now = Date.now();
-        if (now - lastFingerAtRef.current >= FINGER_THROTTLE_MS) {
-          lastFingerAtRef.current = now;
-          setFinger(point);
-        }
-        handlePoint(point);
-      },
-      onPanResponderRelease: () => {
-        const wasDragging = draggingRef.current;
-        draggingRef.current = false;
-        setFinger(null);
-        stateRef.current.onDragStateChange?.(false);
-        if (wasDragging && selectionRef.current.length >= 2) {
-          stateRef.current.onAutoSubmit();
-        }
-      },
-      onPanResponderTerminate: () => {
-        draggingRef.current = false;
-        setFinger(null);
-        stateRef.current.onDragStateChange?.(false);
-      },
-    }),
-  ).current;
-
-  /** خط زنجیره‌ای انتخاب: از کاشی اول تا انگشت، به ترتیب انتخاب */
-  const chain = useMemo(() => {
-    const points = selectedIds
-      .map(id => positionById.get(id))
-      .filter((point): point is Point => point !== undefined);
-    if (finger) {
-      points.push(finger);
-    }
-    return points;
-  }, [finger, positionById, selectedIds]);
 
   if (tiles.length === 0) {
     return <View style={{ height: diameter }} />;
   }
 
   return (
-    <View
-      ref={containerRef}
-      onLayout={refreshOrigin}
-      style={[styles.container, { width: diameter, height: diameter }]}
-      accessibilityLabel={accessibilityLabel}
-      {...panResponder.panHandlers}
-    >
+    <GestureDetector gesture={gesture}>
+      <View
+        style={[styles.wheel, { width: diameter, height: diameter }]}
+        accessibilityLabel={accessibilityLabel}
+      >
+        <WheelBackdrop
+          geometry={geometry}
+          progressRatio={progressRatio}
+          foundCount={foundCount}
+          totalCount={totalCount}
+        />
+        <WheelSelectionBeads geometry={geometry} selectedIds={selectedIds} />
+        <WheelSelectionPath geometry={geometry} selectedIds={selectedIds} pointer={pointer} />
+        <WheelTiles
+          geometry={geometry}
+          selectedIds={selectedIds}
+          disabled={disabled}
+          onTilePress={onTilePress}
+          guide={guide}
+          pulse={guidePulse}
+        />
+      </View>
+    </GestureDetector>
+  );
+});
+
+interface WheelBackdropProps {
+  geometry: WheelGeometry;
+  progressRatio: number;
+  foundCount: number;
+  totalCount: number;
+}
+
+const CENTER_RING = 50;
+
+/**
+ * لایه ثابت چرخ: سینی، حلقه‌ها، حلقه پیشرفت و نشان وسط.
+ * با `memo` جدا شده تا کشیدن انگشت (که فقط مسیر انتخاب را عوض می‌کند) این لایه
+ * را دوباره نسازد.
+ */
+const WheelBackdrop = React.memo(function WheelBackdrop({
+  geometry,
+  progressRatio,
+  foundCount,
+  totalCount,
+}: WheelBackdropProps) {
+  const { diameter, center, tileSize } = geometry;
+  const trayRadius = Math.max(tileSize, diameter / 2 - tileSize / 2);
+  const badgeSize = Math.round(Math.min(Math.max(diameter * 0.27, 62), 92));
+
+  return (
+    <>
       <Svg width={diameter} height={diameter} style={StyleSheet.absoluteFill} pointerEvents="none">
-        {/* صفحه‌ی زیر حروف: دایره روشن با حلقه طلایی، شبیه سینیِ بازی */}
-        <Circle cx={center.x} cy={center.y} r={Math.max(tileSize, diameter / 2 - tileSize / 2)} fill={colors.surface} opacity={0.72} />
+        <Circle cx={center.x} cy={center.y} r={trayRadius} fill={colors.surface} opacity={0.72} />
         <Circle
           cx={center.x}
           cy={center.y}
-          r={Math.max(tileSize, diameter / 2 - tileSize / 2)}
+          r={trayRadius}
           stroke={colors.accent}
           strokeWidth={3}
           fill="none"
@@ -342,24 +211,15 @@ export function LetterWheel({
           strokeDasharray="8 8"
           opacity={0.7}
         />
-
-        {/* زنجیره انتخاب */}
-        {chain.length >= 2 ? (
-          <Polygon
-            points={chain.map(point => `${point.x},${point.y}`).join(' ')}
-            fill={colors.primary}
-            fillOpacity={0.16}
-            stroke={colors.brandTeal}
-            strokeWidth={5}
-            strokeLinejoin="round"
-          />
-        ) : null}
-        {chain.length === 1 ? (
-          <Circle cx={chain[0]!.x} cy={chain[0]!.y} r={7} fill={colors.brandTeal} />
-        ) : null}
-
-        {/* حلقه پیشرفت کلمه‌های مرحله دور نشان وسط */}
-        <Circle cx={center.x} cy={center.y} r={CENTER_RING} stroke={colors.border} strokeWidth={6} fill="none" opacity={0.8} />
+        <Circle
+          cx={center.x}
+          cy={center.y}
+          r={CENTER_RING}
+          stroke={colors.border}
+          strokeWidth={6}
+          fill="none"
+          opacity={0.8}
+        />
         <Circle
           cx={center.x}
           cy={center.y}
@@ -374,59 +234,161 @@ export function LetterWheel({
         />
       </Svg>
 
-      {/* نشان وسط چرخ: پیشرفت کلمه‌های مرحله */}
-      <View pointerEvents="none" style={[styles.centerBadge, { left: center.x - 42, top: center.y - 42 }]}>
-        <AppText variant="numericLarge" color={colors.primaryDark}>
+      <View
+        pointerEvents="none"
+        style={[
+          styles.centerBadge,
+          {
+            width: badgeSize,
+            height: badgeSize,
+            left: center.x - badgeSize / 2,
+            top: center.y - badgeSize / 2,
+          },
+        ]}
+      >
+        <AppText
+          variant={badgeSize >= 80 ? 'numericLarge' : 'numeric'}
+          color={colors.primaryDark}
+          allowFontScaling={false}
+        >
           {toPersianDigits(foundCount)}/{toPersianDigits(totalCount)}
         </AppText>
-        <AppText variant="caption" color={colors.textMuted}>
+        <AppText variant="caption" color={colors.textMuted} numberOfLines={1} allowFontScaling={false}>
           {strings.game.wheelHint}
         </AppText>
       </View>
+    </>
+  );
+});
 
-      <WheelTiles
-        positions={positions}
-        tileSize={tileSize}
-        selectedIds={selectedIds}
-        disabled={disabled}
-        onTilePress={onTilePress}
-        guide={guide}
-        guideScale={guideScale}
+interface WheelSelectionProps {
+  geometry: WheelGeometry;
+  selectedIds: readonly string[];
+}
+
+/** مهره‌های انتخاب: یک نقطه در مرکز هر حرف انتخاب‌شده (و نه بیشتر). */
+const WheelSelectionBeads = React.memo(function WheelSelectionBeads({
+  geometry,
+  selectedIds,
+}: WheelSelectionProps) {
+  const centers = useMemo(
+    () =>
+      selectedIds
+        .map(id => positionOf(geometry, id))
+        .filter((position): position is NonNullable<typeof position> => position !== undefined),
+    [geometry, selectedIds],
+  );
+
+  if (centers.length === 0) {
+    return null;
+  }
+
+  return (
+    <Svg
+      width={geometry.diameter}
+      height={geometry.diameter}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    >
+      {centers.map(center => (
+        <Circle key={center.id} cx={center.x} cy={center.y} r={4.5} fill={colors.brandTeal} />
+      ))}
+    </Svg>
+  );
+});
+
+interface WheelSelectionPathProps extends WheelSelectionProps {
+  pointer: WheelPointerStore;
+}
+
+/**
+ * خط زنجیره انتخاب.
+ *
+ * `Polyline` (نه `Polygon`) رسم می‌شود تا مسیر هیچ‌وقت بسته نشود؛ مسیر از مرکز
+ * کاشی اول می‌گذرد، تا مرکز آخرین کاشی می‌آید و اگر انگشت جلوتر باشد تا خود
+ * انگشت ادامه پیدا می‌کند. نقطه انگشت با حداکثر یک بار در هر فریم می‌رسد، پس
+ * این جزء تنها بخشی است که هنگام حرکت انگشت رندر می‌شود.
+ */
+function WheelSelectionPath({ geometry, selectedIds, pointer }: WheelSelectionPathProps) {
+  const finger = useSyncExternalStore(pointer.subscribe, pointer.getSnapshot);
+
+  const points = useMemo(() => {
+    const centers = selectedIds
+      .map(id => positionOf(geometry, id))
+      .filter((position): position is NonNullable<typeof position> => position !== undefined)
+      .map(position => ({ x: position.x, y: position.y }));
+
+    if (finger) {
+      const last = centers[centers.length - 1];
+      // فقط وقتی انگشت «روی خودِ کاشی» آخر است نقطه‌اش اضافه نمی‌شود؛ در بقیه
+      // حالت‌ها مسیر تا انگشت کشیده می‌شود. ملاک، شعاع دیداری کاشی است (نه ناحیه
+      // لمس که عمداً بزرگ‌تر است) تا خط دقیقاً انگشت را دنبال کند.
+      const visualRadius = geometry.tileSize / 2;
+      const fingerOnLastTile =
+        last !== undefined && Math.hypot(last.x - finger.x, last.y - finger.y) <= visualRadius;
+      if (!fingerOnLastTile) {
+        centers.push(finger);
+      }
+    }
+
+    return centers;
+  }, [finger, geometry, selectedIds]);
+
+  if (points.length < 2) {
+    return null;
+  }
+
+  return (
+    <Svg
+      width={geometry.diameter}
+      height={geometry.diameter}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    >
+      <Polyline
+        points={points.map(point => `${point.x},${point.y}`).join(' ')}
+        fill="none"
+        stroke={colors.brandTeal}
+        strokeWidth={5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-    </View>
+    </Svg>
   );
 }
 
-
 interface WheelTilesProps {
-  positions: readonly { id: string; char: string; x: number; y: number }[];
-  tileSize: number;
+  geometry: WheelGeometry;
   selectedIds: readonly string[];
   disabled: boolean;
   onTilePress: (tileId: string) => void;
   guide: { nextTileId: string | null; matched: number; planned: readonly string[] };
-  guideScale: Animated.AnimatedInterpolation<number>;
+  pulse: Animated.Value;
 }
 
 /**
  * لایه کاشی‌ها.
  *
- * از بدنه چرخ جدا شده و `memo` است تا هنگام کشیدن انگشت — که ردیاب انگشت چند
- * بار در ثانیه به‌روز می‌شود — کاشی‌ها دوباره ساخته نشوند. این کار، روانی کشیدن
- * را روی گوشی‌های ضعیف به‌طور محسوس بهتر می‌کند.
+ * از بدنه چرخ جدا و `memo` است تا هنگام کشیدن انگشت — که مسیر انتخاب هر فریم
+ * به‌روز می‌شود — کاشی‌ها دوباره ساخته نشوند.
  */
 const WheelTiles = React.memo(function WheelTiles({
-  positions,
-  tileSize,
+  geometry,
   selectedIds,
   disabled,
   onTilePress,
   guide,
-  guideScale,
+  pulse,
 }: WheelTilesProps) {
+  const { tileSize } = geometry;
+  const guideScale = useMemo(
+    () => pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] }),
+    [pulse],
+  );
+
   return (
     <>
-      {positions.map(position => {
+      {geometry.positions.map(position => {
         const stepIndex = guide.planned.indexOf(position.id);
         return (
           <View
@@ -455,7 +417,7 @@ const WheelTiles = React.memo(function WheelTiles({
               />
             </Animated.View>
             {stepIndex >= 0 && stepIndex < guide.matched ? (
-              <View pointerEvents="none" style={[styles.stepBadge, { top: -6, right: -6 }]}>
+              <View pointerEvents="none" style={styles.stepBadge}>
                 <AppText variant="caption" color={colors.textInverse} allowFontScaling={false}>
                   {toPersianDigits(stepIndex + 1)}
                 </AppText>
@@ -474,18 +436,14 @@ const WheelTiles = React.memo(function WheelTiles({
   );
 });
 
-const CENTER_RING = 50;
-
 const styles = StyleSheet.create({
-  container: {
+  wheel: {
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
   },
   centerBadge: {
     position: 'absolute',
-    width: 84,
-    height: 84,
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
     alignItems: 'center',
@@ -507,6 +465,8 @@ const styles = StyleSheet.create({
   },
   stepBadge: {
     position: 'absolute',
+    top: -6,
+    right: -6,
     width: 22,
     height: 22,
     borderRadius: radius.pill,

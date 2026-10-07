@@ -1,5 +1,11 @@
 import { colors } from './colors';
-import { getLayoutMetrics, scaleSize, useLayout } from './layout';
+import {
+  computeGameLayout,
+  getLayoutMetrics,
+  scaleSize,
+  STATUS_SLOT_TWO_LINE_MIN,
+  useLayout,
+} from './layout';
 import { MIN_TOUCH_TARGET, radius, spacing } from './spacing';
 import { fontFamily, typography } from './typography';
 import { shadows } from './shadows';
@@ -14,7 +20,7 @@ export const theme = {
 } as const;
 
 export { colors, radius, spacing, typography, fontFamily, shadows, MIN_TOUCH_TARGET };
-export { getLayoutMetrics, scaleSize, useLayout };
-export type { LayoutMetrics } from './layout';
+export { computeGameLayout, getLayoutMetrics, scaleSize, STATUS_SLOT_TWO_LINE_MIN, useLayout };
+export type { GameLayout, GameLayoutInput, LayoutMetrics } from './layout';
 export type { AppColors } from './colors';
 export type { TypographyVariant } from './typography';

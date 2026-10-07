@@ -1,5 +1,6 @@
 import React from 'react';
-import { StatusBar } from 'react-native';
+import { StatusBar, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
@@ -23,27 +24,36 @@ import {
  */
 function App() {
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <StatusBar barStyle="dark-content" />
-        <ServicesProvider>
-          <SettingsProvider>
-            <ProfileProvider>
-              <ProgressProvider>
-                <DailyProvider>
-                  <AchievementsProvider>
-                    <GameProvider>
-                      <RootNavigator />
-                    </GameProvider>
-                  </AchievementsProvider>
-                </DailyProvider>
-              </ProgressProvider>
-            </ProfileProvider>
-          </SettingsProvider>
-        </ServicesProvider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={styles.root}>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          <StatusBar barStyle="dark-content" />
+          <ServicesProvider>
+            <SettingsProvider>
+              <ProfileProvider>
+                <ProgressProvider>
+                  <DailyProvider>
+                    <AchievementsProvider>
+                      <GameProvider>
+                        <RootNavigator />
+                      </GameProvider>
+                    </AchievementsProvider>
+                  </DailyProvider>
+                </ProgressProvider>
+              </ProfileProvider>
+            </SettingsProvider>
+          </ServicesProvider>
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  /** ریشه ژست باید کل صفحه را بپوشاند و شفاف باشد */
+  root: {
+    flex: 1,
+  },
+});
 
 export default App;

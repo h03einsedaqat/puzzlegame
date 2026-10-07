@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, spacing, STATUS_SLOT_TWO_LINE_MIN } from '../../theme';
 import { AppText } from './AppText';
 import { Icon } from './Icon';
 
@@ -12,6 +12,8 @@ export interface FeedbackBannerProps {
   /** کلید تغییر پیام؛ با تغییر آن انیمیشن دوباره اجرا می‌شود */
   messageId?: number;
   detail?: string;
+  /** ارتفاع ثابت جایگاه بازخورد؛ از چیدمان صفحه می‌آید */
+  height?: number;
 }
 
 const tonePalette = {
@@ -25,9 +27,15 @@ const tonePalette = {
  *
  * پیام‌ها با محو شدن نرم وارد می‌شوند تا تغییر وضعیت ناگهانی نباشد. متن پیام
  * از بیرون تعیین می‌شود تا این جزء هیچ منطق بازی نداشته باشد.
+ *
+ * ارتفاعش را از بیرون می‌گیرد؛ چون در جایگاه ثابتی می‌نشیند، ظاهر شدن بازخورد
+ * هیچ‌وقت چرخ حروف را جابه‌جا نمی‌کند. اگر جایگاه دو خط جا نداشته باشد، توضیح
+ * به‌جای خط دوم در همان خط پیام می‌آید تا هیچ متنی بریده نشود.
  */
-export function FeedbackBanner({ message, tone, messageId, detail }: FeedbackBannerProps) {
+export function FeedbackBanner({ message, tone, messageId, detail, height }: FeedbackBannerProps) {
   const palette = tonePalette[tone];
+  const roomForTwoLines = height === undefined || height >= STATUS_SLOT_TWO_LINE_MIN;
+  const firstLine = detail && !roomForTwoLines ? `${message} · ${detail}` : message;
   const reducedMotion = useReducedMotion();
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -45,6 +53,7 @@ export function FeedbackBanner({ message, tone, messageId, detail }: FeedbackBan
       accessibilityLiveRegion="polite"
       style={[
         styles.container,
+        height !== undefined ? { height } : null,
         {
           backgroundColor: palette.background,
           borderColor: palette.border,
@@ -55,11 +64,11 @@ export function FeedbackBanner({ message, tone, messageId, detail }: FeedbackBan
     >
       <Icon name={palette.icon} size={18} color={palette.text} />
       <View style={styles.texts}>
-        <AppText variant="bodyStrong" color={palette.text} numberOfLines={2}>
-          {message}
+        <AppText variant="bodyStrong" color={palette.text} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+          {firstLine}
         </AppText>
-        {detail ? (
-          <AppText variant="caption" color={colors.textSecondary} numberOfLines={2}>
+        {detail && roomForTwoLines ? (
+          <AppText variant="caption" color={colors.textSecondary} numberOfLines={1} maxFontSizeMultiplier={1.2}>
             {detail}
           </AppText>
         ) : null}
@@ -73,13 +82,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.md,
     borderWidth: 1,
+    alignSelf: 'stretch',
+    overflow: 'hidden',
   },
   texts: {
     flex: 1,
-    alignItems: 'flex-start',
+    minWidth: 0,
   },
 });
