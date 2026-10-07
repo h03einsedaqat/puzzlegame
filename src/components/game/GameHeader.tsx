@@ -32,7 +32,7 @@ export interface GameHeaderProps {
  * امتیاز، سکه، قلب و پیشرفت واژه‌ها در یک نگاه دیده می‌شوند تا بازیکن بدون
  * ترک صفحه از وضعیت خود باخبر باشد.
  */
-export function GameHeader({
+export const GameHeader = React.memo(function GameHeader({
   title,
   difficulty,
   score,
@@ -88,7 +88,7 @@ export function GameHeader({
       <ProgressBar ratio={ratio} accessibilityLabel={format(strings.game.targetProgress, { found: foundTargets, total: totalTargets })} />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

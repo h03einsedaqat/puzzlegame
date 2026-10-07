@@ -216,7 +216,11 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
           </AppText>
 
           <Button
-            label={completedCount > 0 ? strings.home.playButton : strings.home.playNewButton}
+            label={
+              completedCount > 0 || progress.lastPlayedLevelId !== null
+                ? strings.home.playButton
+                : strings.home.playNewButton
+            }
             variant="success"
             icon="play"
             onPress={() => playLevel(continueLevelId)}

@@ -28,6 +28,10 @@ export interface ConfirmDialogProps {
  *
  * با دکمه بازگشت اندروید (onRequestClose) هم بسته می‌شود تا رفتار سیستمی
  * حفظ شود و خواننده صفحه (accessibility) محتوای گفت‌وگو را اعلام کند.
+ *
+ * وقتی پنهان است، هیچ پنجره بومی ساخته نمی‌شود (به‌جای `visible={false}`، جزء
+ * کاملاً از درخت بیرون می‌رود) تا هیچ‌وقت پنجره‌ای روی صفحه نماند که لمس‌ها را
+ * بگیرد و دکمه‌های بازی را بی‌واکنش کند.
  */
 export function ConfirmDialog({
   visible,
@@ -43,9 +47,13 @@ export function ConfirmDialog({
   footer,
   confirmDisabled = false,
 }: ConfirmDialogProps) {
+  if (!visible) {
+    return null;
+  }
+
   return (
     <Modal
-      visible={visible}
+      visible
       transparent
       animationType="fade"
       onRequestClose={onCancel}

@@ -56,7 +56,7 @@ function buildRows(
  * جای خودشان دیده می‌شوند؛ این کار راهنما را قابل استفاده و در عین حال کمکی
  * می‌کند. واژه‌های امتیازی جداگانه و فقط در صورت وجود نمایش داده می‌شوند.
  */
-export function FoundWordsList({
+export const FoundWordsList = React.memo(function FoundWordsList({
   targetWords,
   bonusWords,
   foundWords,
@@ -130,7 +130,7 @@ export function FoundWordsList({
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, StyleSheet, View } from 'react-native';
+import { Animated, PanResponder, StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import Svg, { Circle, Polygon } from 'react-native-svg';
 
 import { strings } from '../../constants';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { colors, radius, spacing } from '../../theme';
+import { applyWheelTouch, nearestTileId, resolveWheelTouch } from '../../services/game/wheelGesture';
+import { colors, radius } from '../../theme';
 import { format, toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { LetterTile } from './LetterTile';
@@ -19,18 +20,13 @@ export interface LetterWheelProps {
   /** با برداشتن انگشت پس از یک «کشیدن»، خودش کلمه را ثبت می‌کند (مثل بازی‌های کلمه‌ای) */
   onAutoSubmit: () => void;
   disabled?: boolean;
-  /** قطر چرخ؛ معمولاً از عرض صفحه می‌آید */
+  /** قطر چرخ؛ معمولاً از عرض و ارتفاع صفحه می‌آید */
   diameter?: number;
   tileSize?: number;
   accessibilityLabel?: string;
   /** پیشرفت کلمه‌های اصلی مرحله؛ حلقه وسط چرخ را پر می‌کند */
   foundCount?: number;
   totalCount?: number;
-  /**
-   * هنگام شروع/پایان کشیدن انگشت خبر می‌دهد. صفحه بازی با این سیگنال اسکرول را
-   * موقتاً خاموش می‌کند تا کشیدن حروف با اسکرول صفحه قاطی نشود.
-   */
-  onDragStateChange?: (dragging: boolean) => void;
   /**
    * راهنمای گام‌به‌گام: ترتیب کاشی‌هایی که باید زده شوند. کاشی «بعدی» با حلقه
    * چشمک‌زن طلایی روشن می‌شود و کاشی‌های پشت‌سرهم‌زده‌شده شماره می‌گیرند.
@@ -39,31 +35,37 @@ export interface LetterWheelProps {
 }
 
 const DEFAULT_TILE = 58;
-const HIT_FACTOR = 0.85;
-
-/** تنها چیزی که از View لازم داریم: اندازه‌گیری جای چرخ روی صفحه */
-interface Measurable {
-  measure?: (
-    callback: (x: number, y: number, width: number, height: number, pageX: number, pageY: number) => void,
-  ) => void;
-}
+/** فاصله کمینه بین دو به‌روزرسانی ردیاب انگشت (میلی‌ثانیه)؛ روی گوشی ضعیف روان می‌ماند */
+const FINGER_THROTTLE_MS = 50;
+/** آستانه شروع کشیدن: کمتر از این، لمس ساده است و به کاشی می‌رسد */
+const DRAG_THRESHOLD = 6;
 
 interface Point {
   x: number;
   y: number;
 }
 
+/** تنها چیزی که از View لازم داریم: اندازه‌گیری جای دقیق چرخ روی صفحه */
+interface Measurable {
+  measureInWindow?: (callback: (x: number, y: number, width: number, height: number) => void) => void;
+  measure?: (
+    callback: (x: number, y: number, width: number, height: number, pageX: number, pageY: number) => void,
+  ) => void;
+}
+
 /**
  * چرخ حروف — حروف دور یک دایره می‌نشینند و با **کشیدن انگشت** روی آن‌ها کلمه
- * ساخته می‌شود؛ همان کاری که بازیکن بازی‌های کلمه‌ای ایرانی انتظار دارد.
+ * ساخته می‌شود؛ با برداشتن انگشت کلمه خودش ثبت می‌شود. لمس تک‌تک حروف هم کار
+ * می‌کند (برای دسترس‌پذیری و صفحه‌های بزرگ‌متن).
  *
- * دو راه برای ساختن کلمه هست و هر دو درست کار می‌کنند:
- *   ۱) لمس تک‌تک حروف (مثل قبل؛ برای دسترس‌پذیری و صفحه‌های بزرگ‌متن)
- *   ۲) کشیدن انگشت روی حروف پشت‌سرهم و برداشتن انگشت = ثبت خودکار کلمه
- *
- * کشیدن با PanResponder انجام می‌شود و فقط وقتی شروع می‌شود که انگشت جابه‌جا
- * شده باشد؛ بنابراین ضربه‌های ساده همچنان به خود کاشی‌ها می‌رسند و رفتار لمسی
- * صفحه تغییر نمی‌کند.
+ * نکته‌های مهمی که این نسخه رعایت می‌کند تا روی گوشی واقعی هیچ‌وقت «گیر» نکند:
+ *   ۱) جای چرخ روی صفحه در **شروع هر کشیدن** دوباره اندازه‌گیری می‌شود
+ *      (`measureInWindow`)؛ پس اگر چیدمان صفحه جابه‌جا شود — مثلاً نوار راهنما
+ *      بالای چرخ ظاهر شود یا سرصفحه ارتفاعش عوض شود — محدوده لمس همچنان دقیق است.
+ *   ۲) انتخاب در همان لحظه در یک `ref` نگه داشته می‌شود، نه در وضعیت React؛ پس
+ *      کشیدن سریع هیچ حرفی را جا نمی‌گذارد.
+ *   ۳) `onPanResponderTerminationRequest` هرگز اجازه نمی‌دهد والد (اسکرول یا
+ *      هر جزء دیگر) وسط کشیدن، گرفتن انگشت را از چرخ بگیرد.
  */
 export function LetterWheel({
   tiles,
@@ -77,16 +79,38 @@ export function LetterWheel({
   accessibilityLabel,
   foundCount = 0,
   totalCount = 0,
-  onDragStateChange,
   guideTileIds,
 }: LetterWheelProps) {
   const [finger, setFinger] = useState<Point | null>(null);
-  const originRef = useRef<Point>({ x: 0, y: 0 });
   const containerRef = useRef<React.ComponentRef<typeof View> | null>(null);
-  const dragStartedRef = useRef(false);
+  const draggingRef = useRef(false);
+  const lastFingerAtRef = useRef(0);
 
   const center = { x: diameter / 2, y: diameter / 2 };
   const progressRatio = totalCount > 0 ? Math.max(0, Math.min(1, foundCount / totalCount)) : 0;
+
+  /** ترتیب کاشی‌ها روی دایره با زاویه؛ از بالا و ساعتگرد */
+  const positions = useMemo(() => {
+    const count = Math.max(tiles.length, 1);
+    const orbit = Math.max(tileSize * 1.55, diameter / 2 - tileSize / 2 - 6);
+    return tiles.map((tile, index) => {
+      const angle = -Math.PI / 2 + (index * 2 * Math.PI) / count;
+      return {
+        id: tile.id,
+        char: tile.char,
+        x: center.x + orbit * Math.cos(angle),
+        y: center.y + orbit * Math.sin(angle),
+      };
+    });
+  }, [center.x, center.y, diameter, tileSize, tiles]);
+
+  const positionById = useMemo(() => {
+    const map = new Map<string, Point>();
+    for (const position of positions) {
+      map.set(position.id, { x: position.x, y: position.y });
+    }
+    return map;
+  }, [positions]);
 
   // راهنمای فعال: کاشی بعدی که باید زده شود و کاشی‌هایی که بازیکن طبق نقشه زده است.
   const guide = useMemo(() => {
@@ -119,113 +143,132 @@ export function LetterWheel({
     loop.start();
     return () => loop.stop();
   }, [guide.nextTileId, guidePulse, reducedMotion]);
-
   const guideScale = guidePulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
-  const orbit = Math.max(tileSize * 1.6, diameter / 2 - tileSize / 2 - 6);
 
-  /** جای هر کاشی روی دایره؛ از بالا شروع و ساعتگرد ادامه پیدا می‌کند */
-  const positions = useMemo(() => {
-    const count = Math.max(tiles.length, 1);
-    return tiles.map((tile, index) => {
-      const angle = (-Math.PI / 2) + (index * 2 * Math.PI) / count;
-      return {
-        id: tile.id,
-        char: tile.char,
-        x: center.x + orbit * Math.cos(angle),
-        y: center.y + orbit * Math.sin(angle),
-      };
-    });
-  }, [center.x, center.y, orbit, tiles]);
-
-  const positionById = useMemo(() => {
-    const map = new Map<string, Point>();
-    for (const position of positions) {
-      map.set(position.id, { x: position.x, y: position.y });
-    }
-    return map;
-  }, [positions]);
-
-  /** وضعیت لحظه‌ای برای هندلرهای PanResponder (که نباید در هر رندر بازساخته شوند) */
-  const stateRef = useRef({ disabled, positions, selectedIds, onTilePress, onTileRemove, onAutoSubmit, tileSize, onDragStateChange });
+  /**
+   * آینه‌ی انتخاب در یک ref.
+   * کشیدن سریع‌تر از چرخه رندر است؛ اگر هر لمس منتظر به‌روزشدن وضعیت React
+   * بماند، حرف‌ها جا می‌افتند و اصلاح اشتباه کار نمی‌کند.
+   */
+  const selectionRef = useRef<readonly string[]>(selectedIds);
   useEffect(() => {
-    stateRef.current = { disabled, positions, selectedIds, onTilePress, onTileRemove, onAutoSubmit, tileSize, onDragStateChange };
-  }, [disabled, onAutoSubmit, onDragStateChange, onTilePress, onTileRemove, positions, selectedIds, tileSize]);
+    selectionRef.current = selectedIds;
+  }, [selectedIds]);
 
-  /** نزدیک‌ترین کاشی به انگشت، اگر داخل محدوده لمس باشد */
-  const tileAt = useCallback((point: Point): string | null => {
-    const { positions: current, tileSize: size } = stateRef.current;
-    const reach = size * HIT_FACTOR;
-    let bestId: string | null = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
-    for (const position of current) {
-      const distance = Math.hypot(position.x - point.x, position.y - point.y);
-      if (distance < reach && distance < bestDistance) {
-        bestDistance = distance;
-        bestId = position.id;
-      }
+  const stateRef = useRef({
+    disabled,
+    positions,
+    tileSize,
+    onTilePress,
+    onTileRemove,
+    onAutoSubmit,
+  });
+  useEffect(() => {
+    stateRef.current = { disabled, positions, tileSize, onTilePress, onTileRemove, onAutoSubmit };
+  }, [disabled, onAutoSubmit, onTilePress, onTileRemove, positions, tileSize]);
+
+  /** اگر مرحله تمام شد یا صفحه عوض شد، کشیدن نیمه‌کاره رها می‌شود */
+  useEffect(() => {
+    if (disabled) {
+      draggingRef.current = false;
+      setFinger(null);
     }
-    return bestId;
+  }, [disabled]);
+
+  const handlePoint = useCallback((point: Point) => {
+    const { positions: current, tileSize: size, onTilePress: select, onTileRemove: remove } =
+      stateRef.current;
+    const tileId = nearestTileId(current, size, point);
+    const action = resolveWheelTouch(selectionRef.current, tileId);
+    if (action.type === 'none') {
+      return;
+    }
+    selectionRef.current = applyWheelTouch(selectionRef.current, action);
+    if (action.type === 'add') {
+      select(action.tileId);
+    } else {
+      remove(action.tileId);
+    }
   }, []);
 
-  const applyFinger = useCallback(
-    (pageX: number, pageY: number) => {
-      const point = { x: pageX - originRef.current.x, y: pageY - originRef.current.y };
-      setFinger(point);
-
-      const tileId = tileAt(point);
-      if (!tileId) {
-        return;
-      }
-      const { selectedIds: selection, onTilePress: select, onTileRemove: remove } = stateRef.current;
-      const index = selection.indexOf(tileId);
-      if (index === -1) {
-        select(tileId);
-        return;
-      }
-      // اگر انگشت روی حرف یکی‌مانده‌قبل برگشت، آخرین حرف برداشته می‌شود.
-      if (index === selection.length - 2) {
-        remove(selection[selection.length - 1] as string);
-      }
-    },
-    [tileAt],
-  );
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_event, gesture) =>
-        !stateRef.current.disabled && Math.hypot(gesture.dx, gesture.dy) > 10,
-      onPanResponderGrant: () => {
-        dragStartedRef.current = true;
-        stateRef.current.onDragStateChange?.(true);
-      },
-      onPanResponderMove: (_event, gesture) => {
-        applyFinger(gesture.moveX, gesture.moveY);
-      },
-      onPanResponderRelease: () => {
-        const wasDragging = dragStartedRef.current;
-        dragStartedRef.current = false;
-        setFinger(null);
-        const { selectedIds: selection, onAutoSubmit: submit, onDragStateChange: notify } = stateRef.current;
-        notify?.(false);
-        if (wasDragging && selection.length >= 2) {
-          submit();
-        }
-      },
-      onPanResponderTerminate: () => {
-        dragStartedRef.current = false;
-        setFinger(null);
-        stateRef.current.onDragStateChange?.(false);
-      },
-    }),
-  ).current;
-
-  const measure = useCallback(() => {
+  /**
+   * جای چرخ روی صفحه.
+   * `locationX/locationY` روی اندروید نسبت به «عنصری که لمس رویش شروع شده» گزارش
+   * می‌شود (کاشی یا خود چرخ)، پس قابل اتکا نیست؛ از مختصات صفحه منهای جای چرخ
+   * استفاده می‌کنیم و این اندازه‌گیری در شروع هر کشیدن تازه می‌شود.
+   */
+  const originRef = useRef<Point>({ x: 0, y: 0 });
+  const refreshOrigin = useCallback(() => {
     const node = containerRef.current as unknown as Measurable | null;
+    if (node?.measureInWindow) {
+      node.measureInWindow((x, y) => {
+        originRef.current = { x, y };
+      });
+      return;
+    }
     node?.measure?.((_x, _y, _width, _height, pageX, pageY) => {
       originRef.current = { x: pageX, y: pageY };
     });
   }, []);
+
+  /** نقطه لمس نسبت به چرخ */
+  const pointFrom = useCallback((event: GestureResponderEvent): Point => {
+    return {
+      x: event.nativeEvent.pageX - originRef.current.x,
+      y: event.nativeEvent.pageY - originRef.current.y,
+    };
+  }, []);
+
+  const refreshOriginRef = useRef(refreshOrigin);
+  useEffect(() => {
+    refreshOriginRef.current = refreshOrigin;
+  }, [refreshOrigin]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (_event, gesture) =>
+        !stateRef.current.disabled && Math.hypot(gesture.dx, gesture.dy) > DRAG_THRESHOLD,
+      onMoveShouldSetPanResponderCapture: () => false,
+      // وسط کشیدن، گرفتن انگشت هرگز به والد داده نمی‌شود؛ همین یک خط جلوی
+      // «گیرکردن» چرخ روی گوشی را می‌گیرد.
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderGrant: event => {
+        draggingRef.current = true;
+        // اندازه‌گیری تازه در شروع کشیدن؛ بعد از این، نقطه‌ها درست حساب می‌شوند.
+        refreshOriginRef.current();
+        const point = pointFrom(event);
+        lastFingerAtRef.current = Date.now();
+        setFinger(point);
+        handlePoint(point);
+      },
+      onPanResponderMove: event => {
+        const point = pointFrom(event);
+        // ردیاب انگشت با نرخ محدود به‌روز می‌شود تا کشیدن روی گوشی ضعیف کند نشود؛
+        // انتخاب حروف اما بی‌درنگ و بدون محدودیت انجام می‌شود.
+        const now = Date.now();
+        if (now - lastFingerAtRef.current >= FINGER_THROTTLE_MS) {
+          lastFingerAtRef.current = now;
+          setFinger(point);
+        }
+        handlePoint(point);
+      },
+      onPanResponderRelease: () => {
+        const wasDragging = draggingRef.current;
+        draggingRef.current = false;
+        setFinger(null);
+        if (wasDragging && selectionRef.current.length >= 2) {
+          stateRef.current.onAutoSubmit();
+        }
+      },
+      onPanResponderTerminate: () => {
+        draggingRef.current = false;
+        setFinger(null);
+      },
+    }),
+  ).current;
 
   /** خط زنجیره‌ای انتخاب: از کاشی اول تا انگشت، به ترتیب انتخاب */
   const chain = useMemo(() => {
@@ -245,18 +288,18 @@ export function LetterWheel({
   return (
     <View
       ref={containerRef}
-      onLayout={measure}
+      onLayout={refreshOrigin}
       style={[styles.container, { width: diameter, height: diameter }]}
       accessibilityLabel={accessibilityLabel}
       {...panResponder.panHandlers}
     >
       <Svg width={diameter} height={diameter} style={StyleSheet.absoluteFill} pointerEvents="none">
         {/* صفحه‌ی زیر حروف: دایره روشن با حلقه طلایی، شبیه سینیِ بازی */}
-        <Circle cx={center.x} cy={center.y} r={orbit + tileSize * 0.5} fill={colors.surface} opacity={0.72} />
+        <Circle cx={center.x} cy={center.y} r={Math.max(tileSize, diameter / 2 - tileSize / 2)} fill={colors.surface} opacity={0.72} />
         <Circle
           cx={center.x}
           cy={center.y}
-          r={orbit + tileSize * 0.5}
+          r={Math.max(tileSize, diameter / 2 - tileSize / 2)}
           stroke={colors.accent}
           strokeWidth={3}
           fill="none"
@@ -265,7 +308,7 @@ export function LetterWheel({
         <Circle
           cx={center.x}
           cy={center.y}
-          r={orbit - tileSize * 0.42}
+          r={Math.max(tileSize * 0.6, diameter / 2 - tileSize * 1.1)}
           stroke={colors.borderStrong}
           strokeWidth={1.5}
           fill="none"
@@ -284,20 +327,22 @@ export function LetterWheel({
             strokeLinejoin="round"
           />
         ) : null}
-        {chain.length === 1 ? <Circle cx={chain[0]!.x} cy={chain[0]!.y} r={7} fill={colors.brandTeal} /> : null}
+        {chain.length === 1 ? (
+          <Circle cx={chain[0]!.x} cy={chain[0]!.y} r={7} fill={colors.brandTeal} />
+        ) : null}
 
         {/* حلقه پیشرفت کلمه‌های مرحله دور نشان وسط */}
-        <Circle cx={center.x} cy={center.y} r={50} stroke={colors.border} strokeWidth={6} fill="none" opacity={0.8} />
+        <Circle cx={center.x} cy={center.y} r={CENTER_RING} stroke={colors.border} strokeWidth={6} fill="none" opacity={0.8} />
         <Circle
           cx={center.x}
           cy={center.y}
-          r={50}
+          r={CENTER_RING}
           stroke={colors.success}
           strokeWidth={6}
           fill="none"
           strokeLinecap="round"
-          strokeDasharray={`${2 * Math.PI * 50}`}
-          strokeDashoffset={2 * Math.PI * 50 * (1 - progressRatio)}
+          strokeDasharray={`${2 * Math.PI * CENTER_RING}`}
+          strokeDashoffset={2 * Math.PI * CENTER_RING * (1 - progressRatio)}
           transform={`rotate(-90 ${center.x} ${center.y})`}
         />
       </Svg>
@@ -312,53 +357,103 @@ export function LetterWheel({
         </AppText>
       </View>
 
-      {/* کاشی‌های حروف */}
-      {positions.map(position => (
-        <View
-          key={position.id}
-          style={[
-            styles.tileSlot,
-            {
-              width: tileSize,
-              height: tileSize,
-              left: position.x - tileSize / 2,
-              top: position.y - tileSize / 2,
-            },
-          ]}
-        >
-          <Animated.View style={position.id === guide.nextTileId ? { transform: [{ scale: guideScale }] } : undefined}>
-            <LetterTile
-              tileId={position.id}
-              char={position.char}
-              size={tileSize}
-              selected={selectedIds.includes(position.id)}
-              disabled={disabled}
-              onPress={onTilePress}
-              accessibilityLabel={format(strings.accessibility.letterTile, { letter: position.char })}
-            />
-          </Animated.View>
-          {guide.planned.indexOf(position.id) >= 0 && guide.planned.indexOf(position.id) < guide.matched ? (
-            <View pointerEvents="none" style={[styles.stepBadge, { top: -6, right: -6 }]}>
-              <AppText variant="caption" color={colors.textInverse} allowFontScaling={false}>
-                {toPersianDigits(guide.planned.indexOf(position.id) + 1)}
-              </AppText>
-            </View>
-          ) : null}
-          {position.id === guide.nextTileId ? (
-            <View pointerEvents="none" style={[styles.guideRing, { width: tileSize + 14, height: tileSize + 14 }]} />
-          ) : null}
-        </View>
-      ))}
+      <WheelTiles
+        positions={positions}
+        tileSize={tileSize}
+        selectedIds={selectedIds}
+        disabled={disabled}
+        onTilePress={onTilePress}
+        guide={guide}
+        guideScale={guideScale}
+      />
     </View>
   );
 }
+
+
+interface WheelTilesProps {
+  positions: readonly { id: string; char: string; x: number; y: number }[];
+  tileSize: number;
+  selectedIds: readonly string[];
+  disabled: boolean;
+  onTilePress: (tileId: string) => void;
+  guide: { nextTileId: string | null; matched: number; planned: readonly string[] };
+  guideScale: Animated.AnimatedInterpolation<number>;
+}
+
+/**
+ * لایه کاشی‌ها.
+ *
+ * از بدنه چرخ جدا شده و `memo` است تا هنگام کشیدن انگشت — که ردیاب انگشت چند
+ * بار در ثانیه به‌روز می‌شود — کاشی‌ها دوباره ساخته نشوند. این کار، روانی کشیدن
+ * را روی گوشی‌های ضعیف به‌طور محسوس بهتر می‌کند.
+ */
+const WheelTiles = React.memo(function WheelTiles({
+  positions,
+  tileSize,
+  selectedIds,
+  disabled,
+  onTilePress,
+  guide,
+  guideScale,
+}: WheelTilesProps) {
+  return (
+    <>
+      {positions.map(position => {
+        const stepIndex = guide.planned.indexOf(position.id);
+        return (
+          <View
+            key={position.id}
+            style={[
+              styles.tileSlot,
+              {
+                width: tileSize,
+                height: tileSize,
+                left: position.x - tileSize / 2,
+                top: position.y - tileSize / 2,
+              },
+            ]}
+          >
+            <Animated.View
+              style={position.id === guide.nextTileId ? { transform: [{ scale: guideScale }] } : undefined}
+            >
+              <LetterTile
+                tileId={position.id}
+                char={position.char}
+                size={tileSize}
+                selected={selectedIds.includes(position.id)}
+                disabled={disabled}
+                onPress={onTilePress}
+                accessibilityLabel={format(strings.accessibility.letterTile, { letter: position.char })}
+              />
+            </Animated.View>
+            {stepIndex >= 0 && stepIndex < guide.matched ? (
+              <View pointerEvents="none" style={[styles.stepBadge, { top: -6, right: -6 }]}>
+                <AppText variant="caption" color={colors.textInverse} allowFontScaling={false}>
+                  {toPersianDigits(stepIndex + 1)}
+                </AppText>
+              </View>
+            ) : null}
+            {position.id === guide.nextTileId ? (
+              <View
+                pointerEvents="none"
+                style={[styles.guideRing, { width: tileSize + 14, height: tileSize + 14 }]}
+              />
+            ) : null}
+          </View>
+        );
+      })}
+    </>
+  );
+});
+
+const CENTER_RING = 50;
 
 const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: spacing.sm,
   },
   centerBadge: {
     position: 'absolute',

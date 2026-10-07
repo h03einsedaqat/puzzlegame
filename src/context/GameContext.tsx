@@ -2,7 +2,6 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 
 import { GAME_CONFIG, enabledHintTypes, hintCost, isHintEnabled } from '../constants';
 import {
-  abandonGame,
   buildWord,
   calculateLevelRewards,
   clearSelection,
@@ -18,6 +17,7 @@ import {
   submitWord as submitWordToEngine,
   revealWithHint,
 } from '../services/game/gameEngine';
+import { validateWord } from '../services/game/wordValidator';
 import type {
   GameRewards,
   GameSession,
@@ -127,9 +127,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'clearFeedback':
       return state.feedback === null ? state : { ...state, feedback: null };
     case 'end':
-      return state.session === null
-        ? state
-        : { ...state, session: abandonGame(state.session), feedback: null };
+      // نشست کامل پاک می‌شود تا ورود بعدی به همان مرحله، همیشه بازی تازه بگیرد.
+      // (اگر نشست تمام‌شده یا رهاشده در حافظه بماند، همه دکمه‌های صفحه بازی
+      // غیرفعال می‌مانند و بازیکن فکر می‌کند بازی هنگ کرده است.)
+      return initialState;
     default:
       return state;
   }
@@ -159,6 +160,8 @@ export interface GameContextValue {
   /** همه راهنماهای قابل خرید با قیمت و وضعیت affordability */
   hintOptions: HintOption[];
   dismissHint: () => void;
+  /** واژه کنونی خودش یک واژه پذیرفتنی است؛ صفحه بازی می‌تواند خودکار ثبتش کند */
+  autoSubmitReady: boolean;
   startGame: (level: Level) => void;
   abandonGame: () => void;
   leaveGame: () => void;
@@ -260,7 +263,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [session, sound]);
 
   const submit = useCallback((): SubmitOutcome => {
-    if (!session || !level) {
+    if (!session || !level || session.status !== 'playing') {
+      return { status: 'ignored' };
+    }
+    // انتخاب خالی هرگز «کلمه اشتباه» حساب نمی‌شود؛ فقط نادیده گرفته می‌شود.
+    if (session.selection.length === 0) {
       return { status: 'ignored' };
     }
     const result = submitWordToEngine(session, level);
@@ -437,6 +444,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }));
   }, [level, session]);
 
+  const autoSubmitReady = useMemo(() => {
+    if (!session || !level || session.status !== 'playing' || session.selection.length < 2) {
+      return false;
+    }
+    const candidate = buildWord(session);
+    if (candidate.length < GAME_CONFIG.gameplay.minWordLength) {
+      return false;
+    }
+    const foundWords = session.foundWords.map(entry => entry.word);
+    const validation = validateWord({ raw: candidate, level, foundWords });
+    if (validation.status !== 'accepted') {
+      return false;
+    }
+    // اگر واژه بلندتری هم وجود دارد که با همین حروف ادامه پیدا می‌کند و هنوز
+    // پیدا نشده، کمی به بازیکن فرصت می‌دهیم تا خودش ادامه دهد.
+    return true;
+  }, [level, session]);
+
   const nextHintCost = hintCost('reveal_letter');
   const canUseHint = coins >= nextHintCost && session?.status === 'playing';
 
@@ -471,6 +496,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       activeHint,
       hintOptions,
       dismissHint,
+      autoSubmitReady,
       startGame,
       abandonGame: abandonGameSession,
       leaveGame,

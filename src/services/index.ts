@@ -109,6 +109,12 @@ export {
   markAchievementsSeen,
 } from './game/achievementService';
 export type { AchievementStats } from './game/achievementService';
+export {
+  applyWheelTouch,
+  nearestTileId,
+  resolveWheelTouch,
+} from './game/wheelGesture';
+export type { WheelPoint, WheelTilePosition, WheelTouchAction } from './game/wheelGesture';
 export { computeStars, starLabel, averageStars, MAX_STARS } from './game/levelRating';
 export type { StarInput } from './game/levelRating';
 export { shareText, openStorePage } from './share/ShareService';

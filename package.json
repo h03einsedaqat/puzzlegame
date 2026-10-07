@@ -30,7 +30,8 @@
     "android:apk:release": "cd android && ./gradlew assembleRelease",
     "android:aab:release": "cd android && ./gradlew bundleRelease",
     "android:apk:splits": "cd android && ./gradlew assembleRelease -PabiSplits=true",
-    "android:bundle:debug": "cd android && ./gradlew assembleDebug"
+    "android:bundle:debug": "cd android && ./gradlew assembleDebug",
+    "solutions:export": "tsx tools/export-solutions.mts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "3.1.1",

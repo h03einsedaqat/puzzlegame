@@ -95,12 +95,13 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     activeHint,
     hintOptions,
     dismissHint,
+    autoSubmitReady,
   } = useGame();
 
   const [hintMessage, setHintMessage] = useState<{ text: string; tone: 'success' | 'error' | 'info'; id: number } | null>(null);
-  // هنگام کشیدن حروف، اسکرول صفحه خاموش می‌شود تا دو حرکت با هم قاطی نشوند.
-  const [isDraggingLetters, setIsDraggingLetters] = useState(false);
   const [leaveVisible, setLeaveVisible] = useState(false);
+  /** ارتفاع ناحیه چرخ؛ چرخ خودش را با فضای موجود اندازه می‌کند تا هیچ‌وقت اسکرول لازم نشود */
+  const [wheelArea, setWheelArea] = useState({ width: 0, height: 0 });
   const [hintSheetVisible, setHintSheetVisible] = useState(false);
   const [hintSheetMessage, setHintSheetMessage] = useState<string | null>(null);
   const completedRef = useRef(false);
@@ -109,17 +110,28 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   const activeLevel = level;
   const isDaily = mode === 'daily';
 
-  // اگر نشست فعلی متعلق به این مرحله نباشد (ورود تازه یا تکرار مرحله)، تازه ساخته می‌شود.
+  /**
+   * نشست این مرحله «قابل استفاده» است یا نه.
+   *
+   * ورود دوباره به همان مرحله پس از تکمیل یا خروج، باید همیشه بازی تازه بدهد؛
+   * اگر نشستِ تمام‌شده/رهاشده دوباره استفاده شود، همه دکمه‌ها غیرفعال می‌مانند و
+   * بازیکن فکر می‌کند بازی هنگ کرده است. (نشستِ «در حال بازی» و نشستِ همین
+   * لحظه تمام‌شده معتبرند تا انتقال به صفحه نتیجه درست انجام شود.)
+   */
+  const sessionPlayable =
+    session !== null &&
+    activeLevel !== undefined &&
+    session.levelId === activeLevel.id &&
+    (session.status === 'playing' || session.status === 'completed');
+
   useEffect(() => {
-    if (!activeLevel) {
+    if (!activeLevel || completedRef.current || sessionPlayable) {
       return;
     }
-    if (session?.levelId !== activeLevel.id) {
-      completedRef.current = false;
-      bestScoreBeforeRef.current = getRecord(activeLevel.id)?.bestScore ?? 0;
-      startGame(activeLevel);
-    }
-  }, [activeLevel, getRecord, session?.levelId, startGame]);
+    completedRef.current = false;
+    bestScoreBeforeRef.current = getRecord(activeLevel.id)?.bestScore ?? 0;
+    startGame(activeLevel);
+  }, [activeLevel, getRecord, sessionPlayable, startGame]);
 
   useEffect(() => {
     if (!activeLevel || !feedback) {
@@ -132,6 +144,23 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   const handleSubmit = useCallback(() => {
     submit();
   }, [submit]);
+
+  /**
+   * ثبت خودکار (خواسته بازیکن: «بررسی خودکار انجام شود»).
+   *
+   * وقتی حروفِ روی صفحه خودشان یک واژه پذیرفتنی می‌سازند، اگر بازیکن مدت کوتاهی
+   * کاری نکند واژه خودش ثبت می‌شود؛ کوتاه‌بودن این مکث باعث می‌شود اگر بازیکن
+   * بخواهد واژه بلندتری بسازد، فرصت داشته باشد.
+   */
+  useEffect(() => {
+    if (!autoSubmitReady || session?.status !== 'playing') {
+      return;
+    }
+    const timer = setTimeout(() => {
+      submit();
+    }, GAME_CONFIG.gameplay.autoSubmitPauseMs);
+    return () => clearTimeout(timer);
+  }, [autoSubmitReady, session?.status, submit]);
 
   const handleHint = useCallback(() => {
     setHintSheetMessage(null);
@@ -152,6 +181,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
       }
       setHintSheetMessage(format(strings.game.hintSpent, { cost: result.cost }));
       setHintMessage({ text: strings.game.hintApplied, tone: 'success', id: Date.now() });
+      // برگه بسته می‌شود تا بازیکن بی‌درنگ راهنمای گام‌به‌گام و کاشی روشن‌شده را ببیند.
+      setHintSheetVisible(false);
     },
     [requestHint],
   );
@@ -165,11 +196,20 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   // دکمه بازگشت اندروید همان گفت‌وگوی خروج را باز می‌کند تا پیشرفت ناخواسته از دست نرود.
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      // اگر برگه راهنما باز است، اول همان بسته می‌شود تا بازیکن گیر نکند.
+      if (hintSheetVisible) {
+        setHintSheetVisible(false);
+        return true;
+      }
+      if (leaveVisible) {
+        setLeaveVisible(false);
+        return true;
+      }
       setLeaveVisible(true);
       return true;
     });
     return () => subscription.remove();
-  }, []);
+  }, [hintSheetVisible, leaveVisible]);
 
   // تکمیل مرحله: پاداش‌ها یک‌بار ثبت و نتیجه نمایش داده می‌شود.
   useEffect(() => {
@@ -177,6 +217,9 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
       return;
     }
     completedRef.current = true;
+    // هیچ گفت‌وگویی روی صفحه نتیجه باز نمی‌ماند.
+    setLeaveVisible(false);
+    setHintSheetVisible(false);
 
     const rewards = calculateLevelRewards(session, activeLevel);
     const dailyBonusCoins = isDaily ? GAME_CONFIG.daily.challengeCoinReward : 0;
@@ -309,11 +352,26 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   }
 
   const slotsWidth = Math.min(width - spacing.lg * 2, 420);
-  // چرخ حروف: روی صفحه‌های کوچک کمی جمع‌وجورتر و روی صفحه‌های بزرگ‌تر تا ۳۳۰ پیکسل.
-  const wheelSize = Math.min(Math.max(width - spacing.xl * 2, 240), 330);
-  // با حروف کمتر جای بیشتری برای هر کاشی هست؛ با ۹ حرف هم از چرخ بیرون نمی‌زند.
+  /**
+   * قطر چرخ از فضای واقعی ناحیه چرخ حساب می‌شود (عرض و ارتفاع)، پس روی گوشی
+   * کوچک هم همه‌چیز در یک صفحه جا می‌شود و هیچ اسکرولی لازم نیست. اسکرول صفحه
+   * حذف شده است تا کشیدن حروف با اسکرول قاطی نشود — همان چیزی که باعث می‌شد
+   * کشیدن کار نکند و دکمه‌ها بی‌واکنش شوند.
+   */
   const letterCount = session?.tiles.length ?? 6;
-  const tileSize = Math.round(Math.min(66, Math.max(46, wheelSize * (letterCount <= 5 ? 0.2 : letterCount <= 7 ? 0.18 : 0.155))));
+  const wheelSize = Math.round(
+    Math.max(
+      190,
+      Math.min(
+        340,
+        (wheelArea.width || width) - spacing.sm * 2,
+        (wheelArea.height || width) - spacing.sm,
+      ),
+    ),
+  );
+  const tileSize = Math.round(
+    Math.min(64, Math.max(44, wheelSize * (letterCount <= 5 ? 0.2 : letterCount <= 7 ? 0.175 : 0.15))),
+  );
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
@@ -331,33 +389,26 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
         backLabel={strings.common.back}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={!isDraggingLetters}
-      >
-        <View style={styles.bannerArea}>
-          {feedback ? (
-            <FeedbackBanner
-              message={feedbackText(feedback, activeLevel)}
-              tone={feedback.status === 'accepted' ? 'success' : 'error'}
-              messageId={feedback.id}
-              detail={
-                feedback.status === 'accepted'
-                  ? `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel}`
-                  : undefined
-              }
-            />
-          ) : hintMessage ? (
-            <FeedbackBanner
-              message={hintMessage.text}
-              tone={hintMessage.tone}
-              messageId={hintMessage.id}
-            />
-          ) : null}
-        </View>
-
-        {tutorialStep ? (
+      <View style={styles.playArea}>
+        {/* نوار بازخورد/آموزش: فقط وقتی هست که پیامی برای گفتن باشد */}
+        {feedback ? (
+          <FeedbackBanner
+            message={feedbackText(feedback, activeLevel)}
+            tone={feedback.status === 'accepted' ? 'success' : 'error'}
+            messageId={feedback.id}
+            detail={
+              feedback.status === 'accepted'
+                ? `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel}`
+                : undefined
+            }
+          />
+        ) : hintMessage ? (
+          <FeedbackBanner
+            message={hintMessage.text}
+            tone={hintMessage.tone}
+            messageId={hintMessage.id}
+          />
+        ) : tutorialStep ? (
           <View style={styles.tutorialRow}>
             <AppText variant="caption" color={colors.primaryDark}>
               {tutorialStep}
@@ -374,21 +425,30 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           onRemove={removeTile}
         />
 
-        <LetterWheel
-          tiles={session?.tiles ?? []}
-          selectedIds={session?.selection ?? []}
-          onTilePress={selectTile}
-          onTileRemove={removeTile}
-          onAutoSubmit={submit}
-          disabled={session?.status !== 'playing'}
-          diameter={wheelSize}
-          tileSize={tileSize}
-          foundCount={progress.foundTargets}
-          totalCount={progress.totalTargets}
-          onDragStateChange={setIsDraggingLetters}
-          guideTileIds={activeHint?.tileIds}
-          accessibilityLabel={strings.game.lettersHint}
-        />
+        <View
+          style={styles.wheelArea}
+          onLayout={event =>
+            setWheelArea({
+              width: event.nativeEvent.layout.width,
+              height: event.nativeEvent.layout.height,
+            })
+          }
+        >
+          <LetterWheel
+            tiles={session?.tiles ?? []}
+            selectedIds={session?.selection ?? []}
+            onTilePress={selectTile}
+            onTileRemove={removeTile}
+            onAutoSubmit={submit}
+            disabled={session?.status !== 'playing'}
+            diameter={wheelSize}
+            tileSize={tileSize}
+            foundCount={progress.foundTargets}
+            totalCount={progress.totalTargets}
+            guideTileIds={activeHint?.tileIds}
+            accessibilityLabel={strings.game.lettersHint}
+          />
+        </View>
 
         <View style={styles.controls}>
           <Button
@@ -425,15 +485,22 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           />
         </View>
 
-        <View style={styles.wordsSection}>
+        {/* فهرست واژه‌ها: خودش داخل کادر کوچک اسکرول می‌شود تا صفحه اصلی هرگز
+            اسکرول نخواهد و کشیدن حروف با اسکرول صفحه قاطی نشود. */}
+        <ScrollView
+          style={styles.wordsSection}
+          contentContainerStyle={styles.wordsContent}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+        >
           <FoundWordsList
             targetWords={activeLevel.targetWords}
             bonusWords={activeLevel.bonusWords}
             foundWords={session?.foundWords ?? []}
             hintedWords={revealedLetters}
           />
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       <HintSheet
         visible={hintSheetVisible}
@@ -459,15 +526,20 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
+  playArea: {
+    flex: 1,
+    alignSelf: 'stretch',
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
     alignItems: 'center',
   },
-  bannerArea: {
+  wheelArea: {
+    flex: 1,
     alignSelf: 'stretch',
-    minHeight: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 190,
   },
   tutorialRow: {
     backgroundColor: colors.primaryLight,
@@ -480,14 +552,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     justifyContent: 'center',
-    flexWrap: 'wrap',
   },
   controlButton: {
-    minWidth: 104,
+    flex: 1,
+    maxWidth: 220,
   },
   wordsSection: {
     alignSelf: 'stretch',
-    gap: spacing.sm,
+    maxHeight: 132,
+    flexGrow: 0,
+  },
+  wordsContent: {
+    paddingBottom: spacing.xs,
   },
   missing: {
     flex: 1,

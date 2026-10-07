@@ -30,7 +30,7 @@ export interface LevelNodeProps {
  * باز (سفید) و قفل (خاکستری با قفل). مسیر بین گره‌ها با خط‌های عمودی رسم
  * می‌شود تا حرکت روی نقشه قابل دنبال‌کردن باشد.
  */
-export function LevelNode({
+export const LevelNode = React.memo(function LevelNode({
   summary,
   state,
   onPress,
@@ -103,7 +103,7 @@ export function LevelNode({
       </View>
     </PressableScale>
   );
-}
+});
 
 const NODE_SIZE = 62;
 

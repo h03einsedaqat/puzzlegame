@@ -29,7 +29,7 @@ const MAX_SLOT_SIZE = 48;
  * مرحله) و اندازه هر جای خالی با عرض موجود تنظیم می‌شود. لمس هر جای پر‌شده،
  * همان حرف را برمی‌گرداند.
  */
-export function WordSlots({
+export const WordSlots = React.memo(function WordSlots({
   selected,
   maxLength,
   availableWidth,
@@ -107,7 +107,7 @@ export function WordSlots({
       })}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

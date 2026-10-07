@@ -57,11 +57,21 @@ it('هر راهنما سکه کم می‌کند و راهنمای گام‌به�
   // راهنمای گام‌به‌گام با الگوی واژه روی صفحه بازی ظاهر می‌شود
   await waitFor(() => expect(screen.getByText(strings.game.hintGuideTitle)).toBeTruthy());
 
-  // خرید دوم: سکه‌ها به صفر می‌رسد
+  // برگه پس از خرید بسته می‌شود تا بازیکن بی‌درنگ راهنمای روی چرخ را ببیند
+  await waitFor(() => expect(screen.queryByText(strings.game.hintSheetTitle)).toBeNull());
+
+  // خرید دوم: برگه را دوباره باز می‌کنیم و سکه‌ها به صفر می‌رسد
+  await fireEvent.press(
+    screen.getByLabelText(format(strings.accessibility.hintButton, { cost: toPersianDigits(letterCost) })),
+  );
+  await waitFor(() => expect(screen.getByText(strings.game.hintSheetTitle)).toBeTruthy());
   await fireEvent.press(screen.getByLabelText(buyLetterLabel));
   await waitForStored<UserProfile>(STORAGE_KEYS.profile, value => value.coins === 0);
 
   // با سکه صفر، همه دکمه‌ها غیرفعال‌اند و راهنمای سکه‌گرفتن نشان داده می‌شود
+  await fireEvent.press(
+    screen.getByLabelText(format(strings.accessibility.hintButton, { cost: toPersianDigits(letterCost) })),
+  );
   await waitFor(() => expect(screen.getByText(strings.game.hintEarnCoinsTip)).toBeTruthy());
   expect(screen.getAllByText(strings.game.hintNoCoinsButton).length).toBeGreaterThan(0);
 

@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { strings } from '../../constants';
 import { colors, radius, shadows, spacing } from '../../theme';
@@ -41,6 +41,11 @@ const HINT_TITLES: Record<HintType, string> = {
  * از پیکربندی بازی می‌آیند (نه از این فایل) و هر خرید در همان لحظه از سکه‌ها کم
  * می‌شود؛ بنابراین بازیکن پیش از زدن دکمه، دقیقاً می‌داند چه هزینه‌ای می‌پردازد.
  * اگر سکه کافی نباشد، دکمه غیرفعال می‌شود و راهنمای گرفتن سکه نشان داده می‌شود.
+ *
+ * این برگه **داخل خود صفحه** رسم می‌شود و از `Modal` بومی استفاده نمی‌کند؛ تجربه
+ * نشان داد که پنجره گفت‌وگوی بومی اندروید، بعد از بسته‌شدن هم می‌تواند روی صفحه
+ * بماند و همه لمس‌ها را ببلعد (همان «کار نکردن دکمه‌ها»یی که بازیکن گزارش کرد).
+ * وقتی پنهان است، هیچ‌چیز رسم نمی‌شود؛ پس امکان قفل‌شدن لمس‌ها وجود ندارد.
  */
 export function HintSheet({
   visible,
@@ -54,6 +59,16 @@ export function HintSheet({
   const sorted = useMemo(() => [...options].sort((a, b) => a.cost - b.cost), [options]);
   const canAffordAny = sorted.some(option => option.affordable);
 
+  const slide = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(slide, {
+      toValue: visible ? 1 : 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [slide, visible]);
+
   const handleSelect = useCallback(
     (type: HintType, affordable: boolean, available: boolean) => {
       if (!affordable || !available) {
@@ -64,10 +79,23 @@ export function HintSheet({
     [onSelect],
   );
 
+  if (!visible) {
+    return null;
+  }
+
+  const translateY = slide.interpolate({ inputRange: [0, 1], outputRange: [320, 0] });
+  const backdropOpacity = slide.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={strings.common.close} />
-      <View style={styles.sheet}>
+    <View style={styles.overlay} pointerEvents="box-none">
+      <Animated.View style={[styles.backdropWrap, { opacity: backdropOpacity }]}>
+        <Pressable
+          style={styles.backdrop}
+          onPress={onClose}
+          accessibilityLabel={strings.common.close}
+        />
+      </Animated.View>
+      <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
         <View style={styles.handle} />
 
         <View style={styles.header}>
@@ -144,12 +172,28 @@ export function HintSheet({
         </ScrollView>
 
         <Button label={strings.common.close} variant="ghost" onPress={onClose} accessibilityLabel={strings.common.close} />
-      </View>
-    </Modal>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'flex-end',
+    zIndex: 20,
+  },
+  backdropWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   backdrop: {
     flex: 1,
     backgroundColor: colors.screenOverlay,
@@ -162,7 +206,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     paddingTop: spacing.sm,
     gap: spacing.md,
-    maxHeight: '78%',
+    maxHeight: '82%',
     ...shadows.raised,
   },
   handle: {
