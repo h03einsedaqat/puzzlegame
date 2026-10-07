@@ -32,6 +32,11 @@ export interface LetterWheelProps {
    * چشمک‌زن طلایی روشن می‌شود و کاشی‌های پشت‌سرهم‌زده‌شده شماره می‌گیرند.
    */
   guideTileIds?: readonly string[];
+  /**
+   * هنگام شروع/پایان کشیدن انگشت خبر می‌دهد. صفحه بازی با این سیگنال، ثبت خودکار
+   * را تا برداشتن انگشت متوقف می‌کند تا وسط کشیدن واژه ثبت نشود.
+   */
+  onDragStateChange?: (dragging: boolean) => void;
 }
 
 const DEFAULT_TILE = 58;
@@ -80,6 +85,7 @@ export function LetterWheel({
   foundCount = 0,
   totalCount = 0,
   guideTileIds,
+  onDragStateChange,
 }: LetterWheelProps) {
   const [finger, setFinger] = useState<Point | null>(null);
   const containerRef = useRef<React.ComponentRef<typeof View> | null>(null);
@@ -162,16 +168,34 @@ export function LetterWheel({
     onTilePress,
     onTileRemove,
     onAutoSubmit,
+    onDragStateChange,
   });
   useEffect(() => {
-    stateRef.current = { disabled, positions, tileSize, onTilePress, onTileRemove, onAutoSubmit };
-  }, [disabled, onAutoSubmit, onTilePress, onTileRemove, positions, tileSize]);
+    stateRef.current = {
+      disabled,
+      positions,
+      tileSize,
+      onTilePress,
+      onTileRemove,
+      onAutoSubmit,
+      onDragStateChange,
+    };
+  }, [
+    disabled,
+    onAutoSubmit,
+    onDragStateChange,
+    onTilePress,
+    onTileRemove,
+    positions,
+    tileSize,
+  ]);
 
   /** اگر مرحله تمام شد یا صفحه عوض شد، کشیدن نیمه‌کاره رها می‌شود */
   useEffect(() => {
     if (disabled) {
       draggingRef.current = false;
       setFinger(null);
+      stateRef.current.onDragStateChange?.(false);
     }
   }, [disabled]);
 
@@ -237,6 +261,7 @@ export function LetterWheel({
       onShouldBlockNativeResponder: () => true,
       onPanResponderGrant: event => {
         draggingRef.current = true;
+        stateRef.current.onDragStateChange?.(true);
         // اندازه‌گیری تازه در شروع کشیدن؛ بعد از این، نقطه‌ها درست حساب می‌شوند.
         refreshOriginRef.current();
         const point = pointFrom(event);
@@ -259,6 +284,7 @@ export function LetterWheel({
         const wasDragging = draggingRef.current;
         draggingRef.current = false;
         setFinger(null);
+        stateRef.current.onDragStateChange?.(false);
         if (wasDragging && selectionRef.current.length >= 2) {
           stateRef.current.onAutoSubmit();
         }
@@ -266,6 +292,7 @@ export function LetterWheel({
       onPanResponderTerminate: () => {
         draggingRef.current = false;
         setFinger(null);
+        stateRef.current.onDragStateChange?.(false);
       },
     }),
   ).current;

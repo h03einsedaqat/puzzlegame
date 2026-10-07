@@ -136,6 +136,19 @@
         transform: translateY(-2px);
       }
 
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .mascot {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        border: 2px solid #fff;
+        box-shadow: 0 4px 10px rgba(31, 45, 61, 0.22);
+      }
+
       .banner {
         min-height: 34px;
         display: flex;
@@ -544,9 +557,12 @@
 
     <div class="app">
       <header>
-        <div>
-          <div class="title">کلمه‌ساز</div>
-          <div class="sub">پیش‌نمایش طرح تازه</div>
+        <div class="brand">
+          <img class="mascot" src="mascot.png" alt="کاراکتر کلمه‌ساز" />
+          <div>
+            <div class="title">کلمه‌ساز</div>
+            <div class="sub">پیش‌نمایش طرح تازه</div>
+          </div>
         </div>
         <div class="stats">
           <div class="chip">⭐ <b id="score">۰</b></div>
@@ -683,6 +699,10 @@
       }
 
       function toggleTile(index) {
+        if (autoSubmitTimer) {
+          clearTimeout(autoSubmitTimer);
+          autoSubmitTimer = null;
+        }
         const id = state.selection.indexOf(index);
         if (id === -1) {
           state.selection.push(index);
@@ -698,6 +718,7 @@
         renderLinks();
         renderGuide();
         foundEl.textContent = `${toFa(state.found.length)}/${toFa(Object.keys(WORDS).length)}`;
+        scheduleAutoSubmit();
       }
 
       function renderSlots() {
@@ -796,6 +817,37 @@
         banner.className = 'show' + (bad ? ' bad' : '');
         clearTimeout(showMessage.timer);
         showMessage.timer = setTimeout(() => (banner.className = ''), 1800);
+      }
+
+      let autoSubmitTimer = null;
+
+      /**
+       * ثبت خودکار: اگر واژهٔ ساخته‌شده خودش یک واژه پذیرفتنی باشد و بازیکن مدت
+       * کوتاهی دست به حروف نزند، واژه خودش ثبت می‌شود (هم‌رفتار با برنامه).
+       * وسط کشیدن انگشت هم تا برداشتن انگشت صبر می‌کند.
+       */
+      function scheduleAutoSubmit() {
+        if (autoSubmitTimer) {
+          clearTimeout(autoSubmitTimer);
+          autoSubmitTimer = null;
+        }
+        if (dragging) {
+          return;
+        }
+        const current = word();
+        if (current.length < 3 || state.found.includes(current)) {
+          return;
+        }
+        if (!(current in WORDS) && !(current in BONUS)) {
+          return;
+        }
+        autoSubmitTimer = setTimeout(() => {
+          autoSubmitTimer = null;
+          if (dragging) {
+            return;
+          }
+          submit();
+        }, 550);
       }
 
       function submit() {

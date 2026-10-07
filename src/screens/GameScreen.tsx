@@ -100,6 +100,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
 
   const [hintMessage, setHintMessage] = useState<{ text: string; tone: 'success' | 'error' | 'info'; id: number } | null>(null);
   const [leaveVisible, setLeaveVisible] = useState(false);
+  /** هنگام کشیدن حروف true می‌شود؛ تا انگشت برداشته نشود، ثبت خودکار انجام نمی‌شود */
+  const [isDraggingLetters, setIsDraggingLetters] = useState(false);
   /** ارتفاع ناحیه چرخ؛ چرخ خودش را با فضای موجود اندازه می‌کند تا هیچ‌وقت اسکرول لازم نشود */
   const [wheelArea, setWheelArea] = useState({ width: 0, height: 0 });
   const [hintSheetVisible, setHintSheetVisible] = useState(false);
@@ -153,14 +155,14 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
    * بخواهد واژه بلندتری بسازد، فرصت داشته باشد.
    */
   useEffect(() => {
-    if (!autoSubmitReady || session?.status !== 'playing') {
+    if (!autoSubmitReady || session?.status !== 'playing' || isDraggingLetters) {
       return;
     }
     const timer = setTimeout(() => {
       submit();
     }, GAME_CONFIG.gameplay.autoSubmitPauseMs);
     return () => clearTimeout(timer);
-  }, [autoSubmitReady, session?.status, submit]);
+  }, [autoSubmitReady, isDraggingLetters, session?.status, submit]);
 
   const handleHint = useCallback(() => {
     setHintSheetMessage(null);
@@ -446,6 +448,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
             foundCount={progress.foundTargets}
             totalCount={progress.totalTargets}
             guideTileIds={activeHint?.tileIds}
+            onDragStateChange={setIsDraggingLetters}
             accessibilityLabel={strings.game.lettersHint}
           />
         </View>
