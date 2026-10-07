@@ -14,6 +14,7 @@ import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { PrivacyScreen } from '../screens/PrivacyScreen';
 import { ResultScreen } from '../screens/ResultScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { StatsScreen } from '../screens/StatsScreen';
 import { SplashScreen } from '../screens/SplashScreen';
 import { useSettings } from '../context';
 import type { RootStackParamList } from './types';
@@ -71,6 +72,7 @@ export function RootNavigator() {
         <Stack.Screen name="Result" component={ResultScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="DailyChallengeIntro" component={DailyChallengeIntroScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Stats" component={StatsScreen} />
         <Stack.Screen name="Achievements" component={AchievementsScreen} />
         <Stack.Screen name="About" component={AboutScreen} />
         <Stack.Screen name="Privacy" component={PrivacyScreen} />

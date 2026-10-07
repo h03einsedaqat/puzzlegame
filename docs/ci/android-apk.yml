@@ -1,14 +1,37 @@
 # ساخت و انتشار بسته نصبی اندروید روی سرور گیت‌هاب — جای این فایل: .github/workflows/android-apk.yml
+#
+# نکته‌های مهم این نسخه:
+#   • بسته پیش از انتشار با ابزارهای رسمی اندروید (zipalign/apksigner/aapt2) بررسی
+#     می‌شود؛ اگر سالم نباشد، هیچ‌چیز روی صفحه Releases عوض نمی‌شود (وگرنه کاربر
+#     فایلی را دانلود می‌کند که روی گوشی «package appears to be invalid» می‌دهد).
+#   • انتشار دیگر «حذف و ساخت دوباره» نیست؛ فایل تازه با --clobber جایگزین می‌شود تا
+#     لینک دانلود هیچ‌وقت لحظه‌ای خالی نماند.
+#   • کنار APK یک فایل .sha256 هم منتشر می‌شود و حجم/هش در توضیحات Releases می‌آید تا
+#     کاربر بتواند دانلود کامل‌شده را با آن بسنجد.
 name: Android APK
 
 on:
   workflow_dispatch:
   push:
     branches: [main, 'arena/**']
-    paths-ignore: ['**/*.md', 'docs/**']
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      # تغییر خودِ گردش‌کار بازبینی نباید یک ساخت تازه راه بیندازد
+      - '.github/workflows/apk-verify.yml'
 
 permissions:
   contents: write
+
+# از انتشار هم‌زمان دو بسته روی یک برچسب جلوگیری می‌کند.
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: apk-latest
+  APK_NAME: kalamesaz-1.0.0-arm.apk
+  ABI_LIST: arm64-v8a,armeabi-v7a
 
 jobs:
   apk:
@@ -20,26 +43,127 @@ jobs:
         with: { node-version: '22', cache: npm }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
+
       - name: Install Android SDK packages
         run: |
+          set -uo pipefail
           SM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SM" --licenses > /dev/null 2>&1 || true
-          for p in platform-tools "platforms;android-37" "build-tools;37.0.0" "ndk;27.1.12297006"; do
-            yes | "$SM" "$p" || echo "skip $p"
+          # build-tools پایدار را هم نصب می‌کنیم تا مرحله بررسی همیشه ابزار داشته باشد.
+          for p in platform-tools "platforms;android-37" "build-tools;37.0.0" "build-tools;36.0.0" "ndk;27.1.12297006"; do
+            yes | "$SM" "$p" || echo "::warning::sdkmanager نتوانست «$p» را نصب کند"
           done
+          echo "build-tools موجود:"; ls "$ANDROID_HOME/build-tools" || true
+
       - run: npm ci
+
       - name: Build APK
-        run: cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon
+        run: cd android && ./gradlew assembleRelease -PreactNativeArchitectures=$ABI_LIST --no-daemon
+
+      - name: Collect build information
+        run: |
+          set -uo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          {
+            echo "# اطلاعات ساخت"
+            echo
+            echo "- کامیت: \`$GITHUB_SHA\` (شاخه \`$GITHUB_REF_NAME\`)"
+            echo "- اجرای گیت‌هاب: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- Node: $(node -v 2>/dev/null)"
+            echo "- npm: $(npm -v 2>/dev/null)"
+            echo "- Java: $(java -version 2>&1 | head -1)"
+            echo "- معماری‌های ساخته‌شده: $ABI_LIST"
+            echo "- build-tools نصب‌شده: $(ls "$ANDROID_HOME/build-tools" | tr '\n' ' ')"
+            echo
+            echo '```'
+            (cd android && ./gradlew --no-daemon -q buildEnvironment 2>/dev/null \
+              | grep -iE "com.android.tools.build:gradle|kotlin-gradle-plugin|com.facebook.react" | head -6) || true
+            echo '```'
+            echo
+            echo "- حجم APK: $(wc -c < "$APK" | tr -d ' ') بایت"
+            echo "- SHA-256: \`$(sha256sum "$APK" | cut -d' ' -f1)\`"
+          } > build-info.md
+          cat build-info.md
+
+      - name: Verify the APK before publishing
+        run: |
+          set -uo pipefail
+          # REQUIRE_V1=1 یعنی بسته‌ای که امضای v1 (JAR) ندارد منتشر نشود؛ چون بعضی
+          # نصب‌کننده‌های گوشی چنین بسته‌ای را «App not installed ... invalid» می‌دانند.
+          REQUIRE_V1=1 bash tools/verify-apk.sh android/app/build/outputs/apk/release/app-release.apk \
+            > apk-verify-report.md 2>&1
+          status=$?
+          cat apk-verify-report.md
+          cat apk-verify-report.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::بسته ساخته‌شده سالم نیست؛ منتشر نمی‌شود. گزارش در آرتیفکت «kalamesaz-apk» هست."
+            exit 1
+          fi
+
       - name: Upload the APK
         uses: actions/upload-artifact@v4
         with:
           name: kalamesaz-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            apk-verify-report.md
+            build-info.md
           if-no-files-found: error
+
       - name: Publish on the Releases page
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk kalamesaz-1.0.0-arm.apk
-          gh release delete apk-latest --yes --cleanup-tag 2>/dev/null || true
-          gh release create apk-latest kalamesaz-1.0.0-arm.apk --title "kalamesaz 1.0.0 (APK)" --notes "Android 7+ (API 24). Debug-signed APK for sideloading."
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          SIZE=$(wc -c < "$APK" | tr -d ' ')
+          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
+          SIZE_MB=$((SIZE / 1048576))
+          cp "$APK" "$APK_NAME"
+          printf '%s  %s\n' "$SHA" "$APK_NAME" > "$APK_NAME.sha256"
+          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/$APK_NAME"
+
+          cat > notes.md <<NOTES
+          بازی «کلمه‌ساز» — بسته نصب اندروید (APK)
+
+          ### دانلود
+          [$APK_NAME]($URL)
+
+          | مشخصه | مقدار |
+          | --- | --- |
+          | حجم دقیق | $SIZE بایت (${SIZE_MB} مگابایت) |
+          | SHA-256 | \`$SHA\` |
+          | کمترین اندروید | 7.0 (API 24) |
+          | معماری | arm64-v8a + armeabi-v7a (همه گوشی‌های واقعی) |
+          | امضا | کلید debug مخزن (فقط برای نصب دستی، نه فروشگاه) |
+
+          ### پیش از نصب، حجم فایل را بسنج
+          اگر حجم فایل دانلودشده با عدد بالا یکی نیست، دانلود کامل نشده و اندروید آن را
+          با پیام «App not installed as package appears to be invalid» رد می‌کند.
+          فایل \`$APK_NAME.sha256\` کنار همین بسته برای همین کار است:
+
+          \`\`\`bash
+          # لینوکس / مک
+          sha256sum $APK_NAME
+          # ویندوز (PowerShell)
+          Get-FileHash .\\$APK_NAME -Algorithm SHA256
+          \`\`\`
+
+          نتیجه باید همان \`$SHA\` باشد. اگر نبود، فایل را دوباره دانلود کن (ترجیحاً با
+          اتصال پایدار یا \`gh release download $RELEASE_TAG\`).
+
+          ### اگر نصب نشد
+          راهنمای گام‌به‌گام در مخزن: \`docs/INSTALL_TROUBLESHOOTING.md\` — رایج‌ترین
+          دلیل‌ها: دانلود ناقص، نصب روی نسخه‌ای با امضای دیگر (اول حذفش کن)، اندروید
+          قدیمی‌تر از ۷، خاموش‌بودن اجازه «نصب از منابع نامعلوم» و Play Protect.
+
+          > این بسته پیش از انتشار روی سرور گیت‌هاب با \`zipalign\` و \`apksigner\`
+          > بررسی شده است؛ گزارشش در آرتیفکت \`apk-verify-report.md\` همان اجرا هست.
+          NOTES
+
+          # create only if missing — never delete the release (لینک دانلود باید پایدار بماند)
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 \
+            || gh release create "$RELEASE_TAG" --title "kalamesaz 1.0.0 (APK)" --notes-file notes.md
+          gh release upload "$RELEASE_TAG" "$APK_NAME" "$APK_NAME.sha256" --clobber
+          gh release edit "$RELEASE_TAG" --notes-file notes.md --title "kalamesaz 1.0.0 (APK)"
+          echo "منتشر شد: $URL"

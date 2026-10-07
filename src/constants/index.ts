@@ -3,6 +3,7 @@ export {
   MAX_COMBO_BONUS,
   coinsForWordLength,
   comboBonus,
+  enabledHintTypes,
   hintCost,
   isHintEnabled,
   scoreForWordLength,

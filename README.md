@@ -97,7 +97,13 @@ npm run android            # ساخت و نصب روی دستگاه/شبیه‌�
 بسته release مستقل است و بدون Metro روی گوشی اجرا می‌شود؛ بسته debug برای اجرا به
 Metro نیاز دارد (با `adb reverse tcp:8081 tcp:8081`). این تفاوت و همه مسیرهای نصب در
 `docs/BUILD_AND_RUN.md` توضیح داده شده است. اگر JDK و Android SDK روی رایانه‌ات نیست،
-گردش‌کار آماده `docs/ci/android-apk.yml` بسته را روی سرور گیت‌هاب می‌سازد.
+گردش‌کار آماده `docs/ci/android-apk.yml` بسته را روی سرور گیت‌هاب می‌سازد و پیش از
+انتشار با `zipalign`/`apksigner`/`aapt2` بررسی می‌کند؛ گردش‌کار `docs/ci/apk-verify.yml`
+هم بسته منتشرشده را دوره‌ای بازبینی می‌کند.
+
+اگر روی گوشی پیام «App not installed as package appears to be invalid» دیدی،
+راهنمای گام‌به‌گام در [`docs/INSTALL_TROUBLESHOOTING.md`](docs/INSTALL_TROUBLESHOOTING.md)
+است.
 
 ## دستورها
 
@@ -119,6 +125,7 @@ Metro نیاز دارد (با `adb reverse tcp:8081 tcp:8081`). این تفاو�
 | `npm run android:preflight -- --fix` | همان بررسی + ساخت خودکار `android/local.properties` |
 | `npm run android:apk:release`        | ساخت APK امضاشده                                    |
 | `npm run android:aab:release`        | ساخت AAB برای بازار                                 |
+| `npm run apk:verify -- <file.apk>`   | بررسی سلامت و امضای یک APK پیش از نصب روی گوشی      |
 
 ## آزمون‌ها
 

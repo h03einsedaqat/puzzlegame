@@ -7,7 +7,7 @@ import { useProfile, useProgress, useServices } from '../context';
 import { colors, radius, spacing } from '../theme';
 import { format } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { HeartRefillDialog } from '../components/game/HeartRefillDialog';
 import { FeedbackBanner } from '../components/ui/FeedbackBanner';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
@@ -84,6 +84,7 @@ export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
           state={state}
           onPress={startLevel}
           bestScore={getRecord(summary.id)?.bestScore}
+          stars={getRecord(summary.id)?.stars ?? 0}
           accessibilityLabel={accessibilityLabel}
         />
       );
@@ -143,14 +144,9 @@ export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
         )}
       />
 
-      <ConfirmDialog
+      <HeartRefillDialog
         visible={noHeartsVisible}
-        title={strings.hearts.noHeartsTitle}
-        body={strings.hearts.noHeartsBody}
-        confirmLabel={strings.common.gotIt}
-        cancelLabel={strings.common.close}
-        onConfirm={() => setNoHeartsVisible(false)}
-        onCancel={() => setNoHeartsVisible(false)}
+        onClose={() => setNoHeartsVisible(false)}
       />
     </ScreenContainer>
   );
@@ -169,7 +165,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   worldHeader: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.primaryLight,
     alignSelf: 'flex-start',
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
@@ -182,8 +178,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   connector: {
-    width: 2,
+    // خط مسیر بین مرحله‌ها: نقطه‌چینِ طلایی، مثل مسیرِ بازی‌های کلمه‌ای
+    width: 6,
     height: spacing.lg,
-    backgroundColor: colors.border,
+    borderRadius: 3,
+    backgroundColor: colors.pathStep,
+    borderWidth: 1,
+    borderColor: colors.pathStepBorder,
   },
 });

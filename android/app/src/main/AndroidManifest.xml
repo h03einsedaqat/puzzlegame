@@ -1,9 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-      بازی کاملاً آفلاین است و در نسخه انتشار به هیچ مجوزی نیاز ندارد.
+      مجوز لرزش (VIBRATE): بدون این خط، هر لمس دکمه که بازخورد لمسی می‌دهد روی
+      اندروید خطای SecurityException می‌دهد و برنامه بی‌درنگ بسته می‌شود.
       مجوز اینترنت فقط در Build دیباگ (برای اتصال به Metro) اضافه می‌شود.
     -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
       android:name=".MainApplication"

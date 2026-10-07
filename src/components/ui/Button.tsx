@@ -8,7 +8,7 @@ import { AppText } from './AppText';
 import { PressableScale } from './PressableScale';
 import type { IconName } from '../../types';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'success';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'success' | 'sunny';
 export type ButtonSize = 'large' | 'medium' | 'small';
 
 export interface ButtonProps {
@@ -27,17 +27,56 @@ export interface ButtonProps {
   accessibilityLabel?: string;
 }
 
-const variantStyles: Record<ButtonVariant, { background: string; border: string; text: string }> = {
-  primary: { background: colors.primary, border: colors.primary, text: colors.onPrimary },
-  secondary: { background: colors.surface, border: colors.borderStrong, text: colors.primary },
-  ghost: { background: 'transparent', border: 'transparent', text: colors.textSecondary },
-  success: { background: colors.success, border: colors.success, text: colors.onPrimary },
+/**
+ * ظاهر دکمه‌ها «آب‌نباتی» است: لبه پایین تیره‌تر (حس سه‌بعدی)، برقِ ملایم در
+ * بالای دکمه و متن ضخیم با سایه کوتاه. با فشردن، دکمه کمی پایین می‌رود؛ همین
+ * حرکت ساده باعث می‌شود لمس‌کردن دکمه‌ها حسِ بازی بدهد، نه فرم.
+ */
+const variantStyles: Record<
+  ButtonVariant,
+  { background: string; edge: string; border: string; text: string; textShadow: string }
+> = {
+  primary: {
+    background: colors.primary,
+    edge: colors.primaryDark,
+    border: colors.primaryDark,
+    text: colors.onPrimary,
+    textShadow: 'rgba(0, 0, 0, 0.25)',
+  },
+  sunny: {
+    background: colors.accent,
+    edge: colors.accentDark,
+    border: colors.accentDark,
+    text: '#5A3A00',
+    textShadow: 'rgba(255, 255, 255, 0.35)',
+  },
+  success: {
+    background: colors.success,
+    edge: '#1E9556',
+    border: '#1E9556',
+    text: colors.onPrimary,
+    textShadow: 'rgba(0, 0, 0, 0.22)',
+  },
+  secondary: {
+    background: colors.surface,
+    edge: colors.borderStrong,
+    border: colors.borderStrong,
+    text: colors.primaryDark,
+    textShadow: 'rgba(255, 255, 255, 0)',
+  },
+  ghost: {
+    background: 'transparent',
+    edge: 'transparent',
+    border: 'transparent',
+    text: colors.textSecondary,
+    textShadow: 'rgba(0, 0, 0, 0)',
+  },
 };
 
-const sizeStyles: Record<ButtonSize, { paddingVertical: number; paddingHorizontal: number; icon: number }> = {
-  large: { paddingVertical: spacing.lg, paddingHorizontal: spacing.xl, icon: 22 },
-  medium: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg, icon: 20 },
-  small: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, icon: 18 },
+const sizeStyles: Record<ButtonSize, { paddingVertical: number; paddingHorizontal: number; icon: number; edge: number }> = {
+  large: { paddingVertical: spacing.lg, paddingHorizontal: spacing.xl, icon: 24, edge: 6 },
+  medium: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg, icon: 20, edge: 5 },
+  small: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, icon: 18, edge: 4 },
 };
 
 export function Button({
@@ -57,6 +96,7 @@ export function Button({
   const palette = variantStyles[variant];
   const metrics = sizeStyles[size];
   const isInactive = disabled || loading;
+  const isFlat = variant === 'ghost';
 
   const handlePress = useCallback(() => {
     if (isInactive) {
@@ -68,11 +108,7 @@ export function Button({
   }, [isInactive, onPress, sound, vibration]);
 
   const iconNode = icon ? (
-    <Icon
-      name={icon}
-      size={metrics.icon}
-      color={isInactive ? colors.textMuted : palette.text}
-    />
+    <Icon name={icon} size={metrics.icon} color={isInactive ? colors.textMuted : palette.text} />
   ) : null;
 
   return (
@@ -90,13 +126,18 @@ export function Button({
           {
             backgroundColor: palette.background,
             borderColor: palette.border,
+            borderBottomColor: palette.edge,
+            borderBottomWidth: isFlat ? 0 : metrics.edge,
             paddingVertical: metrics.paddingVertical,
             paddingHorizontal: metrics.paddingHorizontal,
-            minHeight: Math.max(MIN_TOUCH_TARGET, metrics.paddingVertical * 2 + 24),
+            minHeight: Math.max(MIN_TOUCH_TARGET, metrics.paddingVertical * 2 + 26),
           },
           isInactive ? styles.inactive : null,
         ]}
       >
+        {isFlat || isInactive ? null : (
+          <View pointerEvents="none" style={[styles.gloss, { borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]} />
+        )}
         {loading ? (
           <ActivityIndicator color={palette.text} size="small" />
         ) : (
@@ -105,7 +146,7 @@ export function Button({
             <AppText
               variant="button"
               color={isInactive ? colors.textMuted : palette.text}
-              style={styles.label}
+              style={[styles.label, isFlat ? null : { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 1.5 }]}
               numberOfLines={1}
             >
               {label}
@@ -123,10 +164,19 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   container: {
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  gloss: {
+    position: 'absolute',
+    top: 0,
+    left: 6,
+    right: 6,
+    height: '42%',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
   },
   content: {
     flexDirection: 'row',

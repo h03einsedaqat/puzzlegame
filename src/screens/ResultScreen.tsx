@@ -4,15 +4,17 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ACHIEVEMENTS, type AchievementDefinition } from '../data/achievements/achievements';
 import { useAchievements, useProfile, useProgress } from '../context';
+import { MAX_STARS, shareText } from '../services';
 import { colors, radius, spacing } from '../theme';
 import { format, toPersianDigits } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Icon } from '../components/ui/Icon';
+import { ConfettiCelebration } from '../components/ui/ConfettiCelebration';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { HeartCounter } from '../components/game/HeartCounter';
+import { HeartRefillDialog } from '../components/game/HeartRefillDialog';
 import type { RootScreenProps } from '../navigation/types';
 
 /**
@@ -29,6 +31,7 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
   const { achievements, sync } = useAchievements();
   const [noHeartsVisible, setNoHeartsVisible] = useState(false);
   const [newAchievement, setNewAchievement] = useState<AchievementDefinition | null>(null);
+  const [shareNote, setShareNote] = useState<string | null>(null);
 
   useEffect(() => {
     const unlocked = sync();
@@ -55,9 +58,24 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
   );
 
   const completionRatio = params.targetTotal === 0 ? 1 : params.targetFound / params.targetTotal;
+  const stars = typeof params.stars === 'number' ? params.stars : 0;
+
+  const handleShareResult = useCallback(async () => {
+    const done = await shareText({
+      title: strings.result.shareResult,
+      message: format(strings.result.shareMessage, {
+        level: toPersianDigits(params.levelId),
+        score: toPersianDigits(params.score),
+        stars: toPersianDigits(Math.max(1, stars)),
+      }),
+    });
+    setShareNote(done ? null : strings.errors.genericBody);
+  }, [params.levelId, params.score, stars]);
 
   return (
     <ScreenContainer>
+      {/* لحظه برد: بارش کاغذرنگی روی صفحه (بدون گرفتن لمس دکمه‌ها) */}
+      <ConfettiCelebration active={completionRatio >= 1} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <View style={[styles.heroBadge, completionRatio >= 1 ? styles.heroBadgeComplete : styles.heroBadgePartial]}>
@@ -81,6 +99,17 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
               </AppText>
             </View>
           ) : null}
+        </View>
+
+        <View style={styles.starsRow} accessibilityLabel={strings.result.starsLabel}>
+          {Array.from({ length: MAX_STARS }).map((_, index) => (
+            <Icon
+              key={index}
+              name="star"
+              size={30}
+              color={index < stars ? colors.star : colors.border}
+            />
+          ))}
         </View>
 
         <View style={styles.statsRow}>
@@ -188,11 +217,22 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
             />
           ) : null}
           <Button
+            label={strings.result.shareResult}
+            variant="secondary"
+            icon="gift"
+            onPress={handleShareResult}
+          />
+          <Button
             label={strings.result.homeButton}
             variant="ghost"
             icon="home"
             onPress={() => navigation.navigate('Home')}
           />
+          {shareNote ? (
+            <AppText variant="caption" color={colors.textMuted} align="center">
+              {shareNote}
+            </AppText>
+          ) : null}
         </View>
 
         <View style={styles.heartsRow}>
@@ -206,15 +246,7 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
         </View>
       </ScrollView>
 
-      <ConfirmDialog
-        visible={noHeartsVisible}
-        title={strings.hearts.noHeartsTitle}
-        body={strings.hearts.noHeartsBody}
-        confirmLabel={strings.common.gotIt}
-        cancelLabel={strings.common.close}
-        onConfirm={() => setNoHeartsVisible(false)}
-        onCancel={() => setNoHeartsVisible(false)}
-      />
+      <HeartRefillDialog visible={noHeartsVisible} onClose={() => setNoHeartsVisible(false)} />
     </ScreenContainer>
   );
 }
@@ -252,6 +284,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
   statsRow: {
     flexDirection: 'row',

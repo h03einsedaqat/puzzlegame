@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>کلمه‌ساز — پیش‌نمایش طرح تازه</title>
+    <style>
+      @font-face {
+        font-family: 'Vazirmatn';
+        src: url('fonts/Vazirmatn-Bold.ttf') format('truetype');
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: 'Vazirmatn';
+        src: url('fonts/Vazirmatn-Regular.ttf') format('truetype');
+        font-weight: 400;
+      }
+
+      :root {
+        --primary: #6c4cf1;
+        --primary-dark: #4f35c4;
+        --teal: #17c3b2;
+        --accent: #ffb627;
+        --accent-dark: #e08e00;
+        --success: #2fbf71;
+        --tile: #7a4a21;
+        --tile-top: #9a6231;
+        --tile-edge: #4e2c12;
+        --gold: #ffc93c;
+        --ink: #1f2d3d;
+        --muted: #5a6b7d;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: 'Vazirmatn', system-ui, sans-serif;
+        background: #eaf6ff;
+        color: var(--ink);
+        overflow: hidden;
+      }
+
+      .sky {
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(180deg, #6fd3ff 0%, #b8e8ff 42%, #fff6e0 100%);
+      }
+      .sky svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .app {
+        position: relative;
+        height: 100%;
+        max-width: 460px;
+        margin: 0 auto;
+        padding: 12px 14px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      /* ---------- سرصفحه ---------- */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border: 3px solid var(--primary-dark);
+        border-radius: 24px;
+        padding: 10px 14px;
+        color: #fff;
+        box-shadow: 0 10px 22px rgba(79, 53, 196, 0.35);
+      }
+      header .title {
+        font-size: 19px;
+        font-weight: 700;
+        text-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+      }
+      header .sub {
+        font-size: 12px;
+        opacity: 0.85;
+      }
+      .stats {
+        display: flex;
+        gap: 8px;
+      }
+      .chip {
+        background: rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        padding: 5px 12px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      /* ---------- جای کلمه ---------- */
+      .slots {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        min-height: 52px;
+        align-items: center;
+      }
+      .slot {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        border: 2px dashed #e5d3ae;
+        background: rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: var(--tile);
+        transition: transform 0.12s ease;
+      }
+      .slot.next {
+        border: 2.5px solid var(--primary);
+        background: #ede7ff;
+      }
+      .slot.filled {
+        border: 2px solid var(--accent-dark);
+        border-bottom-width: 4px;
+        background: #fff1ce;
+        transform: translateY(-2px);
+      }
+
+      .banner {
+        min-height: 34px;
+        display: flex;
+        justify-content: center;
+      }
+      .banner span {
+        background: var(--success);
+        color: #fff;
+        border-radius: 999px;
+        padding: 6px 18px;
+        font-size: 14px;
+        font-weight: 700;
+        box-shadow: 0 6px 14px rgba(47, 191, 113, 0.35);
+        opacity: 0;
+        transform: translateY(-6px);
+        transition: all 0.25s ease;
+      }
+      .banner span.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .banner span.bad {
+        background: #ff5a5f;
+        box-shadow: 0 6px 14px rgba(255, 90, 95, 0.35);
+      }
+
+      /* ---------- چرخ حروف ---------- */
+      .wheel-wrap {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        touch-action: none;
+      }
+      .wheel {
+        position: relative;
+        border-radius: 50%;
+        touch-action: none;
+      }
+      .wheel .plate {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.72);
+        border: 3px solid rgba(255, 182, 39, 0.55);
+      }
+      .wheel svg.links {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .center {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 92px;
+        height: 92px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #d7e7f5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .center .count {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--primary-dark);
+      }
+      .center .label {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .tile {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 30%;
+        background: linear-gradient(180deg, var(--tile-top) 0%, var(--tile) 100%);
+        border: 2px solid var(--tile-edge);
+        border-bottom-width: 6px;
+        color: var(--gold);
+        font-size: 30px;
+        font-weight: 700;
+        text-shadow: 0 2px 1px rgba(78, 44, 18, 0.6);
+        cursor: pointer;
+        user-select: none;
+        transition:
+          transform 0.12s ease,
+          background 0.12s ease;
+      }
+      .tile::after {
+        content: '';
+        position: absolute;
+        top: 10%;
+        left: 10%;
+        right: 10%;
+        height: 38%;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16);
+      }
+      .tile.selected {
+        background: linear-gradient(180deg, var(--teal) 0%, #12a99a 100%);
+        border-color: #0e8c80;
+        color: #fff;
+        text-shadow: 0 2px 1px rgba(0, 0, 0, 0.3);
+        transform: scale(1.1);
+      }
+
+      /* ---------- دکمه‌ها ---------- */
+      .controls {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+      button {
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 700;
+        border: none;
+        border-radius: 22px;
+        padding: 13px 20px;
+        color: #fff;
+        background: linear-gradient(180deg, #7f63ff 0%, var(--primary) 100%);
+        border-bottom: 5px solid var(--primary-dark);
+        box-shadow: 0 8px 16px rgba(79, 53, 196, 0.28);
+        cursor: pointer;
+        transition: transform 0.08s ease;
+      }
+      button:active {
+        transform: translateY(3px);
+        border-bottom-width: 2px;
+      }
+      button.sunny {
+        background: linear-gradient(180deg, #ffc95c 0%, var(--accent) 100%);
+        color: #5a3a00;
+        border-bottom-color: var(--accent-dark);
+        box-shadow: 0 8px 16px rgba(224, 142, 0, 0.3);
+      }
+      button.ghost {
+        background: #fff;
+        color: var(--primary-dark);
+        border: 2px solid #b9d6ec;
+        border-bottom-width: 5px;
+        box-shadow: 0 6px 12px rgba(58, 74, 143, 0.15);
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+
+      .note {
+        text-align: center;
+        font-size: 12px;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.75);
+        border-radius: 999px;
+        padding: 5px 12px;
+        margin: 0 auto;
+      }
+
+      /* ---------- کاغذرنگی ---------- */
+      .confetti {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .confetti i {
+        position: absolute;
+        width: 10px;
+        height: 14px;
+        border-radius: 3px;
+        animation: fall linear forwards;
+      }
+      @keyframes fall {
+        from {
+          transform: translateY(-40px) rotate(0deg);
+          opacity: 1;
+        }
+        to {
+          transform: translateY(110vh) rotate(540deg);
+          opacity: 0.9;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sky">
+      <svg viewBox="0 0 400 800" preserveAspectRatio="none">
+        <defs>
+          <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#fff" stop-opacity="0.55" />
+            <stop offset="1" stop-color="#fff" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        <circle cx="360" cy="40" r="120" fill="url(#glow)" />
+        <g fill="#fff" opacity="0.75">
+          <ellipse cx="70" cy="120" rx="34" ry="20" />
+          <ellipse cx="100" cy="126" rx="24" ry="15" />
+          <ellipse cx="44" cy="128" rx="20" ry="13" />
+          <ellipse cx="320" cy="240" rx="28" ry="16" />
+          <ellipse cx="346" cy="246" rx="18" ry="12" />
+        </g>
+        <g font-family="Vazirmatn" font-size="46" fill="#6c4cf1" opacity="0.13" text-anchor="middle">
+          <text x="52" y="250">ک</text>
+          <text x="350" y="200">ل</text>
+          <text x="330" y="560">م</text>
+          <text x="70" y="660">ه</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="app">
+      <header>
+        <div>
+          <div class="title">کلمه‌ساز</div>
+          <div class="sub">پیش‌نمایش طرح تازه</div>
+        </div>
+        <div class="stats">
+          <div class="chip">⭐ <b id="score">۰</b></div>
+          <div class="chip">🪙 <b id="coins">۳۰</b></div>
+        </div>
+      </header>
+
+      <div class="banner"><span id="banner"></span></div>
+
+      <div class="slots" id="slots"></div>
+
+      <div class="wheel-wrap">
+        <div class="wheel" id="wheel">
+          <div class="plate"></div>
+          <svg class="links" id="links"></svg>
+          <div class="center">
+            <div class="count" id="found">۰/۶</div>
+            <div class="label">کلمه‌ها</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="ghost" id="clear">پاک کردن</button>
+        <button class="sunny" id="hint">راهنما</button>
+        <button id="submit">بررسی</button>
+      </div>
+
+      <p class="note">انگشتت را روی حروف بکش (یا با ماوس بکش) و رهایش کن — کلمه خودش ثبت می‌شود</p>
+    </div>
+
+    <div class="confetti" id="confetti"></div>
+
+    <script>
+      /**
+       * پیش‌نمایش تعاملی طرح تازه بازی: همان چرخ حروف، همان رنگ‌ها و همان حس
+       * کشیدن انگشت. این صفحه فقط برای دیدن طرح است و بخشی از برنامه اندروید
+       * نیست؛ منطق واقعی بازی در src/services/game/gameEngine.ts است.
+       * فونت‌های پوشه preview/fonts کپی فونت‌های src/assets/fonts هستند تا این
+       * صفحه به‌تنهایی (روی هر سرور ساده‌ای) هم درست نمایش داده شود.
+       */
+      const LETTERS = ['ک', 'ت', 'ا', 'ب', 'ر', 'م'];
+      const WORDS = { کتاب: 45, کرم: 30, تار: 30, مار: 30, ابر: 30, بام: 30, کام: 30, متر: 30, کت: 24, تب: 24, مرا: 24 };
+      const BONUS = { تبر: 60, کباب: 80, مرکب: 90 };
+
+      const wheel = document.getElementById('wheel');
+      const links = document.getElementById('links');
+      const slotsEl = document.getElementById('slots');
+      const banner = document.getElementById('banner');
+      const scoreEl = document.getElementById('score');
+      const coinsEl = document.getElementById('coins');
+      const foundEl = document.getElementById('found');
+      const confettiEl = document.getElementById('confetti');
+
+      const state = { selection: [], score: 0, coins: 30, found: [] };
+      let tiles = [];
+      let center = { x: 0, y: 0 };
+      let radius = 0;
+      let finger = null;
+      let dragging = false;
+
+      const toFa = value => String(value).replace(/[0-9]/g, digit => '۰۱۲۳۴۵۶۷۸۹'[digit]);
+
+      function sizeWheel() {
+        const wrap = wheel.parentElement;
+        const size = Math.min(wrap.clientWidth, wrap.clientHeight, 340);
+        wheel.style.width = size + 'px';
+        wheel.style.height = size + 'px';
+        center = { x: size / 2, y: size / 2 };
+        radius = size / 2 - 34;
+        links.setAttribute('viewBox', `0 0 ${size} ${size}`);
+        links.style.width = size + 'px';
+        links.style.height = size + 'px';
+        layoutTiles();
+      }
+
+      function layoutTiles() {
+        tiles.forEach((tile, index) => {
+          const angle = -Math.PI / 2 + (index * 2 * Math.PI) / tiles.length;
+          const x = center.x + radius * Math.cos(angle);
+          const y = center.y + radius * Math.sin(angle);
+          tile.x = x;
+          tile.y = y;
+          tile.el.style.left = x - tile.size / 2 + 'px';
+          tile.el.style.top = y - tile.size / 2 + 'px';
+        });
+        renderLinks();
+      }
+
+      function buildTiles() {
+        wheel.querySelectorAll('.tile').forEach(node => node.remove());
+        tiles = LETTERS.map((char, index) => {
+          const size = Math.round(wheel.clientWidth * 0.19);
+          const el = document.createElement('div');
+          el.className = 'tile';
+          el.textContent = char;
+          el.style.width = size + 'px';
+          el.style.height = size + 'px';
+          el.style.fontSize = Math.round(size * 0.5) + 'px';
+          el.addEventListener('pointerdown', event => {
+            event.preventDefault();
+            toggleTile(index);
+          });
+          wheel.appendChild(el);
+          return { char, el, size, x: 0, y: 0, index };
+        });
+        layoutTiles();
+      }
+
+      function toggleTile(index) {
+        const id = state.selection.indexOf(index);
+        if (id === -1) {
+          state.selection.push(index);
+        } else {
+          state.selection.splice(id, 1);
+        }
+        render();
+      }
+
+      function render() {
+        tiles.forEach((tile, index) => tile.el.classList.toggle('selected', state.selection.includes(index)));
+        renderSlots();
+        renderLinks();
+        foundEl.textContent = `${toFa(state.found.length)}/${toFa(Object.keys(WORDS).length)}`;
+      }
+
+      function renderSlots() {
+        const slots = Math.max(3, Math.min(state.selection.length + 1, 6));
+        slotsEl.innerHTML = '';
+        for (let index = 0; index < slots; index += 1) {
+          const node = document.createElement('div');
+          const letter = state.selection[index];
+          if (letter !== undefined) {
+            node.className = 'slot filled';
+            node.textContent = LETTERS[letter];
+            node.title = 'برای برداشتن حرف، روی آن بزن';
+            node.addEventListener('pointerdown', () => {
+              state.selection.splice(index, 1);
+              render();
+            });
+          } else {
+            node.className = 'slot' + (index === state.selection.length ? ' next' : '');
+          }
+          slotsEl.appendChild(node);
+        }
+      }
+
+      function renderLinks() {
+        const points = state.selection.map(index => tiles[index]).filter(Boolean).map(tile => `${tile.x},${tile.y}`);
+        if (finger) points.push(`${finger.x},${finger.y}`);
+        links.innerHTML =
+          points.length > 1
+            ? `<polygon points="${points.join(' ')}" fill="rgba(108,76,241,0.16)" stroke="#17c3b2" stroke-width="5" stroke-linejoin="round"/>`
+            : '';
+      }
+
+      function nearestTile(point) {
+        let best = null;
+        let bestDistance = Infinity;
+        tiles.forEach((tile, index) => {
+          const distance = Math.hypot(tile.x - point.x, tile.y - point.y);
+          if (distance < tile.size * 0.85 && distance < bestDistance) {
+            bestDistance = distance;
+            best = index;
+          }
+        });
+        return best;
+      }
+
+      wheel.addEventListener('pointerdown', event => {
+        const rect = wheel.getBoundingClientRect();
+        const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        dragging = false;
+        finger = point;
+        const index = nearestTile(point);
+        if (index !== null) select(index);
+        render();
+      });
+
+      wheel.addEventListener('pointermove', event => {
+        if (!finger) return;
+        const rect = wheel.getBoundingClientRect();
+        finger = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        dragging = true;
+        const index = nearestTile(finger);
+        if (index !== null) select(index);
+        render();
+      });
+
+      wheel.addEventListener('pointerup', () => {
+        const wasDragging = dragging;
+        finger = null;
+        dragging = false;
+        render();
+        if (wasDragging && state.selection.length >= 2) submit();
+      });
+
+      wheel.addEventListener('pointercancel', () => {
+        finger = null;
+        dragging = false;
+        render();
+      });
+
+      function select(index) {
+        if (state.selection.includes(index)) {
+          // برگشت روی حرف قبلی = برداشتن آخرین حرف
+          const position = state.selection.indexOf(index);
+          if (position === state.selection.length - 2) state.selection.pop();
+          return;
+        }
+        state.selection.push(index);
+      }
+
+      function word() {
+        return state.selection.map(index => LETTERS[index]).join('');
+      }
+
+      function showMessage(text, bad = false) {
+        banner.textContent = text;
+        banner.className = 'show' + (bad ? ' bad' : '');
+        clearTimeout(showMessage.timer);
+        showMessage.timer = setTimeout(() => (banner.className = ''), 1800);
+      }
+
+      function submit() {
+        const current = word();
+        if (current.length < 3) {
+          showMessage('کلمه باید حداقل ۳ حرف باشد', true);
+          state.selection = [];
+          render();
+          return;
+        }
+        if (state.found.includes(current)) {
+          showMessage('این کلمه را قبلاً پیدا کرده‌ای', true);
+          state.selection = [];
+          render();
+          return;
+        }
+        const points = WORDS[current] ?? BONUS[current];
+        if (points) {
+          state.found.push(current);
+          state.score += points;
+          state.coins += Math.round(points / 12);
+          scoreEl.textContent = toFa(state.score);
+          coinsEl.textContent = toFa(state.coins);
+          showMessage(BONUS[current] ? `کلمه امتیازی! +${toFa(points)}` : `آفرین! +${toFa(points)}`);
+          burst();
+        } else {
+          showMessage('این کلمه در دیکشنری بازی نیست', true);
+        }
+        state.selection = [];
+        render();
+        if (state.found.length === Object.keys(WORDS).length) {
+          setTimeout(() => showMessage('همه کلمات مرحله پیدا شد! 🎉'), 900);
+        }
+      }
+
+      function burst() {
+        const colors = ['#ffc93c', '#ff7a85', '#5fd068', '#a78bfa', '#4fc3f7'];
+        for (let index = 0; index < 26; index += 1) {
+          const piece = document.createElement('i');
+          piece.style.left = Math.random() * 100 + 'vw';
+          piece.style.background = colors[index % colors.length];
+          piece.style.animationDuration = 1.4 + Math.random() * 1.2 + 's';
+          piece.style.animationDelay = Math.random() * 0.3 + 's';
+          if (index % 3 === 0) piece.style.borderRadius = '50%';
+          confettiEl.appendChild(piece);
+          setTimeout(() => piece.remove(), 3200);
+        }
+      }
+
+      document.getElementById('submit').addEventListener('click', submit);
+      document.getElementById('clear').addEventListener('click', () => {
+        state.selection = [];
+        render();
+      });
+      document.getElementById('hint').addEventListener('click', () => {
+        const remaining = Object.keys(WORDS).filter(candidate => !state.found.includes(candidate));
+        if (remaining.length === 0) {
+          showMessage('همه کلمات پیدا شده است');
+          return;
+        }
+        showMessage(`یکی از کلمه‌ها با «${remaining[0][0]}» شروع می‌شود`, false);
+      });
+
+      window.addEventListener('resize', sizeWheel);
+      document.fonts?.ready?.then(sizeWheel);
+      sizeWheel();
+      buildTiles();
+      render();
+    </script>
+  </body>
+</html>

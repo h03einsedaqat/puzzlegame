@@ -12,6 +12,11 @@ export const GAME_CONFIG = {
     maxSelectionLength: 9,
     /** کلمه‌ای که با راهنما آشکار شود، درصدی از امتیاز و هیچ سکه‌ای نمی‌دهد */
     revealedWordScoreRatio: 0.25,
+    /**
+     * ثبت خودکار: اگر واژه‌ی ساخته‌شده خودش یک واژه پذیرفتنی باشد و بازیکن این
+     * مدت دست به حروف نزند، واژه خودش ثبت می‌شود (مثل بازی‌های کلمه‌ای).
+     */
+    autoSubmitPauseMs: 550,
   },
 
   economy: {
@@ -25,6 +30,14 @@ export const GAME_CONFIG = {
     refundHeartOnComplete: true,
     freeAttemptLevelIds: [1] as readonly number[],
     maxHeartsWithBonus: 5,
+    /** هزینه پر کردن یک‌جای قلب‌ها با سکه (وقتی قلب تمام شده باشد) */
+    heartRefillCoinCost: 60,
+  },
+
+  /** معیار ستاره‌های هر مرحله؛ از این فایل خوانده می‌شود تا تعادل بازی یک‌جا تنظیم شود */
+  rating: {
+    /** برای ۳ ستاره، دست‌کم این نسبت از کلمه‌های امتیازی هم باید پیدا شود */
+    cleanRunBonusRatio: 0.5,
   },
 
   /** سکه هر کلمه بر پایه طول آن */
@@ -71,13 +84,18 @@ export const GAME_CONFIG = {
   } as Record<Difficulty, { score: number; coins: number }>,
 
   hints: {
+    /**
+     * قیمت راهنماها. هر راهنما در همان لحظه از سکه‌های بازیکن کم می‌شود و قیمت‌ها
+     * طوری چیده شده‌اند که «راهنمای هوشمند» ارزان‌تر از «آشکارکردن کامل واژه»
+     * باشد و بازیکن بتواند با بازی‌کردن سکه دربیاورد و راهنما بخرد.
+     */
     costs: {
       reveal_letter: 15,
-      reveal_word: 35,
       smart_help: 25,
+      reveal_word: 45,
     } as Record<HintType, number>,
-    /** در MVP فقط آشکارکردن حرف در دسترس کاربر است */
-    enabledTypes: ['reveal_letter'] as HintType[],
+    /** ترتیب نمایش در برگه راهنما (از ارزان به گران) */
+    order: ['reveal_letter', 'smart_help', 'reveal_word'] as HintType[],
   },
 
   daily: {
@@ -190,5 +208,12 @@ export function hintCost(type: HintType): number {
 }
 
 export function isHintEnabled(type: HintType): boolean {
-  return GAME_CONFIG.hints.enabledTypes.includes(type);
+  // همه راهنماها فعال‌اند؛ فهرست در پیکربندی نگه داشته می‌شود تا خاموش‌کردن یک
+  // راهنما (مثلاً برای رویدادها) بدون تغییر کد رابط کاربری ممکن باشد.
+  return GAME_CONFIG.hints.order.includes(type);
+}
+
+/** راهنماهای فعال، به ترتیب نمایش در برگه راهنما */
+export function enabledHintTypes(): HintType[] {
+  return GAME_CONFIG.hints.order.filter(type => isHintEnabled(type));
 }

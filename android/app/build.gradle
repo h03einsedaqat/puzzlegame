@@ -51,12 +51,23 @@ android {
         resConfigs "fa", "en"
     }
 
+    /**
+     * امضا: علاوه بر امضای v2 (که اندروید ۷+ می‌شناسد) امضای v1 (JAR) را هم
+     * عمداً روشن می‌کنیم. دلیلش این است که AGP وقتی minSdkVersion ≥ 24 باشد
+     * خودش امضای v1 را خاموش می‌کند و بعضی نصب‌کننده‌های گوشی (رابط‌های اختصاصی
+     * سامسونگ/شیائومی/وان‌پلاس/هواوی و فایل‌منیجرهایی که خودشان APK را می‌خوانند)
+     * بسته‌ای که فقط امضای v2 دارد را با پیام
+     * «App not installed as package appears to be invalid» رد می‌کنند.
+     * روشن بودن v1 هیچ ضرری ندارد؛ اندروید ۷+ همان v2 را بررسی می‌کند.
+     */
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
             storePassword 'android'
             keyAlias 'androiddebugkey'
             keyPassword 'android'
+            enableV1Signing true
+            enableV2Signing true
         }
         if (hasReleaseSigning) {
             release {
@@ -64,6 +75,8 @@ android {
                 storePassword keystoreProperties['storePassword']
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
+                enableV1Signing true
+                enableV2Signing true
             }
         }
     }

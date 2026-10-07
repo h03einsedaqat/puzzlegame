@@ -8,6 +8,8 @@ export interface CardProps {
   style?: StyleProp<ViewStyle>;
   variant?: 'surface' | 'muted' | 'accent' | 'outlined';
   padding?: keyof typeof spacing;
+  /** برچسب دسترس‌پذیری؛ کارت‌های آماری با یک جمله معنادار خوانده می‌شوند */
+  accessibilityLabel?: string;
 }
 
 const variants: Record<NonNullable<CardProps['variant']>, ViewStyle> = {
@@ -18,9 +20,15 @@ const variants: Record<NonNullable<CardProps['variant']>, ViewStyle> = {
 };
 
 /** سطح پایه برای گروه‌بندی محتوا با گوشه‌های نرم و سایه سبک. */
-export function Card({ children, style, variant = 'surface', padding = 'lg' }: CardProps) {
+export function Card({ children, style, variant = 'surface', padding = 'lg', accessibilityLabel }: CardProps) {
   return (
-    <View style={[styles.base, variants[variant], { padding: spacing[padding] }, style]}>{children}</View>
+    <View
+      style={[styles.base, variants[variant], { padding: spacing[padding] }, style]}
+      accessible={accessibilityLabel !== undefined}
+      accessibilityLabel={accessibilityLabel}
+    >
+      {children}
+    </View>
   );
 }
 

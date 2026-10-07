@@ -117,4 +117,10 @@ export interface LevelRecord {
   bestScore: number;
   completedAt: number;
   attempts: number;
+  /**
+   * بهترین ستاره‌ای که بازیکن در این مرحله گرفته است (۰ تا ۳).
+   * روی رکوردهای ذخیره‌شده نسخه‌های قبلی ممکن است وجود نداشته باشد؛ همه‌جا با
+   * `?? 0` خوانده می‌شود.
+   */
+  stars?: number;
 }

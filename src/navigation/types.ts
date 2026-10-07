@@ -23,6 +23,10 @@ export interface ResultParams {
   bonusTotal: number;
   words: ResultWordSummary[];
   isNewBestScore: boolean;
+  /** تعداد راهنماهایی که در این مرحله خریده شده است */
+  hintsUsed: number;
+  /** ستاره‌های این اجرا (۰ تا ۳) */
+  stars: number;
   unlockedLevelId: number | null;
   nextLevelId: number | null;
   /** پاداش ویژه چالش روزانه که جدا از پاداش مرحله نمایش داده می‌شود */
@@ -39,6 +43,7 @@ export type RootStackParamList = {
   DailyChallengeIntro: undefined;
   Result: ResultParams;
   Settings: undefined;
+  Stats: undefined;
   About: undefined;
   Privacy: undefined;
   Achievements: undefined;

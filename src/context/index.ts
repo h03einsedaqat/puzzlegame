@@ -7,4 +7,12 @@ export { DailyProvider, useDaily } from './DailyContext';
 export { AchievementsProvider, useAchievements } from './AchievementsContext';
 export type { AchievementView } from './AchievementsContext';
 export { GameProvider, useGame, GAME_LIMITS } from './GameContext';
-export type { GameFeedback, HintRequestResult, RevealedWordLetters, SubmitOutcome } from './GameContext';
+export type {
+  ActiveHint,
+  GameFeedback,
+  HintBlockedReason,
+  HintOption,
+  HintRequestResult,
+  RevealedWordLetters,
+  SubmitOutcome,
+} from './GameContext';

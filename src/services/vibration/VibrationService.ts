@@ -7,6 +7,13 @@ import { patternFor, type HapticEvent } from '../../constants/haptics';
  *
  * روی Android از Vibration API استفاده می‌شود؛ اگر کاربر لرزش را خاموش کرده
  * باشد یا دستگاه پشتیبانی نکند، فراخوانی‌ها بی‌اثر می‌شوند.
+ *
+ * ⚠️ نکته حیاتی: فراخوانی Vibration روی اندروید بدون مجوز
+ * `android.permission.VIBRATE` خطای SecurityException می‌دهد و چون از داخل
+ * ماژول بومی بالا می‌آید، برنامه را می‌بندد (نه فقط یک خطای جاوااسکریپت).
+ * مجوز در AndroidManifest اعلام شده است (و بازی هم در حالت عادی هیچ مجوز
+ * دیگری نمی‌خواهد)؛ ولی برای اینکه یک اشتباه در Manifest هرگز برنامه را روی
+ * گوشی کاربر نبندد، هر فراخوانی در همین لایه در try/catch پیچیده شده است.
  */
 export interface VibrationDriver {
   vibrate(pattern: number | readonly number[]): void;
@@ -15,11 +22,22 @@ export interface VibrationDriver {
 
 export const reactNativeVibrationDriver: VibrationDriver = {
   vibrate: pattern => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+    try {
       Vibration.vibrate(pattern as number | number[]);
+    } catch {
+      // نبود مجوز/پشتیبانی‌نشدن دستگاه نباید هیچ‌وقت برنامه را ببندد.
     }
   },
-  cancel: () => Vibration.cancel(),
+  cancel: () => {
+    try {
+      Vibration.cancel();
+    } catch {
+      // همان دلیل بالا.
+    }
+  },
 };
 
 export class VibrationService {
@@ -35,7 +53,7 @@ export class VibrationService {
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (!enabled) {
-      this.driver.cancel();
+      this.cancel();
     }
   }
 
@@ -53,10 +71,18 @@ export class VibrationService {
       return;
     }
     this.lastEvent = { event, at: now };
-    this.driver.vibrate(patternFor(event));
+    try {
+      this.driver.vibrate(patternFor(event));
+    } catch {
+      // هیچ خطای درایور نباید به رابط کاربری برسد؛ بازی بدون لرزش ادامه می‌دهد.
+    }
   }
 
   cancel(): void {
-    this.driver.cancel();
+    try {
+      this.driver.cancel();
+    } catch {
+      // بی‌اثر بودن cancel مشکلی نیست.
+    }
   }
 }

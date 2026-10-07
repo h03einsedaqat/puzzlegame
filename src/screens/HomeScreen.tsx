@@ -1,18 +1,21 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, ScrollView, StyleSheet, View } from 'react-native';
+import Svg, { Circle, G, Path, Text as SvgText } from 'react-native-svg';
 
 import { APP_INFO } from '../constants/appInfo';
 import { strings } from '../constants';
 import { useAchievements, useDaily, useProfile, useProgress } from '../context';
 import { LEVELS, getLevelById } from '../data/levels/levels';
 import { useCountdown } from '../hooks/useCountdown';
-import { colors, radius, spacing } from '../theme';
+import { useReducedMotion } from '../hooks/useReducedMotion';
+import { colors, fontFamily, radius, shadows, spacing } from '../theme';
 import { format, formatNumber, toPersianDigits } from '../utils/format';
 import { formatJalaliDate, weekdayName } from '../utils/jalali';
 import { AppText } from '../components/ui/AppText';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { HeartRefillDialog } from '../components/game/HeartRefillDialog';
 import { Icon } from '../components/ui/Icon';
 import { IconButton } from '../components/ui/IconButton';
 import { ProgressBar } from '../components/ui/ProgressBar';
@@ -123,18 +126,40 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.headerTexts}>
-            <AppText variant="title">{strings.app.name}</AppText>
-            <AppText variant="caption" color={colors.textMuted}>
-              {todayLabel}
-            </AppText>
+        <View style={styles.hero}>
+          <FloatingLetters />
+          <View style={styles.ribbon}>
+            <View style={[styles.ribbonTail, styles.ribbonTailStart]} />
+            <View style={[styles.ribbonTail, styles.ribbonTailEnd]} />
+            <View style={styles.ribbonInner}>
+              <View style={styles.ribbonTile}>
+                <AppText variant="title" color={colors.letterGold} allowFontScaling={false}>
+                  ک
+                </AppText>
+              </View>
+              <View style={styles.ribbonTexts}>
+                <AppText variant="display" color={colors.textInverse} style={styles.ribbonTitle}>
+                  {strings.app.name}
+                </AppText>
+                <AppText variant="caption" color={colors.textOnDark}>
+                  {strings.app.tagline}
+                </AppText>
+              </View>
+            </View>
           </View>
-          <IconButton
-            icon="settings"
-            onPress={() => navigation.navigate('Settings')}
-            accessibilityLabel={strings.settings.title}
-          />
+
+          <View style={styles.heroFooter}>
+            <View style={styles.todayPill}>
+              <AppText variant="caption" color={colors.primaryDark}>
+                {todayLabel}
+              </AppText>
+            </View>
+            <IconButton
+              icon="settings"
+              onPress={() => navigation.navigate('Settings')}
+              accessibilityLabel={strings.settings.title}
+            />
+          </View>
         </View>
 
         <View style={styles.statsRow}>
@@ -191,7 +216,12 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
           </AppText>
 
           <Button
-            label={completedCount > 0 ? strings.home.playButton : strings.home.playNewButton}
+            label={
+              completedCount > 0 || progress.lastPlayedLevelId !== null
+                ? strings.home.playButton
+                : strings.home.playNewButton
+            }
+            variant="success"
             icon="play"
             onPress={() => playLevel(continueLevelId)}
           />
@@ -264,18 +294,14 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
         </AppText>
       </ScrollView>
 
-      <ConfirmDialog
+      <HeartRefillDialog
         visible={noHeartsVisible}
-        title={strings.hearts.noHeartsTitle}
-        body={
+        onClose={() => setNoHeartsVisible(false)}
+        note={
           hearts.nextRefillAt
-            ? `${strings.hearts.noHeartsBody} ${format(strings.hearts.nextHeartIn, { time: countdown.text })}`
-            : strings.hearts.noHeartsBody
+            ? format(strings.hearts.nextHeartIn, { time: countdown.text })
+            : undefined
         }
-        confirmLabel={strings.common.gotIt}
-        cancelLabel={strings.common.close}
-        onConfirm={() => setNoHeartsVisible(false)}
-        onCancel={() => setNoHeartsVisible(false)}
       />
 
       <ConfirmDialog
@@ -301,20 +327,169 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
   );
 }
 
+/** حروف شناور دور بنر؛ فقط تزئینی و با احترام به «کاهش انیمیشن» */
+function FloatingLetters() {
+  const reducedMotion = useReducedMotion();
+  const drift = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (reducedMotion) {
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift, { toValue: 1, duration: 2600, useNativeDriver: true }),
+        Animated.timing(drift, { toValue: 0, duration: 2600, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [drift, reducedMotion]);
+
+  const translateY = drift.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
+  const letters = [
+    { char: 'ب', color: colors.brandTeal, size: 34 },
+    { char: 'ژ', color: colors.confettiCoral, size: 28 },
+    { char: 'ن', color: colors.accent, size: 32 },
+  ];
+
+  return (
+    <View pointerEvents="none" style={styles.floatingLetters}>
+      {[0, 1].map(row => (
+        <View key={`row-${row}`} style={styles.floatingRow}>
+          {letters.map((letter, index) =>
+            (row + index) % 2 === 0 ? (
+              <Animated.View key={`${row}-${index}`} style={{ transform: [{ translateY }] }}>
+                <FloatingLetter char={letter.char} color={letter.color} size={letter.size} />
+              </Animated.View>
+            ) : (
+              <View key={`${row}-${index}`} style={{ width: letter.size }} />
+            ),
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function FloatingLetter({ char, color, size }: { char: string; color: string; size: number }) {
+  const radiusOuter = size * 0.62;
+  const center = size * 0.7;
+  return (
+    <Svg width={size * 1.4} height={size * 1.4}>
+      <G opacity={0.95}>
+        <Circle cx={center} cy={center} r={radiusOuter} fill={colors.surface} opacity={0.95} />
+        <Path
+          d={`M${center} ${center - radiusOuter} A${radiusOuter} ${radiusOuter} 0 0 1 ${center + radiusOuter} ${center}`}
+          stroke={color}
+          strokeWidth={3}
+          fill="none"
+        />
+        <SvgText
+          x={center}
+          y={center + size * 0.22}
+          fontSize={size * 0.8}
+          fontFamily={fontFamily.bold}
+          fill={color}
+          textAnchor="middle"
+        >
+          {char}
+        </SvgText>
+      </G>
+    </Svg>
+  );
+}
+
 const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     gap: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  header: {
+  hero: {
+    gap: spacing.sm,
+  },
+  ribbon: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    borderWidth: 3,
+    borderColor: colors.primaryDark,
+    ...shadows.raised,
+  },
+  ribbonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  ribbonTile: {
+    width: 54,
+    height: 54,
+    borderRadius: radius.md,
+    backgroundColor: colors.tileDeep,
+    borderWidth: 2,
+    borderColor: colors.tileDeepBorder,
+    borderBottomWidth: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ribbonTexts: {
+    flex: 1,
+    alignItems: 'flex-start',
+    gap: 2,
+  },
+  ribbonTitle: {
+    textShadowColor: 'rgba(0, 0, 0, 0.25)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 2,
+  },
+  ribbonTail: {
+    position: 'absolute',
+    bottom: -10,
+    width: 0,
+    height: 0,
+    borderTopWidth: 12,
+    borderTopColor: colors.primaryDark,
+    borderLeftWidth: 12,
+    borderRightWidth: 12,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  ribbonTailStart: {
+    left: 26,
+    transform: [{ rotate: '-8deg' }],
+  },
+  ribbonTailEnd: {
+    right: 26,
+    transform: [{ rotate: '8deg' }],
+  },
+  heroFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerTexts: {
-    gap: 2,
-    alignItems: 'flex-start',
+  todayPill: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+  },
+  floatingLetters: {
+    position: 'absolute',
+    top: -6,
+    left: -6,
+    right: -6,
+    bottom: -6,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  floatingRow: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
   },
   statsRow: {
     flexDirection: 'row',

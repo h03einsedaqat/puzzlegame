@@ -1,8 +1,7 @@
-import React, { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 
-import { GAME_CONFIG, hintCost, isHintEnabled } from '../constants';
+import { GAME_CONFIG, enabledHintTypes, hintCost, isHintEnabled } from '../constants';
 import {
-  abandonGame,
   buildWord,
   calculateLevelRewards,
   clearSelection,
@@ -11,11 +10,14 @@ import {
   isLevelCompleted,
   removeLastLetter,
   removeLetter,
+  hintWordPattern,
+
   selectLetter,
   selectedTiles as selectSelectedTiles,
   submitWord as submitWordToEngine,
   revealWithHint,
 } from '../services/game/gameEngine';
+import { validateWord } from '../services/game/wordValidator';
 import type {
   GameRewards,
   GameSession,
@@ -54,9 +56,43 @@ export type SubmitOutcome =
       rewards: GameRewards | null;
     };
 
+export type HintBlockedReason = 'completed' | 'nothing_to_reveal' | 'not_enough_coins' | 'disabled';
+
 export type HintRequestResult =
-  | { status: 'revealed'; type: HintType; word: string; letterIndex: number | null; cost: number }
-  | { status: 'blocked'; reason: 'completed' | 'nothing_to_reveal' | 'not_enough_coins' | 'disabled' };
+  | {
+      status: 'revealed';
+      type: HintType;
+      word: string;
+      letterIndex: number | null;
+      cost: number;
+      /** الگوی واژه با حروف آشکارشده؛ مثل «ب•ا••» */
+      pattern: string;
+      /** ترتیب کاشی‌هایی که بازیکن باید بزند تا این واژه ساخته شود */
+      tileIds: string[];
+    }
+  | { status: 'blocked'; reason: HintBlockedReason };
+
+/**
+ * راهنمای فعال: تا وقتی بازیکن واژه راهنمایی‌شده را پیدا نکرده، روی صفحه می‌ماند
+ * و روی چرخ حروف، کاشی بعدی را روشن می‌کند.
+ */
+export interface ActiveHint {
+  id: number;
+  type: HintType;
+  word: string;
+  pattern: string;
+  tileIds: string[];
+  cost: number;
+  at: number;
+}
+
+export interface HintOption {
+  type: HintType;
+  cost: number;
+  affordable: boolean;
+  /** توضیح یک‌خطی برای برگه راهنما */
+  available: boolean;
+}
 
 interface GameState {
   level: Level | null;
@@ -91,9 +127,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'clearFeedback':
       return state.feedback === null ? state : { ...state, feedback: null };
     case 'end':
-      return state.session === null
-        ? state
-        : { ...state, session: abandonGame(state.session), feedback: null };
+      // نشست کامل پاک می‌شود تا ورود بعدی به همان مرحله، همیشه بازی تازه بگیرد.
+      // (اگر نشست تمام‌شده یا رهاشده در حافظه بماند، همه دکمه‌های صفحه بازی
+      // غیرفعال می‌مانند و بازیکن فکر می‌کند بازی هنگ کرده است.)
+      return initialState;
     default:
       return state;
   }
@@ -118,6 +155,13 @@ export interface GameContextValue {
   revealedLetters: RevealedWordLetters[];
   canUseHint: boolean;
   nextHintCost: number;
+  /** راهنمای فعال (برای روشن‌کردن کاشی‌ها روی چرخ) */
+  activeHint: ActiveHint | null;
+  /** همه راهنماهای قابل خرید با قیمت و وضعیت affordability */
+  hintOptions: HintOption[];
+  dismissHint: () => void;
+  /** واژه کنونی خودش یک واژه پذیرفتنی است؛ صفحه بازی می‌تواند خودکار ثبتش کند */
+  autoSubmitReady: boolean;
   startGame: (level: Level) => void;
   abandonGame: () => void;
   leaveGame: () => void;
@@ -134,6 +178,7 @@ const GameContext = createContext<GameContextValue | null>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
+  const [activeHint, setActiveHint] = useState<ActiveHint | null>(null);
   const { profile, spendCoins } = useProfile();
   const coins = profile.coins;
   const { sound, vibration, analytics } = useServices();
@@ -142,6 +187,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const startGame = useCallback(
     (nextLevel: Level) => {
       dispatch({ type: 'start', level: nextLevel, session: createGame(nextLevel) });
+      setActiveHint(null);
       analytics.track('level_start', {
         levelId: nextLevel.id,
         difficulty: nextLevel.difficulty,
@@ -217,7 +263,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [session, sound]);
 
   const submit = useCallback((): SubmitOutcome => {
-    if (!session || !level) {
+    if (!session || !level || session.status !== 'playing') {
+      return { status: 'ignored' };
+    }
+    // انتخاب خالی هرگز «کلمه اشتباه» حساب نمی‌شود؛ فقط نادیده گرفته می‌شود.
+    if (session.selection.length === 0) {
       return { status: 'ignored' };
     }
     const result = submitWordToEngine(session, level);
@@ -301,11 +351,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (outcome.status === 'blocked') {
         return { status: 'blocked', reason: outcome.reason };
       }
+      // هزینه راهنما همان لحظه از سکه‌ها کم می‌شود؛ اگر کسر نشد، راهنما هم داده نمی‌شود.
       if (!spendCoins(cost)) {
         return { status: 'blocked', reason: 'not_enough_coins' };
       }
 
+      const pattern = hintWordPattern(outcome.session, outcome.word);
       dispatch({ type: 'apply', session: outcome.session });
+      setActiveHint({
+        id: nextFeedbackId(),
+        type,
+        word: outcome.word,
+        pattern,
+        tileIds: outcome.tileIds,
+        cost,
+        at: Date.now(),
+      });
       sound.play('reward');
       vibration.trigger('reward');
       analytics.track('hint_used', { levelId: level.id, type, word: outcome.word, cost });
@@ -316,10 +377,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         word: outcome.word,
         letterIndex: outcome.letterIndex,
         cost,
+        pattern,
+        tileIds: outcome.tileIds,
       };
     },
     [analytics, coins, level, session, sound, spendCoins, vibration],
   );
+
+  const dismissHint = useCallback(() => setActiveHint(null), []);
+
+  // راهنما تا وقتی معتبر است که واژه‌اش پیدا نشده باشد؛ با پیداشدن یا شروع مرحله
+  // تازه، راهنمای فعال خودش پاک می‌شود تا کاشی‌های قدیمی روشن نمانند.
+  useEffect(() => {
+    if (!activeHint) {
+      return;
+    }
+    const found = session?.foundWords.some(entry => entry.word === activeHint.word) ?? false;
+    if (found || !session || session.levelId !== level?.id) {
+      setActiveHint(null);
+    }
+  }, [activeHint, level?.id, session]);
 
   const dismissFeedback = useCallback(() => dispatch({ type: 'clearFeedback' }), []);
 
@@ -367,8 +444,40 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }));
   }, [level, session]);
 
+  const autoSubmitReady = useMemo(() => {
+    if (!session || !level || session.status !== 'playing' || session.selection.length < 2) {
+      return false;
+    }
+    const candidate = buildWord(session);
+    if (candidate.length < GAME_CONFIG.gameplay.minWordLength) {
+      return false;
+    }
+    const foundWords = session.foundWords.map(entry => entry.word);
+    const validation = validateWord({ raw: candidate, level, foundWords });
+    if (validation.status !== 'accepted') {
+      return false;
+    }
+    // اگر واژه بلندتری هم وجود دارد که با همین حروف ادامه پیدا می‌کند و هنوز
+    // پیدا نشده، کمی به بازیکن فرصت می‌دهیم تا خودش ادامه دهد.
+    return true;
+  }, [level, session]);
+
   const nextHintCost = hintCost('reveal_letter');
   const canUseHint = coins >= nextHintCost && session?.status === 'playing';
+
+  const hintOptions = useMemo<HintOption[]>(
+    () =>
+      enabledHintTypes().map(type => {
+        const cost = hintCost(type);
+        return {
+          type,
+          cost,
+          affordable: coins >= cost,
+          available: session?.status === 'playing',
+        };
+      }),
+    [coins, session?.status],
+  );
 
   const value = useMemo<GameContextValue>(
     () => ({
@@ -384,6 +493,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       revealedLetters,
       canUseHint,
       nextHintCost,
+      activeHint,
+      hintOptions,
+      dismissHint,
+      autoSubmitReady,
       startGame,
       abandonGame: abandonGameSession,
       leaveGame,
@@ -406,6 +519,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       revealedLetters,
       canUseHint,
       nextHintCost,
+      activeHint,
+      hintOptions,
+      dismissHint,
       startGame,
       abandonGameSession,
       leaveGame,

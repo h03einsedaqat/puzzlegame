@@ -25,11 +25,14 @@
     "sounds:build": "tsx tools/build-sounds.mts",
     "icons:build": "tsx tools/build-icons.mts",
     "android:preflight": "tsx tools/preflight.mts",
+    "apk:verify": "bash tools/verify-apk.sh",
     "android:clean": "cd android && ./gradlew clean",
     "android:apk:release": "cd android && ./gradlew assembleRelease",
     "android:aab:release": "cd android && ./gradlew bundleRelease",
     "android:apk:splits": "cd android && ./gradlew assembleRelease -PabiSplits=true",
-    "android:bundle:debug": "cd android && ./gradlew assembleDebug"
+    "android:bundle:debug": "cd android && ./gradlew assembleDebug",
+    "solutions:export": "tsx tools/export-solutions.mts",
+    "icons:mascot": "tsx tools/build-mascot-icon.mts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "3.1.1",

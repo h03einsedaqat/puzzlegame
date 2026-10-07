@@ -22,7 +22,7 @@ export interface ProgressBarProps {
  */
 export function ProgressBar({
   ratio,
-  height = 10,
+  height = 14,
   color = colors.primary,
   trackColor = colors.surfaceMuted,
   style,
@@ -60,7 +60,10 @@ export function ProgressBar({
             width: width.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
           },
         ]}
-      />
+      >
+        {/* برقِ روی نوار، حس «آب‌نباتی» می‌دهد */}
+        <View pointerEvents="none" style={[styles.gloss, { borderRadius: height / 2, height: Math.max(3, height * 0.34) }]} />
+      </Animated.View>
     </View>
   );
 }
@@ -70,8 +73,17 @@ const styles = StyleSheet.create({
     width: '100%',
     overflow: 'hidden',
     borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   fill: {
     height: '100%',
+  },
+  gloss: {
+    position: 'absolute',
+    top: 2,
+    left: 3,
+    right: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
 });

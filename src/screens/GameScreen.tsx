@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 
-import { GAME_CONFIG, hintCost, strings } from '../constants';
+import { GAME_CONFIG, strings } from '../constants';
+import { computeStars } from '../services';
 import { useAchievements, useDaily, useGame, useProfile, useProgress } from '../context';
 import { getLevelById, getNextLevelId } from '../data/levels/levels';
 import { calculateLevelRewards } from '../services/game/gameEngine';
@@ -11,13 +12,15 @@ import { AppText } from '../components/ui/AppText';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FeedbackBanner } from '../components/ui/FeedbackBanner';
+import { HintSheet } from '../components/ui/HintSheet';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { FoundWordsList } from '../components/game/FoundWordsList';
 import { GameHeader } from '../components/game/GameHeader';
-import { LetterGrid } from '../components/game/LetterGrid';
+import { HintGuide } from '../components/game/HintGuide';
+import { LetterWheel } from '../components/game/LetterWheel';
 import { WordSlots } from '../components/game/WordSlots';
 import type { GameFeedback } from '../context';
-import type { Level, WordRejectionReason } from '../types';
+import type { HintType, Level, WordRejectionReason } from '../types';
 import type { ResultParams, ResultWordSummary, RootScreenProps } from '../navigation/types';
 
 function rejectionMessage(reason: WordRejectionReason, level: Level): string {
@@ -89,30 +92,48 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     submit,
     requestHint,
     dismissFeedback,
-    canUseHint,
-    nextHintCost,
+    activeHint,
+    hintOptions,
+    dismissHint,
+    autoSubmitReady,
   } = useGame();
 
   const [hintMessage, setHintMessage] = useState<{ text: string; tone: 'success' | 'error' | 'info'; id: number } | null>(null);
   const [leaveVisible, setLeaveVisible] = useState(false);
-  const [noCoinsVisible, setNoCoinsVisible] = useState(false);
+  /** هنگام کشیدن حروف true می‌شود؛ تا انگشت برداشته نشود، ثبت خودکار انجام نمی‌شود */
+  const [isDraggingLetters, setIsDraggingLetters] = useState(false);
+  /** ارتفاع ناحیه چرخ؛ چرخ خودش را با فضای موجود اندازه می‌کند تا هیچ‌وقت اسکرول لازم نشود */
+  const [wheelArea, setWheelArea] = useState({ width: 0, height: 0 });
+  const [hintSheetVisible, setHintSheetVisible] = useState(false);
+  const [hintSheetMessage, setHintSheetMessage] = useState<string | null>(null);
   const completedRef = useRef(false);
   const bestScoreBeforeRef = useRef<number>(0);
 
   const activeLevel = level;
   const isDaily = mode === 'daily';
 
-  // اگر نشست فعلی متعلق به این مرحله نباشد (ورود تازه یا تکرار مرحله)، تازه ساخته می‌شود.
+  /**
+   * نشست این مرحله «قابل استفاده» است یا نه.
+   *
+   * ورود دوباره به همان مرحله پس از تکمیل یا خروج، باید همیشه بازی تازه بدهد؛
+   * اگر نشستِ تمام‌شده/رهاشده دوباره استفاده شود، همه دکمه‌ها غیرفعال می‌مانند و
+   * بازیکن فکر می‌کند بازی هنگ کرده است. (نشستِ «در حال بازی» و نشستِ همین
+   * لحظه تمام‌شده معتبرند تا انتقال به صفحه نتیجه درست انجام شود.)
+   */
+  const sessionPlayable =
+    session !== null &&
+    activeLevel !== undefined &&
+    session.levelId === activeLevel.id &&
+    (session.status === 'playing' || session.status === 'completed');
+
   useEffect(() => {
-    if (!activeLevel) {
+    if (!activeLevel || completedRef.current || sessionPlayable) {
       return;
     }
-    if (session?.levelId !== activeLevel.id) {
-      completedRef.current = false;
-      bestScoreBeforeRef.current = getRecord(activeLevel.id)?.bestScore ?? 0;
-      startGame(activeLevel);
-    }
-  }, [activeLevel, getRecord, session?.levelId, startGame]);
+    completedRef.current = false;
+    bestScoreBeforeRef.current = getRecord(activeLevel.id)?.bestScore ?? 0;
+    startGame(activeLevel);
+  }, [activeLevel, getRecord, sessionPlayable, startGame]);
 
   useEffect(() => {
     if (!activeLevel || !feedback) {
@@ -126,18 +147,47 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     submit();
   }, [submit]);
 
-  const handleHint = useCallback(() => {
-    const result = requestHint('reveal_letter');
-    if (result.status === 'blocked') {
-      if (result.reason === 'not_enough_coins') {
-        setNoCoinsVisible(true);
-        return;
-      }
-      setHintMessage({ text: strings.game.hintAlreadyApplied, tone: 'info', id: Date.now() });
+  /**
+   * ثبت خودکار (خواسته بازیکن: «بررسی خودکار انجام شود»).
+   *
+   * وقتی حروفِ روی صفحه خودشان یک واژه پذیرفتنی می‌سازند، اگر بازیکن مدت کوتاهی
+   * کاری نکند واژه خودش ثبت می‌شود؛ کوتاه‌بودن این مکث باعث می‌شود اگر بازیکن
+   * بخواهد واژه بلندتری بسازد، فرصت داشته باشد.
+   */
+  useEffect(() => {
+    if (!autoSubmitReady || session?.status !== 'playing' || isDraggingLetters) {
       return;
     }
-    setHintMessage({ text: strings.game.hintApplied, tone: 'success', id: Date.now() });
-  }, [requestHint]);
+    const timer = setTimeout(() => {
+      submit();
+    }, GAME_CONFIG.gameplay.autoSubmitPauseMs);
+    return () => clearTimeout(timer);
+  }, [autoSubmitReady, isDraggingLetters, session?.status, submit]);
+
+  const handleHint = useCallback(() => {
+    setHintSheetMessage(null);
+    setHintSheetVisible(true);
+  }, []);
+
+  /** خرید راهنما از برگه: سکه همان‌جا کم می‌شود و نتیجه به بازیکن گفته می‌شود */
+  const handleHintSelect = useCallback(
+    (type: HintType) => {
+      const result = requestHint(type);
+      if (result.status === 'blocked') {
+        if (result.reason === 'not_enough_coins') {
+          setHintSheetMessage(strings.game.hintEarnCoinsTip);
+          return;
+        }
+        setHintSheetMessage(strings.game.hintAlreadyApplied);
+        return;
+      }
+      setHintSheetMessage(format(strings.game.hintSpent, { cost: result.cost }));
+      setHintMessage({ text: strings.game.hintApplied, tone: 'success', id: Date.now() });
+      // برگه بسته می‌شود تا بازیکن بی‌درنگ راهنمای گام‌به‌گام و کاشی روشن‌شده را ببیند.
+      setHintSheetVisible(false);
+    },
+    [requestHint],
+  );
 
   const confirmLeave = useCallback(() => {
     setLeaveVisible(false);
@@ -148,11 +198,20 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   // دکمه بازگشت اندروید همان گفت‌وگوی خروج را باز می‌کند تا پیشرفت ناخواسته از دست نرود.
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      // اگر برگه راهنما باز است، اول همان بسته می‌شود تا بازیکن گیر نکند.
+      if (hintSheetVisible) {
+        setHintSheetVisible(false);
+        return true;
+      }
+      if (leaveVisible) {
+        setLeaveVisible(false);
+        return true;
+      }
       setLeaveVisible(true);
       return true;
     });
     return () => subscription.remove();
-  }, []);
+  }, [hintSheetVisible, leaveVisible]);
 
   // تکمیل مرحله: پاداش‌ها یک‌بار ثبت و نتیجه نمایش داده می‌شود.
   useEffect(() => {
@@ -160,6 +219,9 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
       return;
     }
     completedRef.current = true;
+    // هیچ گفت‌وگویی روی صفحه نتیجه باز نمی‌ماند.
+    setLeaveVisible(false);
+    setHintSheetVisible(false);
 
     const rewards = calculateLevelRewards(session, activeLevel);
     const dailyBonusCoins = isDaily ? GAME_CONFIG.daily.challengeCoinReward : 0;
@@ -180,9 +242,18 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
       hintsUsed: session.hints.length,
     });
 
+    const hintsUsed = session.hints.length;
+    const stars = computeStars({
+      targetFound: rewards.targetWordsFound,
+      targetTotal: activeLevel.targetWords.length,
+      bonusFound: rewards.bonusWordsFound,
+      bonusTotal: activeLevel.bonusWords.length,
+      hintsUsed,
+    });
+
     const nextLevelId = getNextLevelId(activeLevel.id);
     if (!isDaily) {
-      completeLevel({ levelId: activeLevel.id, score: session.score });
+      completeLevel({ levelId: activeLevel.id, score: session.score, stars });
     } else {
       completeChallenge();
     }
@@ -201,6 +272,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
       bonusFound: rewards.bonusWordsFound,
       bonusTotal: activeLevel.bonusWords.length,
       words,
+      hintsUsed,
+      stars,
       isNewBestScore: session.score > bestScoreBeforeRef.current,
       unlockedLevelId: nextLevelId,
       nextLevelId,
@@ -236,6 +309,37 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     return strings.game.tutorialStepLetters;
   }, [activeLevel, session, word.length]);
 
+  const cheapestHintCost = useMemo(() => {
+    if (hintOptions.length > 0) {
+      return Math.min(...hintOptions.map(option => option.cost));
+    }
+    // پیش از شروع نشست هم دکمه قیمت درست نشان می‌دهد (ارزان‌ترین راهنمای فعال).
+    const costs = GAME_CONFIG.hints.order.map(type => GAME_CONFIG.hints.costs[type]);
+    return costs.length > 0 ? Math.min(...costs) : 0;
+  }, [hintOptions]);
+
+  const hintDescriptions = useMemo<Record<HintType, string>>(
+    () => ({
+      reveal_letter: strings.game.hintRevealLetterDesc,
+      smart_help: strings.game.hintSmartHelpDesc,
+      reveal_word: strings.game.hintRevealWordDesc,
+    }),
+    [],
+  );
+
+  /** چند کاشی از نقشه راهنما را بازیکن تا الان زده است (برای نمایش «حرف مانده») */
+  const hintMatchedCount = useMemo(() => {
+    if (!activeHint) {
+      return 0;
+    }
+    const selection = session?.selection ?? [];
+    let matched = 0;
+    while (matched < activeHint.tileIds.length && selection.includes(activeHint.tileIds[matched] as string)) {
+      matched += 1;
+    }
+    return matched;
+  }, [activeHint, session?.selection]);
+
   if (!activeLevel) {
     return (
       <ScreenContainer>
@@ -250,7 +354,26 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   }
 
   const slotsWidth = Math.min(width - spacing.lg * 2, 420);
-  const tileSize = Math.min(72, Math.max(50, Math.floor((Math.min(width, 620) - spacing.lg * 2 - 24) / 5)));
+  /**
+   * قطر چرخ از فضای واقعی ناحیه چرخ حساب می‌شود (عرض و ارتفاع)، پس روی گوشی
+   * کوچک هم همه‌چیز در یک صفحه جا می‌شود و هیچ اسکرولی لازم نیست. اسکرول صفحه
+   * حذف شده است تا کشیدن حروف با اسکرول قاطی نشود — همان چیزی که باعث می‌شد
+   * کشیدن کار نکند و دکمه‌ها بی‌واکنش شوند.
+   */
+  const letterCount = session?.tiles.length ?? 6;
+  const wheelSize = Math.round(
+    Math.max(
+      190,
+      Math.min(
+        340,
+        (wheelArea.width || width) - spacing.sm * 2,
+        (wheelArea.height || width) - spacing.sm,
+      ),
+    ),
+  );
+  const tileSize = Math.round(
+    Math.min(64, Math.max(44, wheelSize * (letterCount <= 5 ? 0.2 : letterCount <= 7 ? 0.175 : 0.15))),
+  );
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
@@ -268,35 +391,34 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
         backLabel={strings.common.back}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.bannerArea}>
-          {feedback ? (
-            <FeedbackBanner
-              message={feedbackText(feedback, activeLevel)}
-              tone={feedback.status === 'accepted' ? 'success' : 'error'}
-              messageId={feedback.id}
-              detail={
-                feedback.status === 'accepted'
-                  ? `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel}`
-                  : undefined
-              }
-            />
-          ) : hintMessage ? (
-            <FeedbackBanner
-              message={hintMessage.text}
-              tone={hintMessage.tone}
-              messageId={hintMessage.id}
-            />
-          ) : null}
-        </View>
-
-        {tutorialStep ? (
+      <View style={styles.playArea}>
+        {/* نوار بازخورد/آموزش: فقط وقتی هست که پیامی برای گفتن باشد */}
+        {feedback ? (
+          <FeedbackBanner
+            message={feedbackText(feedback, activeLevel)}
+            tone={feedback.status === 'accepted' ? 'success' : 'error'}
+            messageId={feedback.id}
+            detail={
+              feedback.status === 'accepted'
+                ? `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel}`
+                : undefined
+            }
+          />
+        ) : hintMessage ? (
+          <FeedbackBanner
+            message={hintMessage.text}
+            tone={hintMessage.tone}
+            messageId={hintMessage.id}
+          />
+        ) : tutorialStep ? (
           <View style={styles.tutorialRow}>
             <AppText variant="caption" color={colors.primaryDark}>
               {tutorialStep}
             </AppText>
           </View>
         ) : null}
+
+        <HintGuide hint={activeHint} matchedCount={hintMatchedCount} onDismiss={dismissHint} />
 
         <WordSlots
           selected={selectedTiles}
@@ -305,13 +427,31 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           onRemove={removeTile}
         />
 
-        <LetterGrid
-          tiles={session?.tiles ?? []}
-          tileSize={tileSize}
-          selectedIds={session?.selection ?? []}
-          onTilePress={selectTile}
-          disabled={session?.status !== 'playing'}
-        />
+        <View
+          style={styles.wheelArea}
+          onLayout={event =>
+            setWheelArea({
+              width: event.nativeEvent.layout.width,
+              height: event.nativeEvent.layout.height,
+            })
+          }
+        >
+          <LetterWheel
+            tiles={session?.tiles ?? []}
+            selectedIds={session?.selection ?? []}
+            onTilePress={selectTile}
+            onTileRemove={removeTile}
+            onAutoSubmit={submit}
+            disabled={session?.status !== 'playing'}
+            diameter={wheelSize}
+            tileSize={tileSize}
+            foundCount={progress.foundTargets}
+            totalCount={progress.totalTargets}
+            guideTileIds={activeHint?.tileIds}
+            onDragStateChange={setIsDraggingLetters}
+            accessibilityLabel={strings.game.lettersHint}
+          />
+        </View>
 
         <View style={styles.controls}>
           <Button
@@ -325,14 +465,14 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
             style={styles.controlButton}
           />
           <Button
-            label={strings.game.hintButton}
+            label={format(strings.game.hintButtonWithCost, { cost: toPersianDigits(cheapestHintCost) })}
             variant="secondary"
             size="medium"
             icon="bulb"
             fullWidth={false}
-            disabled={!canUseHint}
+            disabled={!session || session.status !== 'playing'}
             onPress={handleHint}
-            accessibilityLabel={format(strings.accessibility.hintButton, { cost: hintCost('reveal_letter') })}
+            accessibilityLabel={format(strings.accessibility.hintButton, { cost: toPersianDigits(cheapestHintCost) })}
             style={styles.controlButton}
           />
           <Button
@@ -348,15 +488,32 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           />
         </View>
 
-        <View style={styles.wordsSection}>
+        {/* فهرست واژه‌ها: خودش داخل کادر کوچک اسکرول می‌شود تا صفحه اصلی هرگز
+            اسکرول نخواهد و کشیدن حروف با اسکرول صفحه قاطی نشود. */}
+        <ScrollView
+          style={styles.wordsSection}
+          contentContainerStyle={styles.wordsContent}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+        >
           <FoundWordsList
             targetWords={activeLevel.targetWords}
             bonusWords={activeLevel.bonusWords}
             foundWords={session?.foundWords ?? []}
             hintedWords={revealedLetters}
           />
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
+
+      <HintSheet
+        visible={hintSheetVisible}
+        options={hintOptions}
+        coins={profile.coins}
+        descriptions={hintDescriptions}
+        lastMessage={hintSheetMessage}
+        onSelect={handleHintSelect}
+        onClose={() => setHintSheetVisible(false)}
+      />
 
       <ConfirmDialog
         visible={leaveVisible}
@@ -367,30 +524,25 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
         onConfirm={confirmLeave}
         onCancel={() => setLeaveVisible(false)}
       />
-
-      <ConfirmDialog
-        visible={noCoinsVisible}
-        title={strings.game.noCoinsForHint}
-        body={format(strings.game.useHintBody, { cost: nextHintCost })}
-        confirmLabel={strings.common.gotIt}
-        cancelLabel={strings.common.later}
-        onConfirm={() => setNoCoinsVisible(false)}
-        onCancel={() => setNoCoinsVisible(false)}
-      />
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
+  playArea: {
+    flex: 1,
+    alignSelf: 'stretch',
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
     alignItems: 'center',
   },
-  bannerArea: {
+  wheelArea: {
+    flex: 1,
     alignSelf: 'stretch',
-    minHeight: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 190,
   },
   tutorialRow: {
     backgroundColor: colors.primaryLight,
@@ -403,14 +555,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     justifyContent: 'center',
-    flexWrap: 'wrap',
   },
   controlButton: {
-    minWidth: 104,
+    flex: 1,
+    maxWidth: 220,
   },
   wordsSection: {
     alignSelf: 'stretch',
-    gap: spacing.sm,
+    maxHeight: 132,
+    flexGrow: 0,
+  },
+  wordsContent: {
+    paddingBottom: spacing.xs,
   },
   missing: {
     flex: 1,

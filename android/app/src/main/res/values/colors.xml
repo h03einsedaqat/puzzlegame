@@ -1,6 +1,7 @@
 <resources>
     <!-- هم‌راستا با پالت برنامه در src/theme/colors.ts -->
-    <color name="brand_primary">#4C3FBF</color>
-    <color name="brand_surface">#FBF7F0</color>
-    <color name="status_bar">#4C3FBF</color>
+    <color name="brand_primary">#6C4CF1</color>
+    <color name="brand_surface">#EAF6FF</color>
+    <color name="status_bar">#6C4CF1</color>
+    <color name="brand_accent">#FFB627</color>
 </resources>

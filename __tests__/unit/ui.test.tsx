@@ -1,7 +1,9 @@
 import React from 'react';
 import { render, fireEvent, screen } from '@testing-library/react-native';
 
+import { GAME_CONFIG, strings } from '../../src/constants';
 import { ServicesProvider, SettingsProvider } from '../../src/context';
+import { format } from '../../src/utils/format';
 import {
   AppText,
   Button,
@@ -12,9 +14,11 @@ import {
   FoundWordsList,
   GameHeader,
   HeartCounter,
+  HintSheet,
   IconButton,
   LetterGrid,
   LetterTile,
+  LetterWheel,
   LevelNode,
   PressableScale,
   ProgressBar,
@@ -253,6 +257,36 @@ describe('اجزای بازی', () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
+  it('LetterWheel حروف را دور چرخ می‌چیند، پیشرفت را نشان می‌دهد و لمس کاشی را می‌فرستد', async () => {
+    const onTilePress = jest.fn();
+    const tiles = ['ک', 'ت', 'ا', 'ب', 'ر', 'م'].map((char, index) => tile(`t${index}`, char));
+    await renderWithProviders(
+      <LetterWheel
+        tiles={tiles}
+        selectedIds={['t2']}
+        onTilePress={onTilePress}
+        onTileRemove={jest.fn()}
+        onAutoSubmit={jest.fn()}
+        diameter={300}
+        tileSize={54}
+        foundCount={2}
+        totalCount={6}
+        accessibilityLabel="چرخ حروف"
+      />,
+    );
+
+    // همه حروف با برچسب دسترس‌پذیری ساخته می‌شوند (هم برای لمس و هم برای screen reader)
+    for (const char of ['ک', 'ت', 'ا', 'ب', 'ر', 'م']) {
+      expect(screen.getAllByLabelText(format(strings.accessibility.letterTile, { letter: char })).length).toBe(1);
+    }
+
+    // پیشرفت کلمه‌های مرحله در مرکز چرخ دیده می‌شود (۲ از ۶)
+    expect(screen.getByText('۲/۶')).toBeTruthy();
+
+    await fireEvent.press(screen.getByLabelText(format(strings.accessibility.letterTile, { letter: 'ب' })));
+    expect(onTilePress).toHaveBeenCalledWith('t3');
+  });
+
   it('LetterGrid همه حروف را می‌چیند و کاشی درست را گزارش می‌کند', async () => {
     const onTilePress = jest.fn();
     await renderWithProviders(
@@ -353,6 +387,59 @@ describe('اجزای بازی', () => {
 
     await fireEvent.press(screen.getByLabelText('مرحله ۵'));
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('HintSheet قیمت‌ها را نشان می‌دهد و فقط راهنمای پرداخت‌شدنی را می‌فروشد', async () => {
+    const onSelect = jest.fn();
+    await renderWithProviders(
+      <HintSheet
+        visible
+        coins={GAME_CONFIG.economy.initialCoins}
+        descriptions={{
+          reveal_letter: strings.game.hintRevealLetterDesc,
+          smart_help: strings.game.hintSmartHelpDesc,
+          reveal_word: strings.game.hintRevealWordDesc,
+        }}
+        options={[
+          { type: 'reveal_letter', cost: GAME_CONFIG.hints.costs.reveal_letter, affordable: true, available: true },
+          { type: 'smart_help', cost: GAME_CONFIG.hints.costs.smart_help, affordable: false, available: true },
+          { type: 'reveal_word', cost: GAME_CONFIG.hints.costs.reveal_word, affordable: false, available: false },
+        ]}
+        onSelect={onSelect}
+        onClose={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText(strings.game.hintSheetTitle)).toBeTruthy();
+    expect(screen.getByText(format(strings.game.hintCostLabel, { cost: GAME_CONFIG.hints.costs.reveal_letter }))).toBeTruthy();
+
+    await fireEvent.press(
+      screen.getByLabelText(
+        format(strings.game.hintUseLabel, { title: strings.game.hintRevealLetterTitle }),
+      ),
+    );
+    expect(onSelect).toHaveBeenCalledWith('reveal_letter');
+
+    // راهنمای گران‌تر با سکه کم فروخته نمی‌شود
+    await fireEvent.press(
+      screen.getByLabelText(format(strings.game.hintUseLabel, { title: strings.game.hintSmartHelpTitle })),
+    );
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it('LevelNode تکمیل‌شده ستاره‌ها و بهترین امتیاز را نشان می‌دهد', async () => {
+    await renderWithProviders(
+      <LevelNode
+        summary={{ ...summary, isCompleted: true }}
+        state="completed"
+        bestScore={320}
+        stars={2}
+        onPress={jest.fn()}
+        accessibilityLabel="مرحله ۴"
+      />,
+    );
+
+    expect(screen.getByText('۳۲۰')).toBeTruthy();
   });
 
   it('LevelNode تکمیل‌شده بهترین امتیاز را نشان می‌دهد', async () => {
