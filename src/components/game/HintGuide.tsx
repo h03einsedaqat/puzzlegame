@@ -3,7 +3,7 @@ import { Animated, StyleSheet, View } from 'react-native';
 
 import { strings } from '../../constants';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, spacing, STATUS_SLOT_TWO_LINE_MIN } from '../../theme';
 import { toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { Icon } from '../ui/Icon';
@@ -14,18 +14,23 @@ export interface HintGuideProps {
   hint: ActiveHint | null;
   /** تعداد کاشی‌هایی که بازیکن تا الان از نقشه راهنما زده است */
   matchedCount: number;
-  /** ترتیب کاشی‌ها برای نمایش شماره‌دار */
   onDismiss: () => void;
+  /** ارتفاع ثابت جایگاه راهنما؛ از چیدمان صفحه می‌آید */
+  height?: number;
 }
 
 /**
  * نوار راهنمای گام‌به‌گام.
  *
- * پس از خرید راهنما، الگوی واژه («ب•ا••»)، شمار حروف و ترتیب کاشی‌ها را نشان
- * می‌دهد؛ روی خود چرخ هم کاشی بعدی روشن و چشمک‌زن می‌شود (LetterWheel). با این
- * کار راهنما فقط «یک حرف آشکار» نیست، بلکه بازیکن را تا ساختن واژه همراهی می‌کند.
+ * پس از خرید راهنما، الگوی واژه («ب•ا••»)، شمار حروف باقی‌مانده و عنوان راهنما
+ * را نشان می‌دهد؛ روی خود چرخ هم کاشی بعدی روشن و چشمک‌زن می‌شود (LetterWheel).
+ *
+ * نوار در «جایگاه ثابت» بالای صفحه می‌نشیند و ارتفاعش را از بیرون می‌گیرد، پس
+ * آمدن و رفتنش چرخ حروف را جابه‌جا نمی‌کند. اگر جایگاه آن‌قدر بلند نباشد که دو
+ * خط جا شود، عنوان حذف می‌شود تا هیچ متنی بریده نشود. انیمیشن ضربان هم با
+ * تنظیم «کاهش انیمیشن» خاموش می‌شود، بی‌آنکه کارکرد راهنما عوض شود.
  */
-export function HintGuide({ hint, matchedCount, onDismiss }: HintGuideProps) {
+export function HintGuide({ hint, matchedCount, onDismiss, height }: HintGuideProps) {
   const reducedMotion = useReducedMotion();
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -49,31 +54,44 @@ export function HintGuide({ hint, matchedCount, onDismiss }: HintGuideProps) {
 
   const total = hint.tileIds.length;
   const remaining = Math.max(0, total - matchedCount);
-  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
+  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] });
+  const showTitle = height === undefined || height >= STATUS_SLOT_TWO_LINE_MIN;
 
   return (
-    <Animated.View style={[styles.container, { transform: [{ scale }] }]}>
+    <Animated.View
+      style={[styles.container, height !== undefined ? { height } : null, { transform: [{ scale }] }]}
+    >
       <View style={styles.iconBadge}>
-        <Icon name="bulb" size={20} color={colors.primaryDark} />
+        <Icon name="bulb" size={18} color={colors.primaryDark} />
       </View>
 
       <View style={styles.texts}>
-        <AppText variant="caption" color={colors.textSecondary}>
-          {strings.game.hintGuideTitle}
-        </AppText>
+        {showTitle ? (
+          <AppText variant="caption" color={colors.textSecondary} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+            {strings.game.hintGuideTitle}
+          </AppText>
+        ) : null}
         <View style={styles.patternRow}>
-          <AppText variant="bodyStrong" color={colors.primaryDark} allowFontScaling={false}>
+          <AppText variant="bodyStrong" color={colors.primaryDark} numberOfLines={1} allowFontScaling={false}>
             {hint.pattern}
           </AppText>
-          <AppText variant="caption" color={colors.textMuted}>
-            {strings.game.hintGuideMeta.replace('{length}', toPersianDigits(hint.word.length)).replace('{left}', toPersianDigits(remaining))}
+          <AppText
+            variant="caption"
+            color={colors.textMuted}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}
+            style={styles.meta}
+          >
+            {strings.game.hintGuideMeta
+              .replace('{length}', toPersianDigits(hint.word.length))
+              .replace('{left}', toPersianDigits(remaining))}
           </AppText>
         </View>
       </View>
 
       <IconButton
         icon="close"
-        size={18}
+        size={16}
         onPress={onDismiss}
         accessibilityLabel={strings.game.hintGuideDismiss}
       />
@@ -90,25 +108,29 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.accent,
     borderRadius: radius.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     alignSelf: 'stretch',
+    overflow: 'hidden',
   },
   iconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
+    width: 26,
+    height: 26,
+    borderRadius: radius.sm,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   texts: {
     flex: 1,
-    gap: 1,
+    minWidth: 0,
   },
   patternRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  meta: {
+    flex: 1,
+    minWidth: 0,
   },
 });

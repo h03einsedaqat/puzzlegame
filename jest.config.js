@@ -1,12 +1,17 @@
 /** @type {import('jest').Config} */
 module.exports = {
   preset: '@react-native/jest-preset',
-  setupFiles: ['<rootDir>/jest.setup.ts'],
+  setupFiles: [
+    // پیکربندی آزمون Gesture Handler باید پیش از هر چیز اجرا شود تا ماژول بومی
+    // ژست در محیط آزمون با نسخه ساده جایگزین شود.
+    '<rootDir>/node_modules/react-native-gesture-handler/jestSetup.js',
+    '<rootDir>/jest.setup.ts',
+  ],
   transform: {
     '^.+\\.(wav|mp3|ogg|m4a|aac)$': '@react-native/jest-preset/jest/assetFileTransformer.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(?:@react-native|react-native|@react-navigation|react-native-screens|react-native-safe-area-context|react-native-svg|@react-native-async-storage)/)',
+    'node_modules/(?!(?:@react-native|react-native|@react-navigation|react-native-screens|react-native-safe-area-context|react-native-svg|react-native-gesture-handler|@react-native-async-storage)/)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

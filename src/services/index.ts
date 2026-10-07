@@ -111,10 +111,34 @@ export {
 export type { AchievementStats } from './game/achievementService';
 export {
   applyWheelTouch,
+  computeWheelGeometry,
+  distanceBetween,
+  getTileAtPoint,
   nearestTileId,
+  positionOf,
+  preferredTileSizeFor,
   resolveWheelTouch,
 } from './game/wheelGesture';
-export type { WheelPoint, WheelTilePosition, WheelTouchAction } from './game/wheelGesture';
+export type {
+  WheelGeometry,
+  WheelGeometryInput,
+  WheelPoint,
+  WheelTilePosition,
+  WheelTouchAction,
+} from './game/wheelGesture';
+export {
+  adoptSelection,
+  createWheelInteractionState,
+  wheelGestureCancel,
+  wheelGestureDown,
+  wheelGestureEnd,
+  wheelGestureMove,
+} from './game/wheelInteraction';
+export type {
+  WheelInteractionPhase,
+  WheelInteractionResult,
+  WheelInteractionState,
+} from './game/wheelInteraction';
 export { computeStars, starLabel, averageStars, MAX_STARS } from './game/levelRating';
 export type { StarInput } from './game/levelRating';
 export { shareText, openStorePage } from './share/ShareService';

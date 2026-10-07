@@ -1,3 +1,7 @@
+// نخستین import برنامه باید Gesture Handler باشد تا قبل از هر جزء دیگری
+// سامانه ژست بومی آماده شود.
+import 'react-native-gesture-handler';
+
 import { AppRegistry, I18nManager } from 'react-native';
 import App from './App';
 import { name as appName } from './app.json';

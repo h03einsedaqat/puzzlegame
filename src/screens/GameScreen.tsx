@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GAME_CONFIG, strings } from '../constants';
 import { computeStars } from '../services';
 import { useAchievements, useDaily, useGame, useProfile, useProgress } from '../context';
 import { getLevelById, getNextLevelId } from '../data/levels/levels';
 import { calculateLevelRewards } from '../services/game/gameEngine';
-import { colors, radius, spacing } from '../theme';
+import { colors, computeGameLayout, radius, spacing } from '../theme';
 import { format, toPersianDigits } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
 import { Button } from '../components/ui/Button';
@@ -21,7 +22,11 @@ import { LetterWheel } from '../components/game/LetterWheel';
 import { WordSlots } from '../components/game/WordSlots';
 import type { GameFeedback } from '../context';
 import type { HintType, Level, WordRejectionReason } from '../types';
+import type { LetterTileData } from '../types';
 import type { ResultParams, ResultWordSummary, RootScreenProps } from '../navigation/types';
+
+const EMPTY_TILES: readonly LetterTileData[] = [];
+const EMPTY_SELECTION: readonly string[] = [];
 
 function rejectionMessage(reason: WordRejectionReason, level: Level): string {
   switch (reason) {
@@ -60,12 +65,19 @@ function feedbackText(feedback: GameFeedback, level: Level): string {
  * صفحه بازی.
  *
  * منطق بازی در سرویس موتور و وضعیت در GameProvider است؛ این صفحه فقط چیدمان و
- * واکنش به رویدادها را انجام می‌دهد. مرحله آموزشی (مرحله ۱) راهنمای گام‌به‌گام
- * نشان می‌دهد و بقیه مرحله‌ها آزادند.
+ * واکنش به رویدادها را انجام می‌دهد.
+ *
+ * چیدمان این صفحه «تطبیقی» است: ارتفاع واقعی صفحه (پس از کسر ناحیه امن) به
+ * `computeGameLayout` داده می‌شود و اندازه سرصفحه، جایگاه بازخورد، جای خالی
+ * واژه، چرخ، دکمه‌ها و فهرست واژه‌ها از همان محاسبه می‌آید. پس نه دکمه‌ای بیرون
+ * صفحه می‌ماند، نه چیزی روی هم می‌افتد و نه چرخ برای جا شدن، کوچک‌تر از حد لمس
+ * می‌شود. جایگاه بازخورد همیشه رزرو است؛ بنابراین پیام درست/غلط یا راهنما
+ * هیچ‌وقت چرخ را جابه‌جا نمی‌کند.
  */
 export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   const { levelId, mode } = route.params;
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const { puzzle, completeChallenge } = useDaily();
   const { profile, hearts, recordLevelCompletion } = useProfile();
   const { completeLevel, getRecord } = useProgress();
@@ -89,6 +101,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     selectTile,
     removeTile,
     clearWord,
+    replaceSelection,
     submit,
     requestHint,
     dismissFeedback,
@@ -98,12 +111,9 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     autoSubmitReady,
   } = useGame();
 
-  const [hintMessage, setHintMessage] = useState<{ text: string; tone: 'success' | 'error' | 'info'; id: number } | null>(null);
   const [leaveVisible, setLeaveVisible] = useState(false);
   /** هنگام کشیدن حروف true می‌شود؛ تا انگشت برداشته نشود، ثبت خودکار انجام نمی‌شود */
   const [isDraggingLetters, setIsDraggingLetters] = useState(false);
-  /** ارتفاع ناحیه چرخ؛ چرخ خودش را با فضای موجود اندازه می‌کند تا هیچ‌وقت اسکرول لازم نشود */
-  const [wheelArea, setWheelArea] = useState({ width: 0, height: 0 });
   const [hintSheetVisible, setHintSheetVisible] = useState(false);
   const [hintSheetMessage, setHintSheetMessage] = useState<string | null>(null);
   const completedRef = useRef(false);
@@ -111,6 +121,11 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
 
   const activeLevel = level;
   const isDaily = mode === 'daily';
+
+  const layout = useMemo(
+    () => computeGameLayout({ width, height, insets: { top: insets.top, bottom: insets.bottom } }),
+    [height, insets.bottom, insets.top, width],
+  );
 
   /**
    * نشست این مرحله «قابل استفاده» است یا نه.
@@ -148,11 +163,23 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   }, [submit]);
 
   /**
+   * برداشتن انگشت پس از یک کشیدن واقعی.
+   *
+   * ثبت از همین‌جا انجام می‌شود و چون ثبت، انتخاب را پاک می‌کند، اثر «ثبت خودکار»
+   * دیگر شرط فعال‌شدن ندارد و هیچ واژه‌ای دو بار پردازش نمی‌شود. واژه کوتاه‌تر از
+   * حد مرحله هم بی‌سروصدا رها می‌شود (نه پیام خطا، نه بازنشانی کمبو).
+   */
+  const handleRelease = useCallback(() => {
+    submit({ fromRelease: true });
+  }, [submit]);
+
+  /**
    * ثبت خودکار (خواسته بازیکن: «بررسی خودکار انجام شود»).
    *
    * وقتی حروفِ روی صفحه خودشان یک واژه پذیرفتنی می‌سازند، اگر بازیکن مدت کوتاهی
    * کاری نکند واژه خودش ثبت می‌شود؛ کوتاه‌بودن این مکث باعث می‌شود اگر بازیکن
-   * بخواهد واژه بلندتری بسازد، فرصت داشته باشد.
+   * بخواهد واژه بلندتری بسازد، فرصت داشته باشد. در طول کشیدن، این تایمر معلق
+   * می‌شود تا وسط کشیدن واژه ثبت نشود.
    */
   useEffect(() => {
     if (!autoSubmitReady || session?.status !== 'playing' || isDraggingLetters) {
@@ -181,9 +208,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
         setHintSheetMessage(strings.game.hintAlreadyApplied);
         return;
       }
-      setHintSheetMessage(format(strings.game.hintSpent, { cost: result.cost }));
-      setHintMessage({ text: strings.game.hintApplied, tone: 'success', id: Date.now() });
-      // برگه بسته می‌شود تا بازیکن بی‌درنگ راهنمای گام‌به‌گام و کاشی روشن‌شده را ببیند.
+      // برگه بسته می‌شود و راهنمای گام‌به‌گام همان لحظه در جایگاه رزروشده
+      // ظاهر می‌شود؛ پس نه چرخ جابه‌جا می‌شود و نه پیام میانی لازم است.
       setHintSheetVisible(false);
     },
     [requestHint],
@@ -332,7 +358,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     if (!activeHint) {
       return 0;
     }
-    const selection = session?.selection ?? [];
+    const selection = session?.selection ?? EMPTY_SELECTION;
     let matched = 0;
     while (matched < activeHint.tileIds.length && selection.includes(activeHint.tileIds[matched] as string)) {
       matched += 1;
@@ -353,27 +379,43 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     );
   }
 
-  const slotsWidth = Math.min(width - spacing.lg * 2, 420);
+  const tiles = session?.tiles ?? EMPTY_TILES;
+  const selection = session?.selection ?? EMPTY_SELECTION;
+  const slotSize = layout.slotSize;
+
   /**
-   * قطر چرخ از فضای واقعی ناحیه چرخ حساب می‌شود (عرض و ارتفاع)، پس روی گوشی
-   * کوچک هم همه‌چیز در یک صفحه جا می‌شود و هیچ اسکرولی لازم نیست. اسکرول صفحه
-   * حذف شده است تا کشیدن حروف با اسکرول قاطی نشود — همان چیزی که باعث می‌شد
-   * کشیدن کار نکند و دکمه‌ها بی‌واکنش شوند.
+   * یک جایگاه، چند پیام.
+   *
+   * بازخورد و پیام راهنما موقتی‌اند و راهنمای گام‌به‌گام ماندگار است؛ همه در
+   * همان ارتفاع ثابت نمایش داده می‌شوند تا ظاهر/محو شدنشان چرخ را جابه‌جا نکند.
    */
-  const letterCount = session?.tiles.length ?? 6;
-  const wheelSize = Math.round(
-    Math.max(
-      190,
-      Math.min(
-        340,
-        (wheelArea.width || width) - spacing.sm * 2,
-        (wheelArea.height || width) - spacing.sm,
-      ),
-    ),
-  );
-  const tileSize = Math.round(
-    Math.min(64, Math.max(44, wheelSize * (letterCount <= 5 ? 0.2 : letterCount <= 7 ? 0.175 : 0.15))),
-  );
+  const statusMessage =
+    feedback ? (
+      <FeedbackBanner
+        message={feedbackText(feedback, activeLevel)}
+        tone={feedback.status === 'accepted' ? 'success' : 'error'}
+        messageId={feedback.id}
+        detail={
+          feedback.status === 'accepted'
+            ? `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel}`
+            : undefined
+        }
+        height={layout.statusSlotHeight - 2}
+      />
+    ) : activeHint ? (
+      <HintGuide
+        hint={activeHint}
+        matchedCount={hintMatchedCount}
+        onDismiss={dismissHint}
+        height={layout.statusSlotHeight - 2}
+      />
+    ) : tutorialStep ? (
+      <View style={[styles.tutorialRow, { height: layout.statusSlotHeight - 2 }]}>
+        <AppText variant="caption" color={colors.primaryDark} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+          {tutorialStep}
+        </AppText>
+      </View>
+    ) : null;
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
@@ -389,62 +431,40 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
         nextRefillAt={hearts.nextRefillAt}
         onBack={() => setLeaveVisible(true)}
         backLabel={strings.common.back}
+        height={layout.headerHeight}
+        compact={layout.compact}
       />
 
-      <View style={styles.playArea}>
-        {/* نوار بازخورد/آموزش: فقط وقتی هست که پیامی برای گفتن باشد */}
-        {feedback ? (
-          <FeedbackBanner
-            message={feedbackText(feedback, activeLevel)}
-            tone={feedback.status === 'accepted' ? 'success' : 'error'}
-            messageId={feedback.id}
-            detail={
-              feedback.status === 'accepted'
-                ? `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel}`
-                : undefined
-            }
-          />
-        ) : hintMessage ? (
-          <FeedbackBanner
-            message={hintMessage.text}
-            tone={hintMessage.tone}
-            messageId={hintMessage.id}
-          />
-        ) : tutorialStep ? (
-          <View style={styles.tutorialRow}>
-            <AppText variant="caption" color={colors.primaryDark}>
-              {tutorialStep}
-            </AppText>
-          </View>
-        ) : null}
-
-        <HintGuide hint={activeHint} matchedCount={hintMatchedCount} onDismiss={dismissHint} />
+      <View
+        style={[
+          styles.playArea,
+          {
+            gap: layout.gap,
+            paddingHorizontal: layout.paddingHorizontal,
+            paddingBottom: layout.paddingBottom,
+          },
+        ]}
+      >
+        {/* جایگاه ثابت پیام: همیشه به همین ارتفاع رزرو می‌شود (حتی وقتی خالی است) */}
+        <View style={{ height: layout.statusSlotHeight }}>{statusMessage}</View>
 
         <WordSlots
           selected={selectedTiles}
           maxLength={activeLevel.maxWordLength}
-          availableWidth={slotsWidth}
+          availableWidth={layout.contentWidth}
+          size={slotSize}
           onRemove={removeTile}
         />
 
-        <View
-          style={styles.wheelArea}
-          onLayout={event =>
-            setWheelArea({
-              width: event.nativeEvent.layout.width,
-              height: event.nativeEvent.layout.height,
-            })
-          }
-        >
+        <View style={styles.wheelArea}>
           <LetterWheel
-            tiles={session?.tiles ?? []}
-            selectedIds={session?.selection ?? []}
+            tiles={tiles}
+            selectedIds={selection}
             onTilePress={selectTile}
-            onTileRemove={removeTile}
-            onAutoSubmit={submit}
+            onSelectionChange={replaceSelection}
+            onRelease={handleRelease}
             disabled={session?.status !== 'playing'}
-            diameter={wheelSize}
-            tileSize={tileSize}
+            diameter={layout.wheelDiameter}
             foundCount={progress.foundTargets}
             totalCount={progress.totalTargets}
             guideTileIds={activeHint?.tileIds}
@@ -453,21 +473,21 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           />
         </View>
 
-        <View style={styles.controls}>
+        <View style={[styles.controls, { height: layout.controlsHeight }]}>
           <Button
             label={strings.game.clearButton}
             variant="secondary"
-            size="medium"
+            size={layout.compact ? 'small' : 'medium'}
             icon="close"
             fullWidth={false}
-            disabled={!session || session.selection.length === 0}
+            disabled={selection.length === 0}
             onPress={clearWord}
             style={styles.controlButton}
           />
           <Button
             label={format(strings.game.hintButtonWithCost, { cost: toPersianDigits(cheapestHintCost) })}
             variant="secondary"
-            size="medium"
+            size={layout.compact ? 'small' : 'medium'}
             icon="bulb"
             fullWidth={false}
             disabled={!session || session.status !== 'playing'}
@@ -478,20 +498,20 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           <Button
             label={strings.game.submitButton}
             variant="primary"
-            size="medium"
+            size={layout.compact ? 'small' : 'medium'}
             icon="check"
             fullWidth={false}
-            disabled={!session || session.selection.length === 0}
+            disabled={selection.length === 0}
             onPress={handleSubmit}
             accessibilityLabel={strings.accessibility.submitButton}
             style={styles.controlButton}
           />
         </View>
 
-        {/* فهرست واژه‌ها: خودش داخل کادر کوچک اسکرول می‌شود تا صفحه اصلی هرگز
-            اسکرول نخواهد و کشیدن حروف با اسکرول صفحه قاطی نشود. */}
+        {/* فهرست واژه‌ها: ارتفاعش سقف دارد و خودش داخل همان کادر اسکرول می‌شود؛
+            پس صفحه اصلی هرگز اسکرول نمی‌خواهد و کشیدن حروف با اسکرول قاطی نمی‌شود. */}
         <ScrollView
-          style={styles.wordsSection}
+          style={[styles.wordsSection, { maxHeight: layout.foundWordsMaxHeight }]}
           contentContainerStyle={styles.wordsContent}
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
@@ -532,9 +552,6 @@ const styles = StyleSheet.create({
   playArea: {
     flex: 1,
     alignSelf: 'stretch',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-    gap: spacing.sm,
     alignItems: 'center',
   },
   wheelArea: {
@@ -542,19 +559,21 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 190,
+    minHeight: 0,
   },
   tutorialRow: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.md,
-    paddingVertical: spacing.xs + 2,
     paddingHorizontal: spacing.md,
+    justifyContent: 'center',
     alignSelf: 'stretch',
   },
   controls: {
     flexDirection: 'row',
     gap: spacing.sm,
     justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'stretch',
   },
   controlButton: {
     flex: 1,
@@ -562,8 +581,8 @@ const styles = StyleSheet.create({
   },
   wordsSection: {
     alignSelf: 'stretch',
-    maxHeight: 132,
     flexGrow: 0,
+    flexShrink: 1,
   },
   wordsContent: {
     paddingBottom: spacing.xs,
