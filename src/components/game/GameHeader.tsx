@@ -9,6 +9,7 @@ import { AppText } from '../ui/AppText';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
 import { ProgressBar } from '../ui/ProgressBar';
+import { AnimatedCounter } from '../ui/AnimatedCounter';
 import { HeartCounter } from './HeartCounter';
 import type { Difficulty } from '../../types';
 
@@ -83,22 +84,18 @@ export const GameHeader = React.memo(function GameHeader({
             {title}
           </AppText>
           <View style={styles.difficultyPill}>
-            <AppText variant="caption" color={colors.primaryDark} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+            <AppText variant="caption" color={colors.primary} numberOfLines={1} maxFontSizeMultiplier={1.2}>
               {DIFFICULTY_LABELS[difficulty]}
             </AppText>
           </View>
         </View>
         <View style={styles.stat}>
           <Icon name="star" size={16} color={colors.star} />
-          <AppText variant="numeric" allowFontScaling={false}>
-            {toPersianDigits(score)}
-          </AppText>
+          <AnimatedCounter value={toPersianDigits(score)} />
         </View>
         <View style={styles.stat}>
           <Icon name="coin" size={16} color={colors.coin} />
-          <AppText variant="numeric" allowFontScaling={false}>
-            {toPersianDigits(coins)}
-          </AppText>
+          <AnimatedCounter value={toPersianDigits(coins)} />
         </View>
       </View>
 

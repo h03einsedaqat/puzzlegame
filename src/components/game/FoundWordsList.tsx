@@ -88,7 +88,7 @@ export const FoundWordsList = React.memo(function FoundWordsList({
                   const revealed = row.revealedIndices.includes(index);
                   return (
                     <View key={`${row.word}-${index}`} style={[styles.letterBox, revealed ? styles.letterBoxRevealed : null]}>
-                      <AppText variant="caption" color={revealed ? colors.primaryDark : colors.textMuted}>
+                      <AppText variant="caption" color={revealed ? colors.primary : colors.textMuted}>
                         {revealed ? char : '•'}
                       </AppText>
                     </View>

@@ -27,7 +27,7 @@ function App() {
     <GestureHandlerRootView style={styles.root}>
       <ErrorBoundary>
         <SafeAreaProvider>
-          <StatusBar barStyle="dark-content" />
+          <StatusBar barStyle="light-content" />
           <ServicesProvider>
             <SettingsProvider>
               <ProfileProvider>

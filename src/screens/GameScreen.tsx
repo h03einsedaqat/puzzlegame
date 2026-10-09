@@ -7,15 +7,17 @@ import { computeStars } from '../services';
 import { useAchievements, useDaily, useGame, useProfile, useProgress } from '../context';
 import { getLevelById, getNextLevelId } from '../data/levels/levels';
 import { calculateLevelRewards } from '../services/game/gameEngine';
-import { colors, computeGameLayout, radius, spacing } from '../theme';
+import { colors, computeGameLayout, motion, radius, spacing } from '../theme';
 import { format, toPersianDigits } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { FeedbackBanner } from '../components/ui/FeedbackBanner';
+import { IconButton } from '../components/ui/IconButton';
+import { Icon } from '../components/ui/Icon';
 import { HintSheet } from '../components/ui/HintSheet';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { FoundWordsList } from '../components/game/FoundWordsList';
+import { GameFeedbackToast } from '../components/game/GameFeedbackToast';
 import { GameHeader } from '../components/game/GameHeader';
 import { HintGuide } from '../components/game/HintGuide';
 import { LetterWheel } from '../components/game/LetterWheel';
@@ -49,7 +51,7 @@ function rejectionMessage(reason: WordRejectionReason, level: Level): string {
   }
 }
 
-function feedbackText(feedback: GameFeedback, level: Level): string {
+function feedbackTitle(feedback: GameFeedback, level: Level): string {
   if (feedback.status === 'rejected') {
     return feedback.reason ? rejectionMessage(feedback.reason, level) : strings.game.wrong;
   }
@@ -59,6 +61,13 @@ function feedbackText(feedback: GameFeedback, level: Level): string {
   return (feedback.combo ?? 1) >= 2
     ? format(strings.game.combo, { value: feedback.combo ?? 1 })
     : strings.game.correct;
+}
+
+function feedbackDetail(feedback: GameFeedback): string | undefined {
+  if (feedback.status !== 'accepted') {
+    return undefined;
+  }
+  return `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel} · ${toPersianDigits(feedback.coins ?? 0)} ${strings.result.coinsLabel}`;
 }
 
 /**
@@ -154,7 +163,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     if (!activeLevel || !feedback) {
       return;
     }
-    const timer = setTimeout(() => dismissFeedback(), 2200);
+    const timer = setTimeout(() => dismissFeedback(), motion.feedbackVisible);
     return () => clearTimeout(timer);
   }, [activeLevel, dismissFeedback, feedback]);
 
@@ -169,8 +178,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
    * دیگر شرط فعال‌شدن ندارد و هیچ واژه‌ای دو بار پردازش نمی‌شود. واژه کوتاه‌تر از
    * حد مرحله هم بی‌سروصدا رها می‌شود (نه پیام خطا، نه بازنشانی کمبو).
    */
-  const handleRelease = useCallback(() => {
-    submit({ fromRelease: true });
+  const handleRelease = useCallback((releasedSelection: readonly string[]) => {
+    submit({ fromRelease: true, selection: releasedSelection });
   }, [submit]);
 
   /**
@@ -382,40 +391,37 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   const tiles = session?.tiles ?? EMPTY_TILES;
   const selection = session?.selection ?? EMPTY_SELECTION;
   const slotSize = layout.slotSize;
+  const feedbackTiles: readonly LetterTileData[] = feedback
+    ? Array.from(feedback.word).map((char, index) => ({ id: `feedback-${feedback.id}-${index}`, char }))
+    : EMPTY_TILES;
+  const showFeedbackOnBoard = selection.length === 0 && feedback !== null;
+  const boardTiles = selection.length > 0 ? selectedTiles : feedbackTiles;
+  const boardFeedbackState = !showFeedbackOnBoard
+    ? 'idle'
+    : feedback?.status === 'accepted'
+      ? 'confirmed'
+      : 'error';
+  const toastTone = feedback?.status === 'rejected'
+    ? 'error'
+    : feedback?.kind === 'bonus'
+      ? 'bonus'
+      : 'success';
 
-  /**
-   * یک جایگاه، چند پیام.
-   *
-   * بازخورد و پیام راهنما موقتی‌اند و راهنمای گام‌به‌گام ماندگار است؛ همه در
-   * همان ارتفاع ثابت نمایش داده می‌شوند تا ظاهر/محو شدنشان چرخ را جابه‌جا نکند.
-   */
-  const statusMessage =
-    feedback ? (
-      <FeedbackBanner
-        message={feedbackText(feedback, activeLevel)}
-        tone={feedback.status === 'accepted' ? 'success' : 'error'}
-        messageId={feedback.id}
-        detail={
-          feedback.status === 'accepted'
-            ? `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel}`
-            : undefined
-        }
-        height={layout.statusSlotHeight - 2}
-      />
-    ) : activeHint ? (
-      <HintGuide
-        hint={activeHint}
-        matchedCount={hintMatchedCount}
-        onDismiss={dismissHint}
-        height={layout.statusSlotHeight - 2}
-      />
-    ) : tutorialStep ? (
-      <View style={[styles.tutorialRow, { height: layout.statusSlotHeight - 2 }]}>
-        <AppText variant="caption" color={colors.primaryDark} numberOfLines={1} maxFontSizeMultiplier={1.2}>
-          {tutorialStep}
-        </AppText>
-      </View>
-    ) : null;
+  /** جایگاه ثابت فقط برای راهنمای فعال/آموزش است؛ toast بازخورد روی لایه‌ای جدا می‌آید. */
+  const statusMessage = activeHint ? (
+    <HintGuide
+      hint={activeHint}
+      matchedCount={hintMatchedCount}
+      onDismiss={dismissHint}
+      height={layout.statusSlotHeight - 2}
+    />
+  ) : tutorialStep ? (
+    <View style={[styles.tutorialRow, { height: layout.statusSlotHeight - 2 }]}>
+      <AppText variant="caption" color={colors.textPrimary} numberOfLines={2} maxFontSizeMultiplier={1.2}>
+        {tutorialStep}
+      </AppText>
+    </View>
+  ) : null;
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
@@ -445,15 +451,31 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           },
         ]}
       >
-        {/* جایگاه ثابت پیام: همیشه به همین ارتفاع رزرو می‌شود (حتی وقتی خالی است) */}
+        {/* جایگاه ثابت راهنما؛ بازخورد کوتاه به‌صورت overlay می‌آید و layout را جابه‌جا نمی‌کند. */}
         <View style={{ height: layout.statusSlotHeight }}>{statusMessage}</View>
+        <View
+          pointerEvents="box-none"
+          style={[styles.feedbackOverlay, { top: Math.max(0, layout.statusSlotHeight - layout.gap) }]}
+        >
+          <GameFeedbackToast
+            visible={feedback !== null}
+            id={feedback?.id ?? 0}
+            tone={toastTone}
+            title={feedback ? feedbackTitle(feedback, activeLevel) : ''}
+            detail={feedback ? feedbackDetail(feedback) : undefined}
+            word={feedback?.word}
+          />
+        </View>
 
         <WordSlots
-          selected={selectedTiles}
+          selected={boardTiles}
           maxLength={activeLevel.maxWordLength}
           availableWidth={layout.contentWidth}
           size={slotSize}
           onRemove={removeTile}
+          feedbackState={boardFeedbackState}
+          feedbackId={feedback?.id}
+          readOnly={boardFeedbackState !== 'idle'}
         />
 
         <View style={styles.wheelArea}>
@@ -475,27 +497,6 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
 
         <View style={[styles.controls, { height: layout.controlsHeight }]}>
           <Button
-            label={strings.game.clearButton}
-            variant="secondary"
-            size={layout.compact ? 'small' : 'medium'}
-            icon="close"
-            fullWidth={false}
-            disabled={selection.length === 0}
-            onPress={clearWord}
-            style={styles.controlButton}
-          />
-          <Button
-            label={format(strings.game.hintButtonWithCost, { cost: toPersianDigits(cheapestHintCost) })}
-            variant="secondary"
-            size={layout.compact ? 'small' : 'medium'}
-            icon="bulb"
-            fullWidth={false}
-            disabled={!session || session.status !== 'playing'}
-            onPress={handleHint}
-            accessibilityLabel={format(strings.accessibility.hintButton, { cost: toPersianDigits(cheapestHintCost) })}
-            style={styles.controlButton}
-          />
-          <Button
             label={strings.game.submitButton}
             variant="primary"
             size={layout.compact ? 'small' : 'medium'}
@@ -504,7 +505,31 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
             disabled={selection.length === 0}
             onPress={handleSubmit}
             accessibilityLabel={strings.accessibility.submitButton}
-            style={styles.controlButton}
+            style={styles.submitButton}
+          />
+          <View style={styles.hintControl}>
+            <IconButton
+              icon="bulb"
+              onPress={handleHint}
+              accessibilityLabel={format(strings.accessibility.hintButton, { cost: toPersianDigits(cheapestHintCost) })}
+              disabled={!session || session.status !== 'playing'}
+              background={colors.surfaceElevated}
+              style={styles.iconControl}
+            />
+            <View pointerEvents="none" style={styles.hintCost}>
+              <Icon name="coin" size={10} color={colors.accent} />
+              <AppText variant="caption" color={colors.accent} allowFontScaling={false}>
+                {toPersianDigits(cheapestHintCost)}
+              </AppText>
+            </View>
+          </View>
+          <IconButton
+            icon="close"
+            onPress={clearWord}
+            accessibilityLabel={strings.accessibility.clearButton}
+            disabled={selection.length === 0}
+            background={colors.surfaceElevated}
+            style={styles.iconControl}
           />
         </View>
 
@@ -562,11 +587,21 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   tutorialRow: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
     alignSelf: 'stretch',
+  },
+  feedbackOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    alignItems: 'center',
+    paddingHorizontal: spacing.xs,
   },
   controls: {
     flexDirection: 'row',
@@ -575,9 +610,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'stretch',
   },
-  controlButton: {
+  submitButton: {
     flex: 1,
-    maxWidth: 220,
+    minWidth: 0,
+    maxWidth: 260,
+  },
+  hintControl: {
+    position: 'relative',
+    width: 48,
+    height: 48,
+  },
+  iconControl: {
+    width: 48,
+    height: 48,
+  },
+  hintCost: {
+    position: 'absolute',
+    bottom: -5,
+    right: -5,
+    minWidth: 28,
+    height: 19,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: colors.background,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceElevated,
   },
   wordsSection: {
     alignSelf: 'stretch',

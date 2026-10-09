@@ -1,103 +1,102 @@
 /**
- * پالت رنگی بازی: شاد، آفتابی و کارتونی — همان حال‌وهوای بازی‌های کلمه‌ای محبوب.
+ * کلمه‌ساز ۲ — Dark Premium visual tokens.
  *
- * قاعده‌ها:
- *   • پس‌زمینه آسمانیِ روشن، سطح‌ها سفید و براق، متن‌ها تیره و خوانا.
- *   • حروف روی کاشی‌های قهوه‌ایِ عمیق با رنگ طلایی نوشته می‌شوند (کنتراست بالا
- *     و همان حس «آب‌نباتی» که بازیکن ایرانی می‌شناسد).
- *   • رنگ‌های اصلی با فایل android/app/src/main/res/values/colors.xml هم‌راستا
- *     هستند تا رنگ نوار وضعیت با خودِ برنامه یکی باشد.
+ * تمام نقش‌های رنگی در یک محل‌اند؛ اجزای قدیمی‌تر نیز همین نام‌های معنایی را
+ * مصرف می‌کنند تا مهاجرت صفحه‌ها بدون بازنویسی منطق بازی انجام شود.
  */
 export const colors = {
-  /* ---------- پس‌زمینه و سطح‌ها ---------- */
-  background: '#EAF6FF',
-  backgroundDeep: '#CFEAFF',
-  surface: '#FFFFFF',
-  surfaceMuted: '#F1F7FC',
-  border: '#D7E7F5',
-  borderStrong: '#B9D6EC',
+  /* پس‌زمینه و سطوح */
+  background: '#080B18',
+  backgroundDeep: '#060814',
+  backgroundGlow: '#7660F2',
+  surface: '#10162A',
+  surfaceMuted: '#141C32',
+  surfaceElevated: '#1A2340',
+  surfaceGlass: 'rgba(20, 28, 50, 0.88)',
+  border: '#27314D',
+  borderStrong: '#394665',
 
-  /* ---------- رنگ آسمان و تزئین پس‌زمینه ---------- */
-  skyTop: '#6FD3FF',
-  skyMiddle: '#B8E8FF',
-  skyBottom: '#FFF6E0',
-  cloud: '#FFFFFF',
-  cloudSoft: 'rgba(255, 255, 255, 0.75)',
-  sunbeam: 'rgba(255, 214, 102, 0.35)',
-  confettiYellow: '#FFC93C',
-  confettiCoral: '#FF7A85',
-  confettiGreen: '#5FD068',
-  confettiPurple: '#A78BFA',
-  confettiBlue: '#4FC3F7',
+  /* glowهای پس‌زمینه؛ نام‌های قدیمی حفظ شده‌اند تا API تم نشکند */
+  skyTop: '#12172F',
+  skyMiddle: '#0C1226',
+  skyBottom: '#080B18',
+  cloud: '#A9A0FF',
+  cloudSoft: 'rgba(169, 160, 255, 0.12)',
+  sunbeam: 'rgba(128, 95, 255, 0.12)',
+  confettiYellow: '#F4CB72',
+  confettiCoral: '#FF8398',
+  confettiGreen: '#48D5B2',
+  confettiPurple: '#A98DFF',
+  confettiBlue: '#65C7F3',
 
-  /* ---------- رنگ برند ---------- */
-  primary: '#6C4CF1',
-  primaryDark: '#4F35C4',
-  primaryLight: '#EDE7FF',
+  /* برند */
+  primary: '#9B7AFF',
+  primaryDark: '#6E50DC',
+  primaryLight: '#261F41',
   onPrimary: '#FFFFFF',
-  brandTeal: '#17C3B2',
-  brandSky: '#35A7FF',
+  secondary: '#35D2C0',
+  brandTeal: '#35D2C0',
+  brandSky: '#63BDF7',
+  accent: '#F1C76C',
+  accentDark: '#EAC15D',
+  accentLight: '#302919',
 
-  accent: '#FFB627',
-  accentDark: '#E08E00',
-  accentLight: '#FFF3D6',
+  /* وضعیت */
+  success: '#48D5B2',
+  successLight: '#15322E',
+  error: '#FF738D',
+  errorLight: '#3B202D',
+  danger: '#FF738D',
+  dangerLight: '#3B202D',
+  warning: '#F4B96D',
+  heart: '#FF7895',
+  heartLight: '#3B202D',
+  coin: '#F4CB72',
+  coinDark: '#DDAE46',
+  star: '#F4CB72',
 
-  success: '#2FBF71',
-  successLight: '#DFF7E9',
-  danger: '#FF5A5F',
-  dangerLight: '#FFE8E9',
-  warning: '#F08A24',
-
-  heart: '#FF4D6D',
-  heartLight: '#FFE5EA',
-  coin: '#FFC93C',
-  coinDark: '#E0A100',
-  star: '#FFD84D',
-
-  /* ---------- متن ---------- */
-  textPrimary: '#1F2D3D',
-  textSecondary: '#5A6B7D',
-  textMuted: '#8A9BAB',
+  /* متن */
+  text: '#F2EFFF',
+  textPrimary: '#F2EFFF',
+  textSecondary: '#BBC4DA',
+  textMuted: '#8792AE',
   textInverse: '#FFFFFF',
-  textOnDark: '#FFF6DE',
+  textOnDark: '#F2EFFF',
 
-  /* ---------- کاشی‌های حروف (سبک آب‌نباتی/آمیرزایی) ---------- */
-  tileDeep: '#7A4A21',
-  tileDeepTop: '#9A6231',
-  tileDeepBorder: '#4E2C12',
-  tileDeepShadow: '#3A1F0B',
-  tileBackground: '#7A4A21',
-  tileBorder: '#4E2C12',
-  tileText: '#FFC93C',
-  tileSelectedBackground: '#17C3B2',
-  tileSelectedBorder: '#0E8C80',
-  tileSelectedText: '#FFFFFF',
-  tileHintBackground: '#FFE08A',
-  tileHintBorder: '#E0A100',
-  letterGold: '#FFC93C',
-  letterGoldGlow: '#FFE9A8',
+  /* چرخ و کاشی حروف */
+  tileDeep: '#171F39',
+  tileDeepTop: '#293454',
+  tileDeepBorder: '#3C496B',
+  tileDeepShadow: '#0A1021',
+  tileBackground: '#171F39',
+  tileBorder: '#3C496B',
+  tileText: '#F6D993',
+  tileSelectedBackground: '#167E74',
+  tileSelectedBorder: '#35D2C0',
+  tileSelectedText: '#F5FFFD',
+  tileHintBackground: '#39301D',
+  tileHintBorder: '#D4A94E',
+  letterGold: '#F6D993',
+  letterGoldGlow: '#FFE7A8',
 
-  /* ---------- جای خالی کلمه‌ها ---------- */
-  slotBackground: '#FFFDF6',
-  slotBorder: '#E5D3AE',
-  slotActiveBorder: '#6C4CF1',
-  slotText: '#7A4A21',
-  slotFilledBackground: '#FFF1CE',
+  /* Word Board */
+  slotBackground: '#141C32',
+  slotBorder: '#343E5B',
+  slotActiveBorder: '#A58BFF',
+  slotText: '#F4F0FF',
+  slotFilledBackground: '#211D38',
 
-  /* ---------- سایر ---------- */
-  screenOverlay: 'rgba(31, 45, 61, 0.55)',
-  shadow: 'rgba(31, 45, 61, 0.22)',
-  shadowSoft: 'rgba(31, 45, 61, 0.12)',
-
-  levelLocked: '#DDE7EF',
-  levelLockedBorder: '#C3D3E0',
-  levelUnlocked: '#FFFFFF',
-  levelCompleted: '#2FBF71',
-  levelCurrent: '#6C4CF1',
-
-  /** رنگ پله‌های مسیر مرحله‌ها (نقشه) */
-  pathStep: '#FFE9B8',
-  pathStepBorder: '#E8C97A',
+  /* سایه/Overlay و فصل‌ها */
+  screenOverlay: 'rgba(3, 5, 14, 0.78)',
+  shadow: 'rgba(0, 0, 0, 0.48)',
+  shadowSoft: 'rgba(0, 0, 0, 0.28)',
+  levelLocked: '#11172A',
+  levelLockedBorder: '#28314A',
+  levelUnlocked: '#171F39',
+  levelCompleted: '#167E74',
+  levelCurrent: '#7458E9',
+  pathStep: '#28233B',
+  pathStepBorder: '#453B63',
 } as const;
 
 export type AppColors = typeof colors;

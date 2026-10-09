@@ -5,6 +5,15 @@
 ندارد، با **NEEDS VERIFICATION BEFORE RELEASE** علامت خورده است؛ هیچ قانون ساختگی
 به بازار نسبت داده نشده.
 
+## وضعیت راستی‌آزمایی نسخهٔ ۲.۰.۰ (۲۰۲۶-۱۰-۰۹)
+
+- [x] `npm run verify`: typecheck موفق؛ lint با صفر خطا و ۱۷ هشدار؛ ۲۲ suite و ۳۰۱ تست موفق.
+- [x] `npm run levels:check`: همهٔ ۵۰ مرحله، ۶۰ پازل روزانه و ۷۳۵ جواب سالم‌اند.
+- [ ] ساخت APK انتشار: واقعاً تلاش شد؛ به‌دلیل نبود JDK/`java` و Android SDK در محیط، ساخت انجام نشد. پیش از انتشار باید در محیط دارای JDK/SDK اجرا شود.
+- [x] QA مرورگر headless: Home/Game/Map/Settings، tap/drag، sweep/backtrack/dead zone/cancel/duplicate و تنظیمات؛ اصلاح حلقه SVG پس از کشف واژه با مرکز چرخ تطبیق داده شد (بدون جابه‌جایی در pixel QA). راهنما از اعتبار اولیه ۱۲۰ سکه هزینه ۱۵ را کم می‌کند، حرف بعدی را برای prefix جاری روشن می‌کند، کیف پول را فوراً به‌روز می‌کند، برای واژه آماده/راهنمای نامعتبر هزینه نمی‌گیرد و پروفایل قدیمیِ صفرسکه‌ای را یک‌بار تا ۱۵ سکه ترمیم می‌کند. عرض‌های ۳۲۰ تا ۱۴۴۰ پیکسل بدون overflow افقی و خطای JavaScript.
+- [x] React Native: آزمون یکپارچهٔ واقعی UI برای بازشدن HintSheet، قیمت، کسر سکه و نمایش HintGuide موفق است؛ آزمون Wheel تأیید می‌کند قوس سبز حول مرکز geometry می‌ماند. این‌ها آزمون‌های Jest/RNTL هستند، نه اجرای روی دستگاه Android.
+- [ ] بازبینی امنیت وابستگی‌ها: `npm audit --omit=dev` تعداد ۲۲ مورد آسیب‌پذیری high و صفر critical در dependency graph گزارش کرد؛ پیش از انتشار باید دستی بررسی شود؛ dry-run چند downgrade ناسازگار، ازجمله React Native `0.87.1` به `0.72.17` پیشنهاد می‌کند، پس هیچ `audit fix --force` اجرا نشد.
+
 ---
 
 ## ۱) هویت برنامه
@@ -14,13 +23,13 @@
 - [x] نام بسته: `ir.kalamesaz.game` — قالب `topleveldomain.companyname.applicationname`،
       فقط حروف کوچک/عدد/`_`، هر بخش با حرف شروع می‌شود، بدون `-`
       → **پس از اولین انتشار قابل تغییر نیست؛ همین مقدار نهایی فرض شده است**
-- [x] نسخه: `versionName = 1.0.0` و `versionCode = 1` در `android/app/build.gradle`
+- [x] نسخه: `versionName = 2.0.0` و `versionCode = 20000` در `android/app/build.gradle`
 - [x] تطابق با `APP_INFO` در `src/constants/appInfo.ts` (نام، نسخه، بسته، ایمیل پشتیبانی)
 - [ ] ایمیل پشتیبانی واقعی و فعال در `APP_INFO.contactEmail` و در پیشخان بازار ثبت شود
 
 ## ۲) بسته و امضا
 
-- [x] ساخت APK/AAB: `npm run android:apk:release` / `npm run android:aab:release`
+- [ ] ساخت APK/AAB: دستورهای `npm run android:apk:release` / `npm run android:aab:release` آماده‌اند؛ artifact انتشار هنوز ساخته نشده است
 - [x] پیکربندی امضا از `android/keystore.properties` خوانده می‌شود (فایل در git نیست)
 - [x] نمونه پیکربندی: `android/keystore.properties.example`
 - [ ] ساخت کلید انتشار (یک‌بار): `keytool -genkeypair` — دستور کامل در `docs/BUILD_AND_RUN.md`
@@ -61,8 +70,8 @@
 
 ## ۵) کیفیت پیش از ارسال
 
-- [ ] `npm run verify` سبز است (typecheck + lint + test)
-- [ ] `npm run levels:check` سبز است (همه ۵۰ مرحله و ۶۰ پازل روزانه سالم)
+- [x] `npm run verify` سبز است (typecheck + lint + test؛ ۱۷ هشدار lint بدون خطای lint)
+- [x] `npm run levels:check` سبز است (۵۰ مرحله، ۶۰ پازل روزانه و ۷۳۵ جواب سالم)
 - [ ] آزمون روی حداقل دو دستگاه واقعی: یکی اندروید قدیمی (نزدیک API 24) و یکی جدید
 - [ ] چرخه کامل بازی روی دستگاه: آموزش → مرحله ۱ → نتیجه → خانه → چالش روزانه
 - [ ] بستن و باز کردن برنامه: پیشرفت، سکه، قلب و تنظیمات درست برمی‌گردد

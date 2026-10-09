@@ -51,13 +51,13 @@ export const LevelNode = React.memo(function LevelNode({
 
   const textColor = state === 'completed' || state === 'current' ? colors.textInverse : colors.textPrimary;
 
+  // Locked nodes remain tappable so the map can explain how to unlock them.
   return (
     <PressableScale
       onPress={() => onPress(summary.id)}
-      disabled={isLocked}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled: isLocked }}
+      accessibilityState={{ disabled: false, selected: state === 'current' }}
       style={styles.pressable}
     >
       <View style={[styles.node, { backgroundColor: background, borderColor: isLocked ? colors.levelLockedBorder : background }]}>

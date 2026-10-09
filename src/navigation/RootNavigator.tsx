@@ -51,7 +51,7 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer theme={navigationTheme}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
       <Stack.Navigator
         initialRouteName={initialRouteName}
         screenOptions={{

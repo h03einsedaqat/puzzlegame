@@ -1,7 +1,7 @@
 <resources>
-    <!-- هم‌راستا با پالت برنامه در src/theme/colors.ts -->
-    <color name="brand_primary">#6C4CF1</color>
-    <color name="brand_surface">#EAF6FF</color>
-    <color name="status_bar">#6C4CF1</color>
-    <color name="brand_accent">#FFB627</color>
+    <!-- هم‌راستا با توکن‌های تیره در src/theme/colors.ts -->
+    <color name="brand_primary">#A58BFF</color>
+    <color name="brand_surface">#080B18</color>
+    <color name="status_bar">#080B18</color>
+    <color name="brand_accent">#F3C96B</color>
 </resources>

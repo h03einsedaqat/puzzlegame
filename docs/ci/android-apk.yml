@@ -30,7 +30,7 @@ concurrency:
 
 env:
   RELEASE_TAG: apk-latest
-  APK_NAME: kalamesaz-1.0.0-arm.apk
+  APK_NAME: kalamesaz-2.0.0-arm.apk
   ABI_LIST: arm64-v8a,armeabi-v7a
 
 jobs:
@@ -163,7 +163,7 @@ jobs:
 
           # create only if missing — never delete the release (لینک دانلود باید پایدار بماند)
           gh release view "$RELEASE_TAG" >/dev/null 2>&1 \
-            || gh release create "$RELEASE_TAG" --title "kalamesaz 1.0.0 (APK)" --notes-file notes.md
+            || gh release create "$RELEASE_TAG" --title "kalamesaz 2.0.0 (APK)" --notes-file notes.md
           gh release upload "$RELEASE_TAG" "$APK_NAME" "$APK_NAME.sha256" --clobber
-          gh release edit "$RELEASE_TAG" --notes-file notes.md --title "kalamesaz 1.0.0 (APK)"
+          gh release edit "$RELEASE_TAG" --notes-file notes.md --title "kalamesaz 2.0.0 (APK)"
           echo "منتشر شد: $URL"

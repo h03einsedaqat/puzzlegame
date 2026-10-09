@@ -10,5 +10,8 @@ module.exports = {
         },
       },
     ],
+    // Worklets must stay last: the plugin extracts UI-thread callbacks after
+    // all other Babel transforms have finished.
+    'react-native-worklets/plugin',
   ],
 };

@@ -1,7 +1,9 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { colors, radius, typography } from '../../theme';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { colors, radius, shadows, typography } from '../../theme';
 import { AppText } from '../ui/AppText';
 import { PressableScale } from '../ui/PressableScale';
 
@@ -9,25 +11,15 @@ export interface LetterTileProps {
   char: string;
   size: number;
   selected?: boolean;
-  /** حرفی که با راهنما آشکار شده است */
   hinted?: boolean;
   disabled?: boolean;
   onPress: (tileId: string) => void;
   tileId: string;
-  /** برچسب دسترس‌پذیری؛ از بیرون ساخته می‌شود تا متن‌ها متمرکز بمانند */
   accessibilityLabel: string;
 }
 
-/**
- * کاشی حرف.
- *
- * ظاهر «آب‌نباتی»: کاشی قهوه‌ایِ گرم با لبه پایینیِ تیره‌تر (حس سه‌بعدی)، برقِ
- * ملایم در بالای کاشی و حرفِ طلاییِ درشت. با انتخاب‌شدن، کاشی فیروزه‌ای می‌شود و
- * کمی بزرگ‌تر می‌نشیند تا معلوم باشد چه حرفی در حال استفاده است.
- *
- * حروف تکراری هرکدام کاشی مستقل دارند، پس انتخاب هر کاشی مستقل از دیگری است.
- */
-export function LetterTile({
+/** Letter tile with independent visual state and a large, non-overlapping hit area. */
+export const LetterTile = React.memo(function LetterTile({
   char,
   size,
   selected = false,
@@ -37,16 +29,27 @@ export function LetterTile({
   tileId,
   accessibilityLabel,
 }: LetterTileProps) {
-  /**
-   * صدا و لرزش اینجا پخش نمی‌شود؛ بازخورد لمسی یک‌جا در `GameContext` و بر پایه
-   * تغییر واقعی انتخاب انجام می‌شود. پیش‌تر هم کاشی و هم زمینه بازی صدا می‌زدند
-   * و صدای دوتایی شنیده می‌شد.
-   */
-  const handlePress = useCallback(() => {
-    if (disabled) {
+  const reducedMotion = useReducedMotion();
+  const selectionScale = useSharedValue(selected ? 1.055 : 1);
+
+  useEffect(() => {
+    const target = selected ? 1.055 : 1;
+    if (reducedMotion) {
+      selectionScale.value = target;
       return;
     }
-    onPress(tileId);
+    selectionScale.value = withSpring(target, { damping: 15, stiffness: 250, mass: 0.72 });
+  }, [reducedMotion, selected, selectionScale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: selectionScale.value }],
+    opacity: disabled ? 0.42 : 1,
+  }));
+
+  const handlePress = useCallback(() => {
+    if (!disabled) {
+      onPress(tileId);
+    }
   }, [disabled, onPress, tileId]);
 
   const background = selected
@@ -54,79 +57,106 @@ export function LetterTile({
     : hinted
       ? colors.tileHintBackground
       : colors.tileDeep;
-  const edge = selected ? colors.tileSelectedBorder : hinted ? colors.tileHintBorder : colors.tileDeepShadow;
-  const textColor = selected ? colors.tileSelectedText : colors.tileText;
-
-  const edgeWidth = Math.max(3, Math.round(size * 0.09));
+  const border = selected
+    ? colors.tileSelectedBorder
+    : hinted
+      ? colors.tileHintBorder
+      : colors.tileDeepBorder;
+  const textColor = selected ? colors.tileSelectedText : hinted ? colors.accent : colors.tileText;
+  const edge = Math.max(3, Math.round(size * 0.075));
 
   return (
     <PressableScale
       onPress={handlePress}
       disabled={disabled}
+      scaleTo={0.95}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected, disabled }}
+      style={[styles.pressable, { width: size, height: size }]}
     >
-      <View
+      <Animated.View
         style={[
           styles.tile,
+          animatedStyle,
           {
             width: size,
             height: size,
+            borderRadius: Math.round(size * 0.32),
+            borderColor: border,
+            borderBottomWidth: edge,
             backgroundColor: background,
-            borderColor: edge,
-            borderBottomWidth: edgeWidth,
-            borderRadius: Math.round(size * 0.3),
-            transform: [{ scale: selected ? 1.08 : 1 }],
           },
+          selected ? styles.selectedDepth : null,
         ]}
       >
-        {/* برقِ بالای کاشی */}
         <View
           pointerEvents="none"
           style={[
-            styles.gloss,
+            styles.topSheen,
             {
-              borderTopLeftRadius: Math.round(size * 0.3),
-              borderTopRightRadius: Math.round(size * 0.3),
-              height: Math.round(size * 0.42),
+              borderTopLeftRadius: Math.round(size * 0.32),
+              borderTopRightRadius: Math.round(size * 0.32),
+              height: Math.max(8, Math.round(size * 0.32)),
             },
           ]}
         />
+        {hinted && !selected ? <View pointerEvents="none" style={styles.hintDot} /> : null}
         <AppText
           style={[
             typography.letter,
             {
-              fontSize: Math.round(size * 0.5),
-              lineHeight: Math.round(size * 0.68),
+              fontSize: Math.round(size * 0.48),
+              lineHeight: Math.round(size * 0.7),
               color: textColor,
-              textShadowColor: selected ? 'rgba(0, 0, 0, 0.28)' : 'rgba(78, 44, 18, 0.55)',
+              textShadowColor: 'rgba(0, 0, 0, 0.28)',
               textShadowOffset: { width: 0, height: 2 },
-              textShadowRadius: 1,
+              textShadowRadius: 2,
             },
           ]}
           allowFontScaling={false}
         >
           {char}
         </AppText>
-      </View>
+      </Animated.View>
     </PressableScale>
   );
-}
+});
 
 const styles = StyleSheet.create({
-  tile: {
+  pressable: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
   },
-  gloss: {
+  tile: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderBottomWidth: 4,
+    overflow: 'hidden',
+    ...shadows.tile,
+  },
+  selectedDepth: {
+    shadowColor: colors.brandTeal,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  topSheen: {
     position: 'absolute',
     top: 2,
     left: 4,
     right: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    borderTopLeftRadius: radius.md,
-    borderTopRightRadius: radius.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.055)',
+  },
+  hintDot: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 6,
+    height: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
   },
 });

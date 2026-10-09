@@ -3,6 +3,8 @@ import {
   computeWheelGeometry,
   distanceBetween,
   getTileAtPoint,
+  getSegmentTileHits,
+  getTilesCrossedBySegment,
   nearestTileId,
   resolveWheelTouch,
   type WheelGeometry,
@@ -16,6 +18,25 @@ const tilesOf = (count: number, chars = 'کتا برمپز') =>
 
 const geometryFor = (count: number, diameter = 300, tileSize = 48) =>
   computeWheelGeometry({ tiles: tilesOf(count), diameter, preferredTileSize: tileSize });
+
+const lineGeometry: WheelGeometry = {
+  diameter: 100,
+  center: { x: 50, y: 50 },
+  orbit: 0,
+  tileSize: 20,
+  visualRadius: 10,
+  interactionRadius: 6,
+  touchRadius: 6,
+  deadZone: 8,
+  neighbourDistance: 20,
+  positions: [
+    { id: 'A', char: 'آ', x: 10, y: 50 },
+    { id: 'B', char: 'ب', x: 30, y: 50 },
+    { id: 'C', char: 'پ', x: 50, y: 50 },
+    { id: 'D', char: 'ت', x: 70, y: 50 },
+    { id: 'E', char: 'ث', x: 90, y: 50 },
+  ],
+};
 
 describe('هندسه چرخ', () => {
   it('حروف را از بالا و ساعتگرد دور دایره می‌چیند', () => {
@@ -69,6 +90,61 @@ describe('هندسه چرخ', () => {
     const geometry = computeWheelGeometry({ tiles: [], diameter: 300, preferredTileSize: 48 });
     expect(geometry.positions).toHaveLength(0);
     expect(nearestTileId(geometry, { x: 0, y: 0 })).toBeNull();
+  });
+});
+
+describe('ضربه‌سنجی مسیر پیوسته (Swept Segment)', () => {
+  it('A→D با یک رویداد، تمام کاشی‌های میانی را با ترتیب t برمی‌گرداند', () => {
+    const hits = getSegmentTileHits({ x: 10, y: 50 }, { x: 70, y: 50 }, lineGeometry);
+    expect(hits.map(hit => hit.tileId)).toEqual(['A', 'B', 'C', 'D']);
+    expect(hits.map(hit => hit.t)).toEqual([
+      expect.closeTo(0, 5),
+      expect.closeTo(1 / 3, 5),
+      expect.closeTo(2 / 3, 5),
+      expect.closeTo(1, 5),
+    ]);
+    expect(getTilesCrossedBySegment({ x: 10, y: 50 }, { x: 70, y: 50 }, lineGeometry)).toEqual([
+      'A',
+      'B',
+      'C',
+      'D',
+    ]);
+  });
+
+  it('ترتیب حرکت معکوس را برعکس نگه می‌دارد (D→A)', () => {
+    expect(getTilesCrossedBySegment({ x: 70, y: 50 }, { x: 10, y: 50 }, lineGeometry)).toEqual([
+      'D',
+      'C',
+      'B',
+      'A',
+    ]);
+  });
+
+  it('نقطه‌ای که فقط به امتداد نامتناهی خط نزدیک است hit نمی‌شود', () => {
+    const hits = getTilesCrossedBySegment({ x: 10, y: 50 }, { x: 70, y: 50 }, lineGeometry);
+    expect(hits).not.toContain('E');
+  });
+
+  it('حرکت قطری هم hitهای واقعی را بر پایه projection t مرتب می‌کند', () => {
+    const diagonal: WheelGeometry = {
+      ...lineGeometry,
+      positions: [
+        { id: 'near', char: 'ا', x: 20, y: 20 },
+        { id: 'middle', char: 'ب', x: 50, y: 50 },
+        { id: 'far', char: 'پ', x: 80, y: 80 },
+        { id: 'off-path', char: 'ت', x: 50, y: 70 },
+      ],
+    };
+    expect(getTilesCrossedBySegment({ x: 10, y: 10 }, { x: 90, y: 90 }, diagonal)).toEqual([
+      'near',
+      'middle',
+      'far',
+    ]);
+  });
+
+  it('نقطه بین hit areaها dead zone است و tile تصادفی انتخاب نمی‌شود', () => {
+    expect(getTileAtPoint(lineGeometry, { x: 20, y: 50 })).toBeNull();
+    expect(getTilesCrossedBySegment({ x: 17, y: 58 }, { x: 23, y: 58 }, lineGeometry)).toEqual([]);
   });
 });
 

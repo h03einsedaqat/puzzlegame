@@ -4,6 +4,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, radius, spacing } from '../../theme';
 import { Icon } from './Icon';
 import { AppText } from './AppText';
+import { AnimatedCounter } from './AnimatedCounter';
 import type { IconName } from '../../types';
 
 export interface StatChipProps {
@@ -31,9 +32,7 @@ export function StatChip({
     <View style={[styles.container, { backgroundColor: background }, style]} accessibilityLabel={label}>
       <Icon name={icon} size={18} color={iconColor} />
       <View style={styles.values}>
-        <AppText variant="numeric" style={styles.value}>
-          {value}
-        </AppText>
+        <AnimatedCounter value={value} textStyle={styles.value} />
         {hint ? (
           <AppText variant="caption" color={colors.textMuted} style={styles.hint}>
             {hint}

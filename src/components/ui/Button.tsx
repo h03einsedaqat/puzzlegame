@@ -61,7 +61,7 @@ const variantStyles: Record<
     background: colors.surface,
     edge: colors.borderStrong,
     border: colors.borderStrong,
-    text: colors.primaryDark,
+    text: colors.primary,
     textShadow: 'rgba(255, 255, 255, 0)',
   },
   ghost: {

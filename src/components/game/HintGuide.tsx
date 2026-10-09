@@ -62,7 +62,7 @@ export function HintGuide({ hint, matchedCount, onDismiss, height }: HintGuidePr
       style={[styles.container, height !== undefined ? { height } : null, { transform: [{ scale }] }]}
     >
       <View style={styles.iconBadge}>
-        <Icon name="bulb" size={18} color={colors.primaryDark} />
+        <Icon name="bulb" size={18} color={colors.accent} />
       </View>
 
       <View style={styles.texts}>
@@ -72,7 +72,7 @@ export function HintGuide({ hint, matchedCount, onDismiss, height }: HintGuidePr
           </AppText>
         ) : null}
         <View style={styles.patternRow}>
-          <AppText variant="bodyStrong" color={colors.primaryDark} numberOfLines={1} allowFontScaling={false}>
+          <AppText variant="bodyStrong" color={colors.accent} numberOfLines={1} allowFontScaling={false}>
             {hint.pattern}
           </AppText>
           <AppText

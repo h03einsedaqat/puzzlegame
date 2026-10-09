@@ -144,6 +144,11 @@ export interface RevealedWordLetters {
 
 export interface SubmitOptions {
   /**
+   * شناسه‌های دقیق انتخاب لحظه‌ی رهاشدن. این snapshot جلوی race بین آخرین
+   * Gesture worklet و رندر/Context را می‌گیرد؛ فقط برای commit ژست استفاده می‌شود.
+   */
+  selection?: readonly string[];
+  /**
    * ثبت از مسیر «برداشتن انگشت پس از کشیدن».
    * در این مسیر واژه کوتاه‌تر از حد مرحله بی‌سروصدا رها می‌شود: نه پیام خطا، نه
    * بازنشانی کمبو و نه پاک‌شدن حروف — چون بازیکن فقط انگشتش را برداشته است.
@@ -368,11 +373,37 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const submit = useCallback(
     (options?: SubmitOptions): SubmitOutcome => {
       const current = stateRef.current;
-      const session = current.session;
+      let session = current.session;
       const level = current.level;
       if (!session || !level || session.status !== 'playing') {
         return { status: 'ignored' };
       }
+
+      // در release، شناسه‌ها از shared selection state می‌آیند و از closure/React
+      // render جلوترند. آن‌ها را پیش از validation همگام می‌کنیم تا حتی واژه کوتاه
+      // هم selection نیمه‌تمام یا stale باقی نگذارد.
+      if (options?.selection) {
+        const known = new Set(session.tiles.map(tile => tile.id));
+        const nextSelection: string[] = [];
+        for (const tileId of options.selection) {
+          if (
+            known.has(tileId) &&
+            !nextSelection.includes(tileId) &&
+            nextSelection.length < GAME_CONFIG.gameplay.maxSelectionLength
+          ) {
+            nextSelection.push(tileId);
+          }
+        }
+        const previousSelection = session.selection;
+        const unchanged =
+          nextSelection.length === previousSelection.length &&
+          nextSelection.every((tileId, index) => tileId === previousSelection[index]);
+        if (!unchanged) {
+          session = { ...session, selection: nextSelection };
+          applyAction({ type: 'apply', session });
+        }
+      }
+
       // انتخاب خالی هرگز «کلمه اشتباه» حساب نمی‌شود؛ فقط نادیده گرفته می‌شود.
       if (session.selection.length === 0) {
         return { status: 'ignored' };

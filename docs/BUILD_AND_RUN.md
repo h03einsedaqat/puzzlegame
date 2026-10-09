@@ -179,13 +179,13 @@ python3 -c "import urllib.parse as u;print('https://github.com/<کاربر>/<م�
 
 خروجی‌ها:
 
-- **صفحه Releases** با برچسب `apk-latest` و فایل `kalamesaz-1.0.0-arm.apk`؛ لینک
+- **صفحه Releases** با برچسب `apk-latest` و فایل `kalamesaz-2.0.0-arm.apk`؛ لینک
   همیشه‌ثابت دانلود:
 
-  `https://github.com/<کاربر>/<مخزن>/releases/download/apk-latest/kalamesaz-1.0.0-arm.apk`
+  `https://github.com/<کاربر>/<مخزن>/releases/download/apk-latest/kalamesaz-2.0.0-arm.apk`
 
   (این لینک با هر ساخت تازه روی همان نام به‌روز می‌شود.) روی همین صفحه، **حجم دقیق** و
-  **SHA-256** بسته نوشته می‌شود و فایل `kalamesaz-1.0.0-arm.apk.sha256` هم گذاشته
+  **SHA-256** بسته نوشته می‌شود و فایل `kalamesaz-2.0.0-arm.apk.sha256` هم گذاشته
   می‌شود؛ با آن می‌توانی بفهمی دانلودت کامل شده یا نه (بخش ۴ و
   `docs/INSTALL_TROUBLESHOOTING.md`).
 
@@ -201,7 +201,7 @@ python3 -c "import urllib.parse as u;print('https://github.com/<کاربر>/<م�
   gh run download --name kalamesaz-apk
   ```
 
-هر دو خروجی همان `app-release.apk` است؛ فایل `kalamesaz-1.0.0-arm.apk` فقط نام
+هر دو خروجی همان `app-release.apk` است؛ فایل `kalamesaz-2.0.0-arm.apk` فقط نام
 خوش‌دست‌تر همان بسته برای دانلود است.
 
 > بسته‌ای که گیت‌هاب می‌سازد با کلید debug امضا شده و برای کافه‌بازار مناسب نیست؛

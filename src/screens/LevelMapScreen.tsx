@@ -5,7 +5,7 @@ import { GAME_CONFIG, strings } from '../constants';
 import { LEVELS } from '../data/levels/levels';
 import { useProfile, useProgress, useServices } from '../context';
 import { colors, radius, spacing } from '../theme';
-import { format } from '../utils/format';
+import { format, toPersianDigits } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
 import { HeartRefillDialog } from '../components/game/HeartRefillDialog';
 import { FeedbackBanner } from '../components/ui/FeedbackBanner';
@@ -13,8 +13,12 @@ import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import { HeartCounter } from '../components/game/HeartCounter';
 import { LevelNode, type LevelNodeState } from '../components/game/LevelNode';
+import { ProgressBar } from '../components/ui/ProgressBar';
+import { Icon } from '../components/ui/Icon';
 import type { LevelSummary } from '../types';
 import type { RootScreenProps } from '../navigation/types';
+
+const WORLD_TITLES = ['آغاز واژه‌ها', 'خانه و زندگی', 'شهر و سفر', 'طبیعت و دانایی', 'قلهٔ کلمه‌ساز'] as const;
 
 /**
  * نقشه مرحله‌ها.
@@ -125,12 +129,31 @@ export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
         renderItem={({ item: world, index: worldIndex }) => (
           <View style={styles.world}>
             <View style={styles.worldHeader}>
-              <AppText variant="bodyStrong">
-                {format(strings.levelMap.worldLabel, {
-                  from: worldIndex * GAME_CONFIG.progression.levelsPerWorld + 1,
-                  to: worldIndex * GAME_CONFIG.progression.levelsPerWorld + world.length,
-                })}
-              </AppText>
+              <View style={styles.worldHeadingRow}>
+                <View style={styles.worldTitle}>
+                  <Icon name="grid" size={17} color={colors.primary} />
+                  <View style={styles.worldTitleCopy}>
+                    <AppText variant="bodyStrong" color={colors.textPrimary}>
+                      {WORLD_TITLES[worldIndex] ?? strings.levelMap.title}
+                    </AppText>
+                    <AppText variant="caption" color={colors.textMuted}>
+                      {format(strings.levelMap.worldLabel, {
+                        from: worldIndex * GAME_CONFIG.progression.levelsPerWorld + 1,
+                        to: worldIndex * GAME_CONFIG.progression.levelsPerWorld + world.length,
+                      })}
+                    </AppText>
+                  </View>
+                </View>
+                <AppText variant="caption" color={colors.textSecondary}>
+                  {toPersianDigits(world.filter(summary => isLevelCompleted(summary.id)).length)}/
+                  {toPersianDigits(world.length)}
+                </AppText>
+              </View>
+              <ProgressBar
+                ratio={world.length === 0 ? 0 : world.filter(summary => isLevelCompleted(summary.id)).length / world.length}
+                height={7}
+                color={colors.brandTeal}
+              />
             </View>
             <View style={styles.nodes}>
               {world.map((summary, nodeIndex) => (
@@ -165,11 +188,29 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   worldHeader: {
-    backgroundColor: colors.primaryLight,
-    alignSelf: 'flex-start',
-    borderRadius: radius.pill,
+    alignSelf: 'stretch',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  worldHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  worldTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  worldTitleCopy: {
+    alignItems: 'flex-start',
+    gap: 0,
   },
   nodes: {
     gap: 0,

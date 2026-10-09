@@ -11,35 +11,46 @@ import { Icon } from '../ui/Icon';
 export interface HeartCounterProps {
   hearts: number;
   maxHearts: number;
-  /** زمان پر شدن قلب بعدی؛ اگر قلب‌ها پر باشند null است */
   nextRefillAt: number | null;
-  /** نمایش متن شمارش معکوس زیر قلب‌ها */
   showCountdown?: boolean;
 }
 
-/**
- * نمایشگر قلب‌ها با شمارش معکوس.
- *
- * بازی قلب را به مانع تبدیل نمی‌کند: تعداد قلب‌ها، سقف آن‌ها و زمان دقیق
- * پر شدن قلب بعدی همیشه دیده می‌شود تا کاربر بداند چه انتظاری داشته باشد.
- */
-export function HeartCounter({ hearts, maxHearts, nextRefillAt, showCountdown = true }: HeartCounterProps) {
+/** Five compact heart segments, count, and an unobtrusive refill timer. */
+export function HeartCounter({
+  hearts,
+  maxHearts,
+  nextRefillAt,
+  showCountdown = true,
+}: HeartCounterProps) {
   const countdown = useCountdown(nextRefillAt);
-
   const label = format(strings.accessibility.heartCounter, { count: hearts, max: maxHearts });
+  const segmentCount = Math.max(1, Math.min(maxHearts, 5));
 
   return (
     <View
       style={styles.container}
+      accessible
+      accessibilityRole="text"
       accessibilityLabel={label}
       accessibilityLiveRegion="polite"
     >
       <View style={styles.row}>
-        <Icon name="heartFilled" size={18} color={colors.heart} />
-        <AppText variant="numeric">{toPersianDigits(`${hearts}/${maxHearts}`)}</AppText>
+        <View style={styles.segments}>
+          {Array.from({ length: segmentCount }, (_, index) => (
+            <Icon
+              key={`heart-${index}`}
+              name={index < hearts ? 'heartFilled' : 'heart'}
+              size={15}
+              color={index < hearts ? colors.heart : colors.textMuted}
+            />
+          ))}
+        </View>
+        <AppText variant="caption" color={colors.textSecondary} allowFontScaling={false}>
+          {toPersianDigits(`${hearts}/${maxHearts}`)}
+        </AppText>
       </View>
       {showCountdown && nextRefillAt !== null ? (
-        <AppText variant="caption" color={colors.textMuted}>
+        <AppText variant="caption" color={colors.textMuted} numberOfLines={1}>
           {format(strings.hearts.nextHeartIn, { time: countdown.text })}
         </AppText>
       ) : null}
@@ -50,11 +61,16 @@ export function HeartCounter({ hearts, maxHearts, nextRefillAt, showCountdown = 
 const styles = StyleSheet.create({
   container: {
     alignItems: 'flex-start',
-    gap: 2,
+    gap: 1,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+  },
+  segments: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
   },
 });

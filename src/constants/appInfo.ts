@@ -6,8 +6,8 @@
  */
 export const APP_INFO = {
   name: 'کلمه‌ساز',
-  version: '1.0.0',
-  versionCode: 1,
+  version: '2.0.0',
+  versionCode: 20000,
   packageName: 'ir.kalamesaz.game',
   /** نشانی پشتیبانی؛ در صفحه «درباره» نمایش داده می‌شود */
   contactEmail: 'support@kalamesaz.ir',

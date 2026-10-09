@@ -11,7 +11,7 @@ module.exports = {
     '^.+\\.(wav|mp3|ogg|m4a|aac)$': '@react-native/jest-preset/jest/assetFileTransformer.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(?:@react-native|react-native|@react-navigation|react-native-screens|react-native-safe-area-context|react-native-svg|react-native-gesture-handler|@react-native-async-storage)/)',
+    'node_modules/(?!(?:@react-native|react-native|@react-navigation|react-native-screens|react-native-safe-area-context|react-native-svg|react-native-gesture-handler|react-native-reanimated|react-native-worklets|@react-native-async-storage)/)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

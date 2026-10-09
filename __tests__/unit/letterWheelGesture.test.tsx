@@ -9,6 +9,7 @@ import { SettingsProvider } from '../../src/context/SettingsContext';
 import { LetterWheel } from '../../src/components/game/LetterWheel';
 import { computeWheelGeometry } from '../../src/services/game/wheelGesture';
 import { WHEEL_PAN_TEST_ID } from '../../src/hooks/useWheelGestures';
+import { colors } from '../../src/theme';
 import type { LetterTileData } from '../../src/types';
 
 /**
@@ -141,6 +142,36 @@ const lastSelection = (harness: Harness) => {
 };
 
 describe('لمس چرخ با Gesture Handler واقعی', () => {
+  it('حلقهٔ پیشرفت پس از پیدا شدن واژه دقیقاً حول مرکز چرخ قرار می‌گیرد', async () => {
+    const rendered = await render(
+      <ServicesProvider>
+        <SettingsProvider>
+          <LetterWheel
+            tiles={tiles}
+            selectedIds={[]}
+            onTilePress={jest.fn()}
+            onSelectionChange={jest.fn()}
+            onRelease={jest.fn()}
+            diameter={DIAMETER}
+            preferredTileSize={TILE_SIZE}
+            foundCount={1}
+            totalCount={4}
+          />
+        </SettingsProvider>
+      </ServicesProvider>,
+    );
+
+    const rings = rendered.container.queryAll(
+      instance => instance.props.stroke === colors.brandTeal && instance.props.strokeDasharray !== undefined,
+    );
+    expect(rings).toHaveLength(1);
+    const ring = rings[0]!;
+    expect(ring.props.cx).toBe(geometry.center.x);
+    expect(ring.props.cy).toBe(geometry.center.y);
+    expect(ring.props.transform).toBe(`rotate(-90 ${geometry.center.x} ${geometry.center.y})`);
+    expect(Number(ring.props.strokeDashoffset)).toBeCloseTo(2 * Math.PI * Number(ring.props.r) * 0.75);
+  });
+
   it('دنباله [A,B,C,D] را دقیق و بدون افت حرف می‌سازد و پس از برداشتن انگشت ثبت می‌کند', async () => {
     const harness = await renderWheel();
 
