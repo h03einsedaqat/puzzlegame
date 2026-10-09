@@ -1,38 +1,34 @@
 import type { ViewStyle } from 'react-native';
 
-/**
- * سایه‌های سبک و رنگی. روی Android از elevation استفاده می‌شود تا سایه‌های سنگین
- * باعث افت فریم در انیمیشن نشوند؛ رنگ سایه کمی بنفش/آبی است تا با پالت شاد
- * برنامه هم‌خوان باشد و مثل دود خاکستری به‌نظر نرسد.
- */
+/** سایه‌های سرد و کم‌هزینه؛ عمق اصلی سطوح با border/contrast ساخته می‌شود. */
 export const shadows: Record<'none' | 'soft' | 'card' | 'raised' | 'tile', ViewStyle> = {
   none: {},
   soft: {
-    shadowColor: '#3A4A8F',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    shadowColor: '#000000',
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   card: {
-    shadowColor: '#3A4A8F',
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    shadowColor: '#03050D',
+    shadowOpacity: 0.34,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
   raised: {
-    shadowColor: '#3A4A8F',
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
+    shadowColor: '#02040B',
+    shadowOpacity: 0.42,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 9,
   },
   tile: {
-    shadowColor: '#4E2C12',
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#02040B',
+    shadowOpacity: 0.38,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 4,
   },
 };

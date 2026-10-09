@@ -23,17 +23,17 @@
 
 ```bash
 # لینوکس / مک — حجم فایل را با عدد صفحه Releases بسنج
-wc -c < kalamesaz-1.0.0-arm.apk
+wc -c < kalamesaz-2.0.0-arm.apk
 # ویندوز (PowerShell)
-(Get-Item .\kalamesaz-1.0.0-arm.apk).Length
+(Get-Item .\kalamesaz-2.0.0-arm.apk).Length
 ```
 
 ```bash
 # لینوکس / مک
-sha256sum kalamesaz-1.0.0-arm.apk
+sha256sum kalamesaz-2.0.0-arm.apk
 
 # ویندوز (PowerShell یا CMD)
-certutil -hashfile kalamesaz-1.0.0-arm.apk SHA256
+certutil -hashfile kalamesaz-2.0.0-arm.apk SHA256
 ```
 
 اگر روی خودِ گوشی هستی، از یک اپ «checksum» (مثل Hash Checker) استفاده کن، یا فایل را
@@ -45,11 +45,11 @@ certutil -hashfile kalamesaz-1.0.0-arm.apk SHA256
 ```bash
 # تا کامل‌شدن فایل، همین دستور را تکرار کن (از نصفه ادامه می‌دهد)
 until curl -C - -L --retry 5 --retry-all-errors \
-  -o kalamesaz-1.0.0-arm.apk \
-  https://github.com/<کاربر>/<مخزن>/releases/download/apk-latest/kalamesaz-1.0.0-arm.apk; do
+  -o kalamesaz-2.0.0-arm.apk \
+  https://github.com/<کاربر>/<مخزن>/releases/download/apk-latest/kalamesaz-2.0.0-arm.apk; do
   echo "ادامه دانلود..." ; sleep 2
 done
-sha256sum kalamesaz-1.0.0-arm.apk   # باید با عدد صفحه Releases یکی باشد
+sha256sum kalamesaz-2.0.0-arm.apk   # باید با عدد صفحه Releases یکی باشد
 ```
 
 اگر `gh` نصب داری، این یک خط ساده‌ترین راه است (فایل را با ادامه دانلود می‌گیرد):
@@ -87,7 +87,7 @@ gh release download apk-latest --clobber
 نصب از طریق `adb` کد خطای واقعی را نشان می‌دهد و حدس‌وگمان را تمام می‌کند:
 
 ```bash
-adb install -r kalamesaz-1.0.0-arm.apk
+adb install -r kalamesaz-2.0.0-arm.apk
 ```
 
 | کد خطا | معنی | کار |
@@ -96,7 +96,7 @@ adb install -r kalamesaz-1.0.0-arm.apk
 | `INSTALL_FAILED_INVALID_APK` | فایل خراب/ناقص است | حجم و SHA-256 را بسنج و دوباره دانلود کن |
 | `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | نسخه نصب‌شده با کلید دیگری امضا شده | `adb uninstall ir.kalamesaz.game` |
 | `INSTALL_FAILED_OLDER_SDK` | اندروید گوشی قدیمی‌تر از ۷ است | روی گوشی جدیدتر نصب کن |
-| `INSTALL_FAILED_NO_MATCHING_ABIS` | فایل برای معماری گوشی تو نیست | بسته `kalamesaz-1.0.0-arm.apk` هر دو معماری ARM را دارد؛ مطمئن شو همین فایل را گرفته‌ای |
+| `INSTALL_FAILED_NO_MATCHING_ABIS` | فایل برای معماری گوشی تو نیست | بسته `kalamesaz-2.0.0-arm.apk` هر دو معماری ARM را دارد؛ مطمئن شو همین فایل را گرفته‌ای |
 | `INSTALL_FAILED_INSUFFICIENT_STORAGE` | فضا کم است | فضا آزاد کن |
 
 ## ۴) خودِ فایل را روی رایانه بررسی کن
@@ -105,9 +105,9 @@ adb install -r kalamesaz-1.0.0-arm.apk
 (سالم بودن zip، ترازبندی، امضای v1/v2/v3، خواندنی بودن مانیفست و معماری‌ها):
 
 ```bash
-bash tools/verify-apk.sh kalamesaz-1.0.0-arm.apk
+bash tools/verify-apk.sh kalamesaz-2.0.0-arm.apk
 # یا اگر Android SDK Build-Tools را جای دیگری داری:
-bash tools/verify-apk.sh kalamesaz-1.0.0-arm.apk ~/Android/Sdk/build-tools/36.0.0
+bash tools/verify-apk.sh kalamesaz-2.0.0-arm.apk ~/Android/Sdk/build-tools/36.0.0
 ```
 
 اگر نتیجه‌اش «بسته سالم و نصب‌شدنی است» بود ولی گوشی باز هم خطا داد، فایل را روی همان

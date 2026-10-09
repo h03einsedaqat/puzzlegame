@@ -125,7 +125,7 @@ export function DailyChallengeIntroScreen({ navigation }: RootScreenProps<'Daily
                 key={`day-${item.day}`}
                 style={[styles.ladderItem, item.day === reward.day ? styles.ladderItemCurrent : null]}
               >
-                <AppText variant="caption" color={item.day === reward.day ? colors.primaryDark : colors.textMuted}>
+                <AppText variant="caption" color={item.day === reward.day ? colors.primary : colors.textMuted}>
                   {toPersianDigits(item.day)}
                 </AppText>
                 <Icon

@@ -17,9 +17,9 @@ export interface FeedbackBannerProps {
 }
 
 const tonePalette = {
-  success: { background: colors.successLight, border: colors.success, text: colors.success, icon: 'check' },
-  error: { background: colors.dangerLight, border: colors.danger, text: colors.danger, icon: 'close' },
-  info: { background: colors.primaryLight, border: colors.primary, text: colors.primaryDark, icon: 'info' },
+  success: { background: colors.successLight, border: colors.success, text: colors.success, icon: 'success' },
+  error: { background: colors.dangerLight, border: colors.danger, text: colors.danger, icon: 'info' },
+  info: { background: colors.primaryLight, border: colors.primary, text: colors.primary, icon: 'info' },
 } as const;
 
 /**

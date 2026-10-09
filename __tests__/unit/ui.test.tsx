@@ -318,7 +318,7 @@ describe('اجزای بازی', () => {
 
     expect(screen.getByText('ک')).toBeTruthy();
     expect(screen.getByText('ت')).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText('ک'));
+    await fireEvent.press(screen.getByLabelText('برداشتن حرف ک'));
     expect(onRemove).toHaveBeenCalledWith('t_1');
   });
 
@@ -373,7 +373,7 @@ describe('اجزای بازی', () => {
     expect(screen.getByText('۱۴')).toBeTruthy();
   });
 
-  it('LevelNode در حالت باز فشار می‌پذیرد و در حالت قفل نه', async () => {
+  it('LevelNode حالت باز را اجرا و لمس قفل را برای نمایش راهنما می‌فرستد', async () => {
     const onPress = jest.fn();
     await renderWithProviders(
       <>
@@ -386,7 +386,8 @@ describe('اجزای بازی', () => {
     expect(onPress).toHaveBeenCalledWith(4);
 
     await fireEvent.press(screen.getByLabelText('مرحله ۵'));
-    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(onPress).toHaveBeenLastCalledWith(5);
+    expect(onPress).toHaveBeenCalledTimes(2);
   });
 
   it('HintSheet قیمت‌ها را نشان می‌دهد و فقط راهنمای پرداخت‌شدنی را می‌فروشد', async () => {

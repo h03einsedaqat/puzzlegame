@@ -71,6 +71,17 @@ export function SettingsScreen({ navigation }: RootScreenProps<'Settings'>) {
       />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Card variant="muted" padding="md" style={styles.settingsHero}>
+          <View style={styles.settingsHeroIcon}>
+            <Icon name="settings" size={22} color={colors.primary} />
+          </View>
+          <View style={styles.settingsHeroCopy}>
+            <AppText variant="bodyStrong">بازی را با حال‌وهوای خودت تنظیم کن</AppText>
+            <AppText variant="caption" color={colors.textSecondary}>
+              تغییرها بی‌درنگ ذخیره می‌شوند و هر زمان می‌توانی برگردانی.
+            </AppText>
+          </View>
+        </Card>
         <View style={styles.section}>
           <ToggleRow
             icon="sound"
@@ -232,6 +243,25 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  settingsHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderColor: colors.borderStrong,
+  },
+  settingsHeroIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+  },
+  settingsHeroCopy: {
+    flex: 1,
+    alignItems: 'flex-start',
+    gap: 2,
   },
   section: {
     gap: spacing.sm,

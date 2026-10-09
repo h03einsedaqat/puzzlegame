@@ -2,6 +2,8 @@
 
 export {};
 
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 declare global {
   var __mockAsyncStorage: Record<string, jest.Mock>;
   var __resetAsyncStorage: () => void;
@@ -108,6 +110,37 @@ jest.mock('react-native-svg', () => {
   module.default = module.Svg;
 
   return module;
+});
+
+/** Reanimated 4 / Worklets test double: the native runtime is not loaded in Jest. */
+jest.mock('react-native-reanimated', () => {
+  const React = require('react');
+  const { Animated } = require('react-native');
+  const AnimatedShim = {
+    ...Animated,
+    createAnimatedComponent: (component: unknown) => component,
+  };
+  const identityAnimation = (toValue: unknown) => toValue;
+
+  return {
+    __esModule: true,
+    default: AnimatedShim,
+    cancelAnimation: () => undefined,
+    runOnJS: (callback: (...args: unknown[]) => unknown) => callback,
+    runOnUI: (callback: (...args: unknown[]) => unknown) => callback,
+    setGestureState: () => undefined,
+    useEvent: (callback: (...args: unknown[]) => unknown) => callback,
+    useAnimatedProps: (updater: () => unknown) => updater(),
+    useAnimatedStyle: (updater: () => unknown) => updater(),
+    useSharedValue: (initialValue: unknown) => {
+      const value = React.useRef({ value: initialValue });
+      return value.current;
+    },
+    withRepeat: (animation: unknown) => animation,
+    withSequence: (...animations: unknown[]) => animations[animations.length - 1],
+    withSpring: identityAnimation,
+    withTiming: identityAnimation,
+  };
 });
 
 /**

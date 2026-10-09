@@ -20,7 +20,7 @@
 #
 # نمونه:
 #   bash tools/verify-apk.sh android/app/build/outputs/apk/release/app-release.apk
-#   bash tools/verify-apk.sh ~/Downloads/kalamesaz-1.0.0-arm.apk
+#   bash tools/verify-apk.sh ~/Downloads/kalamesaz-2.0.0-arm.apk
 #   bash tools/verify-apk.sh --release               # همان فایلی که کاربر دانلود می‌کند
 #
 # کد خروج:

@@ -85,7 +85,7 @@ export function SplashScreen({ navigation }: RootScreenProps<'Splash'>) {
         </AppText>
       </Animated.View>
 
-      <AppText variant="display" color={colors.primaryDark} style={styles.title}>
+      <AppText variant="display" color={colors.primary} style={styles.title}>
         {strings.app.name}
       </AppText>
       <AppText variant="subheading" color={colors.textSecondary}>

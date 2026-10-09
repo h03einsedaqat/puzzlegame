@@ -129,7 +129,7 @@ export function HintSheet({
               >
                 <View style={styles.rowHeader}>
                   <View style={styles.iconBadge}>
-                    <Icon name={HINT_ICONS[option.type]} size={22} color={colors.primaryDark} />
+                    <Icon name={HINT_ICONS[option.type]} size={22} color={colors.primary} />
                   </View>
                   <View style={styles.rowTexts}>
                     <AppText variant="bodyStrong">{HINT_TITLES[option.type]}</AppText>

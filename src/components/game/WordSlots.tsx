@@ -1,42 +1,40 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
-import { colors, shadows, spacing, typography } from '../../theme';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { colors, radius, spacing, typography } from '../../theme';
 import { AppText } from '../ui/AppText';
 import { PressableScale } from '../ui/PressableScale';
 import type { LetterTileData } from '../../types';
 
+export type WordBoardFeedbackState = 'idle' | 'confirmed' | 'error';
+
 export interface WordSlotsProps {
   selected: readonly LetterTileData[];
-  /** بیشترین طول واژه در این مرحله؛ تعداد جاهای خالی را تعیین می‌کند */
   maxLength: number;
   availableWidth: number;
   onRemove: (tileId: string) => void;
-  /** حرف‌هایی که با راهنما آشکار شده‌اند و در جای خود نمایش داده می‌شوند */
   revealedLetters?: readonly string[];
-  /** اندازه پیشنهادی هر جای خالی؛ از چیدمان صفحه می‌آید */
   size?: number;
+  feedbackState?: WordBoardFeedbackState;
+  feedbackId?: number;
+  readOnly?: boolean;
 }
 
 const MIN_SLOTS = 3;
-/**
- * سقف جاهای خالی برابر بیشترین طول واژه در مرحله‌هاست (۷ حرف).
- * پیش‌تر این عدد ۶ بود و در مرحله‌های ۷ حرفی، حرف آخر انتخاب‌شده جایی برای
- * دیده‌شدن نداشت؛ یعنی بازیکن حرف می‌زد و «گم» می‌شد.
- */
 const MAX_SLOTS = 9;
 const GAP = spacing.sm;
 const MIN_SLOT_SIZE = 30;
-const MAX_SLOT_SIZE = 48;
+const MAX_SLOT_SIZE = 50;
 
-/**
- * جای خالی واژه.
- *
- * تعداد جای‌ها با پیشرفت انتخاب رشد می‌کند (از سه جای خالی تا سقف طول واژه در
- * مرحله) و اندازه هر جای خالی با عرض موجود و ارتفاع چیدمان تنظیم می‌شود؛ اندازه
- * هرگز طوری بزرگ نمی‌شود که از عرض صفحه بیرون بزند. لمس هر جای پر‌شده، همان حرف
- * را برمی‌گرداند.
- */
+/** Word-construction board with explicit empty, filled, confirmed and error states. */
 export const WordSlots = React.memo(function WordSlots({
   selected,
   maxLength,
@@ -44,88 +42,176 @@ export const WordSlots = React.memo(function WordSlots({
   onRemove,
   revealedLetters = [],
   size,
+  feedbackState = 'idle',
+  feedbackId,
+  readOnly = false,
 }: WordSlotsProps) {
+  const reducedMotion = useReducedMotion();
   const slotCount = Math.max(
     MIN_SLOTS,
     Math.min(MAX_SLOTS, Math.max(maxLength, MIN_SLOTS), Math.max(selected.length, MIN_SLOTS)),
   );
-
   const slotSize = useMemo(() => {
     const usable = Math.max(0, availableWidth - GAP * (slotCount - 1));
-    // اندازه هرگز از سهم عرض صفحه بیشتر نمی‌شود؛ پس هیچ‌وقت ردیف بیرون نمی‌زند.
-    const byWidth = Math.max(20, Math.floor(usable / slotCount));
-    const wanted = size ?? MAX_SLOT_SIZE;
-    return Math.max(MIN_SLOT_SIZE, Math.min(MAX_SLOT_SIZE, wanted, byWidth));
+    const byWidth = Math.max(MIN_SLOT_SIZE, Math.floor(usable / slotCount));
+    return Math.max(MIN_SLOT_SIZE, Math.min(MAX_SLOT_SIZE, size ?? MAX_SLOT_SIZE, byWidth));
   }, [availableWidth, size, slotCount]);
+  const shakeX = useSharedValue(0);
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
 
-  const slots = Array.from({ length: slotCount }, (_, index) => selected[index]);
+  useEffect(() => {
+    if (feedbackState !== 'error' || reducedMotion) {
+      shakeX.value = 0;
+      return;
+    }
+    shakeX.value = withSequence(
+      withTiming(-2.5, { duration: 38 }),
+      withTiming(2.5, { duration: 38 }),
+      withTiming(-1.5, { duration: 34 }),
+      withTiming(0, { duration: 38 }),
+    );
+  }, [feedbackId, feedbackState, reducedMotion, shakeX]);
 
   return (
-    <View style={[styles.container, { gap: GAP }]} accessibilityRole="text">
-      {slots.map((tile, index) => {
+    <Animated.View style={[styles.container, { gap: GAP }, shakeStyle]}>
+      {Array.from({ length: slotCount }, (_, index) => {
+        const tile = selected[index];
         const isNext = !tile && index === selected.length;
-        return tile ? (
-          <PressableScale
-            key={tile.id}
-            onPress={() => onRemove(tile.id)}
-            accessibilityRole="button"
-            accessibilityLabel={tile.char}
-          >
-            <View style={[styles.slot, styles.filledSlot, { width: slotSize, height: slotSize, borderRadius: Math.round(slotSize * 0.32) }]}>
-              <AppText
-                style={[
-                  typography.wordSlot,
-                  {
-                    fontSize: Math.round(slotSize * 0.54),
-                    lineHeight: Math.round(slotSize * 0.7),
-                    color: colors.slotText,
-                    textShadowColor: 'rgba(255, 255, 255, 0.8)',
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 1,
-                  },
-                ]}
-                allowFontScaling={false}
-              >
-                {tile.char}
-              </AppText>
-            </View>
-          </PressableScale>
-        ) : (
-          <View
-            key={`empty-${index}`}
-            style={[
-              styles.slot,
-              {
-                width: slotSize,
-                height: slotSize,
-                borderRadius: Math.round(slotSize * 0.32),
-                borderWidth: isNext ? 2.5 : 2,
-                borderColor: isNext ? colors.slotActiveBorder : colors.slotBorder,
-                borderStyle: isNext ? 'solid' : 'dashed',
-                backgroundColor: isNext ? colors.primaryLight : 'rgba(255, 255, 255, 0.65)',
-              },
-            ]}
-          >
-            {revealedLetters[index] ? (
-              <AppText
-                style={[
-                  typography.wordSlot,
-                  { fontSize: Math.round(slotSize * 0.46), lineHeight: Math.round(slotSize * 0.62), color: colors.textMuted },
-                ]}
-                allowFontScaling={false}
-              >
-                {revealedLetters[index]}
-              </AppText>
-            ) : null}
-          </View>
+        const revealed = revealedLetters[index];
+        return (
+          <WordSlot
+            key={tile?.id ?? `empty-${index}`}
+            tile={tile}
+            size={slotSize}
+            isNext={isNext}
+            revealed={revealed}
+            feedbackState={feedbackState}
+            readOnly={readOnly}
+            reducedMotion={reducedMotion}
+            onRemove={onRemove}
+          />
         );
       })}
-    </View>
+    </Animated.View>
+  );
+});
+
+const WordSlot = React.memo(function WordSlot({
+  tile,
+  size,
+  isNext,
+  revealed,
+  feedbackState,
+  readOnly,
+  reducedMotion,
+  onRemove,
+}: {
+  tile?: LetterTileData;
+  size: number;
+  isNext: boolean;
+  revealed?: string;
+  feedbackState: WordBoardFeedbackState;
+  readOnly: boolean;
+  reducedMotion: boolean;
+  onRemove: (tileId: string) => void;
+}) {
+  const filled = tile !== undefined;
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  useEffect(() => {
+    if (reducedMotion || !filled || readOnly || feedbackState !== 'idle') {
+      scale.value = 1;
+      return;
+    }
+    scale.value = withSequence(
+      withTiming(1.08, { duration: 82 }),
+      withSpring(1, { damping: 15, stiffness: 250, mass: 0.7 }),
+    );
+  }, [feedbackState, filled, readOnly, reducedMotion, scale, tile?.id]);
+
+  const stateStyle =
+    feedbackState === 'confirmed'
+      ? styles.confirmed
+      : feedbackState === 'error'
+        ? styles.error
+        : filled
+          ? styles.filled
+          : null;
+  const textColor = feedbackState === 'error'
+    ? colors.danger
+    : feedbackState === 'confirmed'
+      ? colors.success
+      : colors.slotText;
+  const slotRadius = Math.round(size * 0.3);
+
+  const content = (
+    <Animated.View
+      style={[
+        styles.slot,
+        stateStyle,
+        animatedStyle,
+        {
+          width: size,
+          height: size,
+          borderRadius: slotRadius,
+          borderStyle: filled || feedbackState !== 'idle' ? 'solid' : 'dashed',
+          borderColor: isNext && feedbackState === 'idle' ? colors.slotActiveBorder : undefined,
+        },
+      ]}
+    >
+      {tile ? (
+        <AppText
+          style={[
+            typography.wordSlot,
+            {
+              fontSize: Math.round(size * 0.52),
+              lineHeight: Math.round(size * 0.72),
+              color: textColor,
+            },
+          ]}
+          allowFontScaling={false}
+        >
+          {tile.char}
+        </AppText>
+      ) : revealed ? (
+        <AppText
+          style={[
+            typography.wordSlot,
+            {
+              fontSize: Math.round(size * 0.46),
+              lineHeight: Math.round(size * 0.65),
+              color: colors.textMuted,
+            },
+          ]}
+          allowFontScaling={false}
+        >
+          {revealed}
+        </AppText>
+      ) : isNext && feedbackState === 'idle' ? (
+        <View style={styles.activeMark} />
+      ) : null}
+    </Animated.View>
+  );
+
+  if (!tile || readOnly) {
+    return content;
+  }
+  return (
+    <PressableScale
+      onPress={() => onRemove(tile.id)}
+      accessibilityRole="button"
+      accessibilityLabel={`برداشتن حرف ${tile.char}`}
+      style={{ width: size, height: size }}
+    >
+      {content}
+    </PressableScale>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
+    minHeight: 52,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -133,12 +219,30 @@ const styles = StyleSheet.create({
   slot: {
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.slotBorder,
+    backgroundColor: colors.slotBackground,
   },
-  filledSlot: {
+  filled: {
     backgroundColor: colors.slotFilledBackground,
-    borderWidth: 2,
-    borderColor: colors.accentDark,
-    borderBottomWidth: 4,
-    ...shadows.soft,
+    borderColor: colors.primaryDark,
+  },
+  confirmed: {
+    backgroundColor: colors.successLight,
+    borderColor: colors.success,
+    shadowColor: colors.success,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  error: {
+    backgroundColor: colors.errorLight,
+    borderColor: colors.danger,
+  },
+  activeMark: {
+    width: 5,
+    height: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
   },
 });

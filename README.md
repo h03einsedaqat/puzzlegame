@@ -8,15 +8,15 @@
 | موضوع         | مقدار                                     |
 | ------------- | ----------------------------------------- |
 | نام برنامه    | کلمه‌ساز                                  |
-| نسخه          | ۱.۰.۰ (versionCode ۱)                     |
+| نسخه          | ۲.۰.۰ (versionCode ۲۰۰۰۰)                  |
 | بسته          | `ir.kalamesaz.game`                       |
 | حداقل اندروید | ۷.۰ (API 24)                              |
 | هدف           | Android 16 (API 36)، compileSdk 37        |
 | چارچوب        | React Native 0.87.1 + TypeScript (strict) |
 
-> وضعیت: نسخه MVP کامل است (بازی، اقتصاد، چالش روزانه، دستاوردها، تنظیمات و آزمون‌ها).
+> وضعیت: نسخهٔ ۲.۰.۰ شامل بازطراحی Dark Premium و لمس پیوستهٔ چرخ حروف است؛ موتور بازی، داده‌ها و شناسهٔ بسته حفظ شده‌اند. Preview مستقل در `preview-v2/` قرار دارد.
 > تبلیغات و خرید درون‌برنامه‌ای عمداً غیرفعال‌اند و فقط زیرساخت آن‌ها آماده است.
-> پیش از انتشار در کافه‌بازار، فهرست `docs/BAZAAR_RELEASE_CHECKLIST.md` باید کامل شود.
+> انتشار هنوز نیازمند ساخت APK/AAB در محیط Android SDK/JDKدار و تکمیل فهرست `docs/BAZAAR_RELEASE_CHECKLIST.md` است.
 
 ---
 
@@ -116,6 +116,7 @@ Metro نیاز دارد (با `adb reverse tcp:8081 tcp:8081`). این تفاو�
 | `npm test`                           | همه آزمون‌ها                                        |
 | `npm run test:coverage`              | آزمون با گزارش پوشش (آستانه سراسری ۶۰٪)             |
 | `npm run verify`                     | typecheck + lint + test؛ دروازه پیش از تحویل        |
+| `npm run preview:v2`                 | پیش‌نمایش وب v2 در ریشه روی پورت 4173               |
 | `npm run levels:build`               | تولید `levels.ts` و `dailyPuzzles.ts` از واژه‌نامه  |
 | `npm run levels:check`               | اعتبارسنجی همه مرحله‌ها و پازل‌ها                   |
 | `npm run sounds:build`               | تولید افکت‌های صوتی                                 |

@@ -1,9 +1,7 @@
 import { Platform, type TextStyle } from 'react-native';
+import { colors } from './colors';
 
-/**
- * فونت وزیرمتن (مجوز SIL OFL 1.1). روی Android نام خانواده فونت همان نام فایل
- * است؛ بنابراین هر وزن فایل جداگانه دارد.
- */
+/** وزیرمتن، همراه با وزن‌های جداگانه برای رندر پایدار فارسی. */
 export const fontFamily = {
   regular: Platform.select({ android: 'Vazirmatn-Regular', default: 'Vazirmatn' }) as string,
   medium: Platform.select({ android: 'Vazirmatn-Medium', default: 'Vazirmatn' }) as string,
@@ -27,77 +25,79 @@ export type TypographyVariant =
 export const typography: Record<TypographyVariant, TextStyle> = {
   display: {
     fontFamily: fontFamily.bold,
-    fontSize: 32,
-    lineHeight: 44,
-    color: '#241F35',
+    fontSize: 34,
+    lineHeight: 48,
+    color: colors.textPrimary,
+    letterSpacing: -0.4,
   },
   title: {
     fontFamily: fontFamily.bold,
-    fontSize: 24,
-    lineHeight: 36,
-    color: '#241F35',
+    fontSize: 25,
+    lineHeight: 38,
+    color: colors.textPrimary,
   },
   heading: {
     fontFamily: fontFamily.bold,
     fontSize: 19,
     lineHeight: 30,
-    color: '#241F35',
+    color: colors.textPrimary,
   },
   subheading: {
     fontFamily: fontFamily.medium,
     fontSize: 16,
     lineHeight: 26,
-    color: '#241F35',
+    color: colors.textPrimary,
   },
   body: {
     fontFamily: fontFamily.regular,
     fontSize: 15,
     lineHeight: 26,
-    color: '#241F35',
+    color: colors.textPrimary,
   },
   bodyStrong: {
     fontFamily: fontFamily.medium,
     fontSize: 15,
     lineHeight: 26,
-    color: '#241F35',
+    color: colors.textPrimary,
   },
   caption: {
     fontFamily: fontFamily.regular,
     fontSize: 12.5,
     lineHeight: 21,
-    color: '#6B647E',
+    color: colors.textSecondary,
   },
   button: {
     fontFamily: fontFamily.bold,
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 24,
-    color: '#FFFFFF',
+    color: colors.textInverse,
   },
-  /** اعداد و شمارنده‌ها؛ از ارقام فارسی استفاده می‌شود */
   numeric: {
     fontFamily: fontFamily.bold,
     fontSize: 16,
     lineHeight: 24,
-    color: '#241F35',
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   numericLarge: {
     fontFamily: fontFamily.bold,
-    fontSize: 26,
-    lineHeight: 36,
-    color: '#241F35',
+    fontSize: 27,
+    lineHeight: 38,
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   letter: {
     fontFamily: fontFamily.bold,
     fontSize: 28,
     lineHeight: 40,
-    color: '#2F2A3F',
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   wordSlot: {
     fontFamily: fontFamily.bold,
     fontSize: 22,
     lineHeight: 34,
-    color: '#2F2A3F',
+    color: colors.textPrimary,
     textAlign: 'center',
   },
 };

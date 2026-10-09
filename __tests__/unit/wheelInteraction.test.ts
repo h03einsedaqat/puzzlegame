@@ -93,6 +93,48 @@ function drag(tileIds: readonly string[], startFrom: readonly string[] = []): Dr
   return { released: endResult.released, changes, dragStarted };
 }
 
+describe('Swept-segment selection', () => {
+  const lineGeometry: WheelGeometry = {
+    diameter: 100,
+    center: { x: 50, y: 50 },
+    orbit: 0,
+    tileSize: 20,
+    visualRadius: 10,
+    interactionRadius: 6,
+    touchRadius: 6,
+    deadZone: 8,
+    neighbourDistance: 20,
+    positions: [
+      { id: 'A', char: 'آ', x: 10, y: 50 },
+      { id: 'B', char: 'ب', x: 30, y: 50 },
+      { id: 'C', char: 'پ', x: 50, y: 50 },
+      { id: 'D', char: 'ت', x: 70, y: 50 },
+    ],
+  };
+
+  it('A→D را در یک نمونه می‌گیرد و B/C را جا نمی‌اندازد', () => {
+    let state = wheelGestureDown(lineGeometry, [], { x: 10, y: 50 }).state;
+    const swept = wheelGestureMove(state, lineGeometry, { x: 70, y: 50 });
+    state = swept.state;
+    expect(swept.selection).toEqual(['A', 'B', 'C', 'D']);
+    expect(wheelGestureEnd(state, lineGeometry, { x: 70, y: 50 }).released).toEqual([
+      'A',
+      'B',
+      'C',
+      'D',
+    ]);
+  });
+
+  it('شروع روی فضای خالی و سپس ورود به حروف، drag ownership نمی‌گیرد', () => {
+    const down = wheelGestureDown(lineGeometry, [], { x: 20, y: 50 });
+    const move = wheelGestureMove(down.state, lineGeometry, { x: 70, y: 50 });
+    expect(move.dragStarted).toBe(false);
+    expect(move.selection).toBeNull();
+    expect(move.state.ownsSelection).toBe(false);
+    expect(wheelGestureEnd(move.state, lineGeometry, { x: 70, y: 50 }).released).toBeNull();
+  });
+});
+
 describe('کشیدن انگشت روی حروف', () => {
   it('fingerDown(A) → move(B) → move(C) → move(D) → fingerUp نتیجه [A,B,C,D] می‌دهد', () => {
     const result = drag(['t0', 't1', 't2', 't3']);
@@ -188,7 +230,7 @@ describe('حروف تکراری', () => {
   });
 });
 
-describe('لغو حرکت', () => {
+describe('لغو حرکت / چندلمسی / چرخه برنامه', () => {
   it('لغو، انتخاب را به حالت پیش از حرکت برمی‌گرداند', () => {
     const state = wheelGestureMove(
       wheelGestureDown(geometry, ['t0', 't1'], inside('t0')).state,
@@ -205,6 +247,22 @@ describe('لغو حرکت', () => {
     expect(cancelled.selection).toBeNull();
     expect(cancelled.aborted).toBe(false);
   });
+
+  it.each(['multi-touch', 'background', 'navigation', 'modal'])(
+    '%s انتخاب نیمه‌تمام را restore می‌کند و هیچ submission نمی‌سازد', reason => {
+      const dragging = wheelGestureMove(
+        wheelGestureDown(geometry, ['t4'], inside('t0')).state,
+        geometry,
+        inside('t1'),
+      ).state;
+      const cancelled = wheelGestureCancel(dragging);
+      expect(cancelled.aborted).toBe(true);
+      expect(cancelled.released).toBeNull();
+      expect(cancelled.selection).toEqual(['t4']);
+      expect(cancelled.state.phase).toBe('idle');
+      expect(reason).toBeTruthy();
+    },
+  );
 
   it('پس از لغو، حرکت بعدی با حالت تازه و مستقل شروع می‌شود', () => {
     const state = wheelGestureMove(

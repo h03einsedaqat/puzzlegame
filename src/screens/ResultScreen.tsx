@@ -1,8 +1,9 @@
-import { strings } from '../constants';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { strings } from '../constants';
 import { ACHIEVEMENTS, type AchievementDefinition } from '../data/achievements/achievements';
+import { LEVELS } from '../data/levels/levels';
 import { useAchievements, useProfile, useProgress } from '../context';
 import { MAX_STARS, shareText } from '../services';
 import { colors, radius, spacing } from '../theme';
@@ -16,6 +17,8 @@ import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { HeartCounter } from '../components/game/HeartCounter';
 import { HeartRefillDialog } from '../components/game/HeartRefillDialog';
 import type { RootScreenProps } from '../navigation/types';
+
+const AUTO_ADVANCE_DELAY_MS = 5000;
 
 /**
  * صفحه نتیجه.
@@ -59,6 +62,41 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
 
   const completionRatio = params.targetTotal === 0 ? 1 : params.targetFound / params.targetTotal;
   const stars = typeof params.stars === 'number' ? params.stars : 0;
+  const isFinalLevel = !isDaily && params.nextLevelId === null;
+  const autoTransitionStarted = useRef(false);
+  const [autoAdvancePending, setAutoAdvancePending] = useState(false);
+
+  const goToLevelImmediately = useCallback((levelId: number) => {
+    autoTransitionStarted.current = true;
+    setAutoAdvancePending(false);
+    goToLevel(levelId);
+  }, [goToLevel]);
+
+  const returnHomeImmediately = useCallback(() => {
+    autoTransitionStarted.current = true;
+    setAutoAdvancePending(false);
+    navigation.navigate('Home');
+  }, [navigation]);
+
+  useEffect(() => {
+    if (isDaily || completionRatio < 1 || autoTransitionStarted.current) {
+      return;
+    }
+    setAutoAdvancePending(true);
+    const timer = setTimeout(() => {
+      if (autoTransitionStarted.current) {
+        return;
+      }
+      autoTransitionStarted.current = true;
+      setAutoAdvancePending(false);
+      if (params.nextLevelId !== null) {
+        goToLevel(params.nextLevelId);
+      } else {
+        navigation.navigate('Home');
+      }
+    }, AUTO_ADVANCE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [completionRatio, goToLevel, isDaily, navigation, params.nextLevelId]);
 
   const handleShareResult = useCallback(async () => {
     const done = await shareText({
@@ -86,10 +124,17 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
             />
           </View>
           <AppText variant="title" align="center">
-            {params.isNewBestScore ? strings.result.newBestScore : strings.result.completedTitle}
+            {isFinalLevel ? strings.result.gameFinishedTitle : strings.result.completedTitle}
           </AppText>
+          {params.isNewBestScore ? (
+            <AppText variant="caption" color={colors.accentDark} align="center">
+              {strings.result.newBestScore}
+            </AppText>
+          ) : null}
           <AppText variant="body" color={colors.textSecondary} align="center">
-            {format(strings.common.levelNumber, { number: params.levelId })} · {params.levelTitle}
+            {isFinalLevel
+              ? format(strings.result.gameFinishedSubtitle, { total: toPersianDigits(LEVELS.length) })
+              : `${format(strings.common.levelNumber, { number: params.levelId })} · ${params.levelTitle}`}
           </AppText>
           {params.unlockedLevelId ? (
             <View style={styles.unlockPill}>
@@ -98,6 +143,13 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
                 {format(strings.result.levelUnlocked, { number: params.unlockedLevelId })}
               </AppText>
             </View>
+          ) : null}
+          {autoAdvancePending ? (
+            <AppText variant="caption" color={colors.accentDark} align="center">
+              {isFinalLevel
+                ? strings.result.autoHomeHint
+                : format(strings.result.autoNextLevelHint, { number: toPersianDigits(params.nextLevelId ?? 0) })}
+            </AppText>
           ) : null}
         </View>
 
@@ -205,7 +257,7 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
             <Button
               label={strings.result.nextLevelButton}
               icon="play"
-              onPress={() => goToLevel(params.nextLevelId as number)}
+              onPress={() => goToLevelImmediately(params.nextLevelId as number)}
             />
           ) : null}
           {!isDaily ? (
@@ -213,7 +265,7 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
               label={strings.result.retryButton}
               variant="secondary"
               icon="refresh"
-              onPress={() => goToLevel(params.levelId)}
+              onPress={() => goToLevelImmediately(params.levelId)}
             />
           ) : null}
           <Button
@@ -226,7 +278,7 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
             label={strings.result.homeButton}
             variant="ghost"
             icon="home"
-            onPress={() => navigation.navigate('Home')}
+            onPress={returnHomeImmediately}
           />
           {shareNote ? (
             <AppText variant="caption" color={colors.textMuted} align="center">

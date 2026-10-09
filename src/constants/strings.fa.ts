@@ -56,6 +56,10 @@ export const faStrings = {
     progressOfLevels: '{completed} از {total} مرحله',
     currentLevelLabel: 'در حال بازی: مرحله {number}',
     dailyRewardReady: 'جایزه امروز آماده است',
+    gameFinishedKicker: 'مسیر کامل شد',
+    gameFinishedTitle: 'تبریک، قهرمان!',
+    gameFinishedBody: 'هر {total} مرحله را با موفقیت پشت سر گذاشتی.',
+    gameFinishedButton: 'دیدن نقشهٔ مراحل',
     dailyChallengeDone: 'چالش امروز انجام شد',
     dailyChallengeNew: 'چالش تازه امروز',
     streakLabel: 'روز متوالی',
@@ -135,7 +139,11 @@ export const faStrings = {
   },
 
   result: {
-    completedTitle: 'مرحله تکمیل شد',
+    completedTitle: 'آفرین! مرحله کامل شد',
+    gameFinishedTitle: 'تبریک! بازی تمام شد',
+    gameFinishedSubtitle: 'همهٔ {total} مرحله را پشت سر گذاشتی؛ تو یک قهرمانی!',
+    autoNextLevelHint: 'تا چند لحظهٔ دیگر وارد مرحلهٔ {number} می‌شوی.',
+    autoHomeHint: 'تا چند لحظهٔ دیگر به صفحهٔ اصلی برمی‌گردی.',
     failedTitle: 'مرحله کامل نشد',
     completedSubtitle: 'عالی بود! به همین ترتیب ادامه بده.',
     failedSubtitle: 'کمی دیگر تمرین کن و دوباره امتحان کن.',
