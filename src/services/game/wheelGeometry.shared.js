@@ -254,6 +254,82 @@ export function getTilesCrossedBySegment(previousPoint, currentPoint, geometry) 
   return crossed;
 }
 
+/**
+ * Render specs for the straight connectors between consecutive selected tiles.
+ *
+ * Native draws the selection path from plain transformed views instead of an
+ * animated SVG polyline: react-native-svg's `Polyline` is a wrapper class (it
+ * renders a `Path`), so Reanimated cannot resolve a Fabric view for it and
+ * `useAnimatedProps` pushed a native prop update with an invalid shadow node on
+ * every touch sample. That saturated the Android UI thread and is what players
+ * experienced as "the game hangs while I drag letters".
+ *
+ * These specs are pure geometry so both platforms — and the unit tests — share
+ * one definition of where each connector sits.
+ *
+ * Each spec describes a bar drawn from `left: 0, top: 0` whose center is moved
+ * to (`midX`, `midY`) and rotated by `angle`. The default transform origin is
+ * the view center, so translating to the midpoint and rotating there keeps both
+ * ends exactly on the two tile centers.
+ */
+export function buildSelectionSegments(geometry, selectedIds) {
+  'worklet';
+  const segments = [];
+  let previous = null;
+  for (let index = 0; index < selectedIds.length; index += 1) {
+    const position = positionOf(geometry, selectedIds[index]);
+    if (!position) {
+      continue;
+    }
+    const current = { id: position.id, x: position.x, y: position.y };
+    if (previous) {
+      const dx = current.x - previous.x;
+      const dy = current.y - previous.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      // Overlapping tiles (same char placed twice) would produce a zero-length
+      // bar; skipping keeps the transform well defined.
+      if (length > 0.5) {
+        segments.push({
+          from: previous.id,
+          to: current.id,
+          midX: previous.x + dx / 2,
+          midY: previous.y + dy / 2,
+          length,
+          angle: Math.atan2(dy, dx),
+        });
+      }
+    }
+    previous = current;
+  }
+  return segments;
+}
+
+/**
+ * Render spec for the live "tail" from the last selected tile to the pointer.
+ *
+ * The bar has a constant layout width (`barSpan`) and its real length is built
+ * with `scaleX`, so following the finger never triggers a re-layout: the whole
+ * update stays a UI-thread transform. While the pointer is still inside the
+ * tile's visual radius nothing is drawn — the same rule the web preview uses
+ * through `buildSelectionPathPoints`.
+ */
+export function buildTailSpec(visualRadius, barSpan, anchor, pointer) {
+  'worklet';
+  const span = barSpan > 0 ? barSpan : 1;
+  const dx = pointer.x - anchor.x;
+  const dy = pointer.y - anchor.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const visible = length > visualRadius;
+  return {
+    visible,
+    length: visible ? length : 0,
+    angle: visible ? Math.atan2(dy, dx) : 0,
+    scaleX: visible ? length / span : 0,
+    translateX: visible ? anchor.x + dx / 2 - span / 2 : 0,
+    translateY: visible ? anchor.y + dy / 2 : 0,
+  };
+}
+
 /** Build the SVG polyline from selected tile centers to the live pointer. */
 export function buildSelectionPathPoints(geometry, selectedIds, pointer) {
   'worklet';

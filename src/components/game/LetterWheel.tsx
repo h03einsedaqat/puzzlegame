@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
-import Svg, { Circle, Polyline } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import Animated, {
   cancelAnimation,
-  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -16,18 +15,19 @@ import { strings } from '../../constants';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useWheelGestures } from '../../hooks/useWheelGestures';
 import {
+  buildSelectionSegments,
+  buildTailSpec,
   computeWheelGeometry,
   positionOf,
   preferredTileSizeFor,
   type WheelGeometry,
+  type WheelSelectionSegment,
 } from '../../services/game/wheelGesture';
 import { colors, radius } from '../../theme';
 import { format, toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { LetterTile } from './LetterTile';
 import type { LetterTileData } from '../../types';
-
-const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
 
 export interface LetterWheelProps {
   tiles: readonly LetterTileData[];
@@ -47,7 +47,44 @@ export interface LetterWheelProps {
 
 const DEFAULT_DIAMETER = 300;
 
-/** Layered orbital letter surface. Static chrome is isolated from the pointer path. */
+/** ضخامت خط اتصال و هالهٔ آن؛ همان اعدادی که پیش‌تر در SVG استفاده می‌شد. */
+const PATH_STROKE = 5;
+const PATH_GLOW = 12;
+const PATH_GLOW_OPACITY = 0.16;
+const BEAD_SIZE = 7;
+
+/** شناسهٔ آزمون لایهٔ مسیر انتخاب؛ آزمون نگهبانِ «بدون SVG» از این‌ها استفاده می‌کند. */
+export const WHEEL_SELECTION_TEST_IDS = {
+  bead: 'wheel-selection-bead',
+  segmentGlow: 'wheel-selection-segment-glow',
+  segmentLine: 'wheel-selection-segment-line',
+  tailGlow: 'wheel-selection-tail-glow',
+  tailLine: 'wheel-selection-tail-line',
+} as const;
+
+/** وضعیت «خطی کشیده نمی‌شود»؛ شکلش با خروجی واقعی یکسان است تا کلیدهای transform ثابت بمانند. */
+const HIDDEN_TAIL = {
+  visible: false,
+  length: 0,
+  angle: 0,
+  scaleX: 0,
+  translateX: 0,
+  translateY: 0,
+};
+
+interface TileCenter {
+  id: string;
+  x: number;
+  y: number;
+}
+
+/**
+ * چرخ حروف لایه‌لایه.
+ *
+ * تفکیک لایه‌ها عمدی است: پوستهٔ ثابت (SVG) و کاشی‌ها فقط وقتی دوباره ساخته
+ * می‌شوند که واقعاً چیزی عوض شده باشد، و لایهٔ مسیر انتخاب هیچ SVG‌ای ندارد تا
+ * در هر فریمِ کشیدن، کار سنگین رسم برداری روی اندروید انجام نشود.
+ */
 export const LetterWheel = React.memo(function LetterWheel({
   tiles,
   selectedIds,
@@ -71,7 +108,7 @@ export const LetterWheel = React.memo(function LetterWheel({
     () => computeWheelGeometry({ tiles, diameter, preferredTileSize: preferred }),
     [diameter, preferred, tiles],
   );
-  const { gesture, pathPoints, pathOpacity } = useWheelGestures({
+  const { gesture, pointerX, pointerY, pathOpacity } = useWheelGestures({
     enabled: !disabled,
     geometry,
     selection: selectedIds,
@@ -124,8 +161,13 @@ export const LetterWheel = React.memo(function LetterWheel({
           foundCount={foundCount}
           totalCount={totalCount}
         />
-        <WheelSelectionBeads geometry={geometry} selectedIds={selectedIds} />
-        <WheelSelectionPath geometry={geometry} pathPoints={pathPoints} pathOpacity={pathOpacity} />
+        <WheelSelectionLayer
+          geometry={geometry}
+          selectedIds={selectedIds}
+          pointerX={pointerX}
+          pointerY={pointerY}
+          pathOpacity={pathOpacity}
+        />
         <WheelTiles
           geometry={geometry}
           selectedIds={selectedIds}
@@ -227,80 +269,229 @@ const WheelBackdrop = React.memo(function WheelBackdrop({
   );
 });
 
-interface WheelSelectionProps {
+interface WheelSelectionLayerProps {
   geometry: WheelGeometry;
   selectedIds: readonly string[];
-}
-
-const WheelSelectionBeads = React.memo(function WheelSelectionBeads({
-  geometry,
-  selectedIds,
-}: WheelSelectionProps) {
-  const centers = useMemo(
-    () =>
-      selectedIds
-        .map(id => positionOf(geometry, id))
-        .filter((position): position is NonNullable<typeof position> => position !== undefined),
-    [geometry, selectedIds],
-  );
-  if (centers.length === 0) {
-    return null;
-  }
-  return (
-    <Svg
-      width={geometry.diameter}
-      height={geometry.diameter}
-      style={StyleSheet.absoluteFill}
-      pointerEvents="none"
-    >
-      {centers.map(center => (
-        <Circle key={center.id} cx={center.x} cy={center.y} r={3.5} fill={colors.brandTeal} />
-      ))}
-    </Svg>
-  );
-});
-
-interface WheelSelectionPathProps {
-  geometry: WheelGeometry;
-  pathPoints: SharedValue<string>;
+  pointerX: SharedValue<number>;
+  pointerY: SharedValue<number>;
   pathOpacity: SharedValue<number>;
 }
 
-function WheelSelectionPath({ geometry, pathPoints, pathOpacity }: WheelSelectionPathProps) {
-  const animatedProps = useAnimatedProps(() => ({
-    points: pathPoints.value,
-    opacity: pathOpacity.value,
-  }));
-  const glowAnimatedProps = useAnimatedProps(() => ({
-    points: pathPoints.value,
-    opacity: pathOpacity.value * 0.16,
-  }));
+/**
+ * لایهٔ مسیر انتخاب — بدون SVG.
+ *
+ * دو بخش دارد:
+ * ۱) پاره‌خط‌های بین کاشی‌های انتخاب‌شده: فقط وقتی انتخاب عوض می‌شود ساخته
+ *    می‌شوند (چند بار در هر کشیدن) و `View` معمولی‌اند.
+ * ۲) «دمِ» زنده از آخرین کاشی تا نوک انگشت: یک `Animated.View` که فقط با
+ *    `transform` و `opacity` روی ترد رابط کاربری به‌روز می‌شود.
+ *
+ * چرا نه SVG؟ چون `Polyline` در react-native-svg یک کامپوننت کلاسیِ واسطه است
+ * (خودش `Path` را رندر می‌کند) و Reanimated نمی‌تواند برای آن شناسهٔ نمای Fabric
+ * بگیرد؛ در نتیجه `useAnimatedProps` در هر فریم یک به‌روزرسانی props بومی با
+ * shadow node نامعتبر می‌فرستاد. روی اندروید همین باعث قفل‌شدن لمس می‌شد.
+ * اینجا هیچ کار پرهزینه‌ای در فریم‌های میانی وجود ندارد.
+ */
+const WheelSelectionLayer = React.memo(function WheelSelectionLayer({
+  geometry,
+  selectedIds,
+  pointerX,
+  pointerY,
+  pathOpacity,
+}: WheelSelectionLayerProps) {
+  const centers = useMemo<TileCenter[]>(
+    () =>
+      selectedIds.reduce<TileCenter[]>((acc, id) => {
+        const position = positionOf(geometry, id);
+        if (position) {
+          acc.push({ id: position.id, x: position.x, y: position.y });
+        }
+        return acc;
+      }, []),
+    [geometry, selectedIds],
+  );
+
+  /** هندسهٔ خط‌های بین کاشی‌ها؛ تابع خالص مشترک با آزمون‌ها. */
+  const segments = useMemo<readonly WheelSelectionSegment[]>(
+    () => buildSelectionSegments(geometry, selectedIds),
+    [geometry, selectedIds],
+  );
+
+  const anchor = centers.length > 0 ? (centers[centers.length - 1] as TileCenter) : null;
+  const anchorX = anchor ? anchor.x : 0;
+  const anchorY = anchor ? anchor.y : 0;
+  const hasAnchor = anchor !== null;
+  const barSpan = Math.max(1, geometry.diameter);
+  const visualRadius = geometry.visualRadius || geometry.tileSize / 2;
+
+  /**
+   * سبک‌های ثابت نوارها.
+   *
+   * با `useMemo` ساخته می‌شوند تا آرایهٔ style در هر رندرِ این لایه هویت تازه
+   * نگیرد؛ در غیر این صورت کامپوننت انیمیشنی ری‌انیمیتد در هر تغییر انتخاب،
+   * props غیرانیمیشنی را دوباره غربال و ثبت می‌کرد.
+   */
+  const glowBarStyle = useMemo(() => barBaseStyle(barSpan, PATH_GLOW), [barSpan]);
+  const mainBarStyle = useMemo(() => barBaseStyle(barSpan, PATH_STROKE), [barSpan]);
+
+  /** محو شدن کل لایه در پایان کشیدن؛ فقط همین یک مقدار انیمیت می‌شود. */
+  const fadeStyle = useAnimatedStyle(
+    () => ({
+      opacity: pathOpacity.value,
+    }),
+    [pathOpacity],
+  );
+
+  /**
+   * دمِ زنده. همهٔ محاسبه‌ها روی ترد رابط کاربری انجام می‌شود و خروجی فقط
+   * `transform` و `opacity` است؛ یعنی هیچ layout دوباره‌ای رخ نمی‌دهد.
+   *
+   * هاله و خط اصلی هرکدام opacity پایهٔ خودش را دارد، پس دو سبک جدا ساخته
+   * می‌شود؛ در غیر این صورت opacity پویا، opacity ثابت هاله را می‌بلعید.
+   */
+  const glowTailStyle = useTailStyle(
+    PATH_GLOW_OPACITY,
+    hasAnchor,
+    anchorX,
+    anchorY,
+    barSpan,
+    visualRadius,
+    pointerX,
+    pointerY,
+  );
+  const mainTailStyle = useTailStyle(
+    1,
+    hasAnchor,
+    anchorX,
+    anchorY,
+    barSpan,
+    visualRadius,
+    pointerX,
+    pointerY,
+  );
+
+  if (centers.length === 0) {
+    return null;
+  }
 
   return (
-    <Svg
-      width={geometry.diameter}
-      height={geometry.diameter}
-      style={StyleSheet.absoluteFill}
-      pointerEvents="none"
-    >
-      <AnimatedPolyline
-        animatedProps={glowAnimatedProps}
-        fill="none"
-        stroke={colors.brandTeal}
-        strokeWidth={12}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <AnimatedPolyline
-        animatedProps={animatedProps}
-        fill="none"
-        stroke={colors.brandTeal}
-        strokeWidth={5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {/* دانه‌های انتخاب همیشه دیده می‌شوند (مثل نسخهٔ پیشین). */}
+      {centers.map(center => (
+        <View
+          key={`bead-${center.id}`}
+          testID={WHEEL_SELECTION_TEST_IDS.bead}
+          style={[styles.bead, { left: center.x - BEAD_SIZE / 2, top: center.y - BEAD_SIZE / 2 }]}
+        />
+      ))}
+
+      <Animated.View style={[StyleSheet.absoluteFill, fadeStyle]}>
+        {segments.map((segment, index) => (
+          <View
+            key={`glow-${index}-${segment.from}-${segment.to}`}
+            testID={WHEEL_SELECTION_TEST_IDS.segmentGlow}
+            style={segmentStyle(segment, PATH_GLOW, PATH_GLOW_OPACITY)}
+          />
+        ))}
+        {segments.map((segment, index) => (
+          <View
+            key={`line-${index}-${segment.from}-${segment.to}`}
+            testID={WHEEL_SELECTION_TEST_IDS.segmentLine}
+            style={segmentStyle(segment, PATH_STROKE, 1)}
+          />
+        ))}
+        <Animated.View
+          testID={WHEEL_SELECTION_TEST_IDS.tailGlow}
+          style={[styles.tailBar, glowBarStyle, glowTailStyle]}
+        />
+        <Animated.View
+          testID={WHEEL_SELECTION_TEST_IDS.tailLine}
+          style={[styles.tailBar, mainBarStyle, mainTailStyle]}
+        />
+      </Animated.View>
+    </View>
   );
+});
+
+/**
+ * پاره‌خط ثابت بین دو کاشی.
+ *
+ * نوار در مبدأ مطلق ساخته می‌شود و با `translate` به میانهٔ دو کاشی و با
+ * `rotate` به سمت درست می‌رود؛ مبدأ چرخش پیش‌فرض مرکز نما است، پس میانهٔ
+ * نوار دقیقاً روی میانهٔ دو کاشی می‌نشیند.
+ */
+function segmentStyle(segment: WheelSelectionSegment, thickness: number, opacity: number) {
+  return {
+    position: 'absolute' as const,
+    left: 0,
+    top: 0,
+    width: segment.length,
+    height: thickness,
+    borderRadius: thickness / 2,
+    backgroundColor: colors.brandTeal,
+    opacity,
+    transform: [
+      { translateX: segment.midX - segment.length / 2 },
+      { translateY: segment.midY - thickness / 2 },
+      { rotate: `${segment.angle}rad` },
+    ],
+  };
+}
+
+/**
+ * نوار پایهٔ «دمِ» زنده.
+ *
+ * عرضش ثابت (قطر چرخ) است و طول واقعی با `scaleX` ساخته می‌شود تا تغییر طول
+ * هیچ چیدمان دوباره‌ای لازم نشود. `top` منفی است چون مبدأ چرخش پیش‌فرض
+ * مرکز نماست: با این کار مرکز نوار روی خط y=0 می‌نشیند و `translateY` در
+ * انیمیشن می‌تواند مستقیم همان «میانهٔ دو نقطه» باشد. opacity را سبک
+ * انیمیشنی می‌گذارد، نه این سبک ثابت.
+ */
+function barBaseStyle(span: number, thickness: number) {
+  return {
+    width: span,
+    height: thickness,
+    top: -thickness / 2,
+    borderRadius: thickness / 2,
+    backgroundColor: colors.brandTeal,
+  };
+}
+
+/**
+ * سبک انیمیشنی «دمِ» خط انتخاب.
+ *
+ * شکل خروجی عمداً در همهٔ حالت‌ها یکسان است (همان چهار مؤلفهٔ `transform` به
+ * همراه `opacity`)؛ اگر کلیدهای transform بین فریم‌ها عوض شود، به‌روزرسانِ
+ * props ری‌انیمیتد نمی‌تواند روی مسیر سریع بماند و کل props نما را از نو
+ * می‌نویسد. وابستگی‌ها همگی عدد/بولی‌اند تا worklet فقط وقتی واقعاً لازم است
+ * دوباره ثبت شود.
+ */
+function useTailStyle(
+  baseOpacity: number,
+  hasAnchor: boolean,
+  anchorX: number,
+  anchorY: number,
+  barSpan: number,
+  visualRadius: number,
+  pointerX: SharedValue<number>,
+  pointerY: SharedValue<number>,
+) {
+  return useAnimatedStyle(() => {
+    'worklet';
+    // تا وقتی انگشت داخل خود کاشی است خطی کشیده نمی‌شود (همان رفتار نسخهٔ وب).
+    const spec = hasAnchor
+      ? buildTailSpec(visualRadius, barSpan, { x: anchorX, y: anchorY }, { x: pointerX.value, y: pointerY.value })
+      : HIDDEN_TAIL;
+    return {
+      opacity: spec.visible ? baseOpacity : 0,
+      transform: [
+        { translateX: spec.translateX },
+        { translateY: spec.translateY },
+        { rotate: `${spec.angle}rad` },
+        { scaleX: spec.scaleX },
+      ],
+    };
+  }, [anchorX, anchorY, barSpan, baseOpacity, hasAnchor, pointerX, pointerY, visualRadius]);
 }
 
 interface WheelTilesProps {
@@ -412,6 +603,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.borderStrong,
+  },
+  bead: {
+    position: 'absolute',
+    width: BEAD_SIZE,
+    height: BEAD_SIZE,
+    borderRadius: BEAD_SIZE / 2,
+    backgroundColor: colors.brandTeal,
+  },
+  tailBar: {
+    position: 'absolute',
+    left: 0,
   },
   tileSlot: {
     position: 'absolute',

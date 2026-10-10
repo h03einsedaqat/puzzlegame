@@ -19,13 +19,21 @@ import {
   wheelGestureMove,
   type WheelInteractionState,
 } from '../services/game/wheelInteraction';
-import { buildSelectionPathPoints, type WheelGeometry } from '../services/game/wheelGesture';
+import { type WheelGeometry } from '../services/game/wheelGesture';
 import type { WheelPoint } from '../services/game/wheelGesture';
 
 /** Native activation distance and its pure-machine test contract. */
 export const WHEEL_DRAG_ACTIVATION_DISTANCE = 8;
 export const WHEEL_PAN_TEST_ID = 'letter-wheel-pan';
 const PATH_FADE_MS = 155;
+/**
+ * کمترین جابه‌جایی انگشت (به پیکسل) که یک به‌روزرسانی مسیر را ارزش دارد.
+ *
+ * صفحه‌لمس‌های اندروید تا ۱۲۰–۲۴۰ نمونه در ثانیه می‌فرستند؛ نوشتن هر نمونه روی
+ * مقدار اشتراکی یعنی یک به‌روزرسانی روی ترد رابط کاربری. زیر نیم پیکسل هیچ
+ * تفاوت دیداری ندارد، پس نادیده گرفته می‌شود تا بار ترد UI نصف شود.
+ */
+const POINTER_WRITE_EPSILON_SQ = 0.25;
 
 type SelectionCallback = (next: readonly string[]) => void;
 type ReleaseCallback = (selection: readonly string[]) => void;
@@ -42,8 +50,15 @@ export interface UseWheelGesturesOptions {
 
 export interface WheelGestures {
   gesture: PanGesture;
-  /** Animated SVG props consume these shared values directly on the UI thread. */
-  pathPoints: SharedValue<string>;
+  /**
+   * جای لحظه‌ای انگشت در دستگاه مختصات چرخ.
+   *
+   * لایه مسیر انتخاب، «دمِ» خط را از همین دو عدد و مرکز آخرین کاشی انتخاب‌شده
+   * روی ترد رابط کاربری می‌سازد؛ پس هیچ رشته‌ای ساخته نمی‌شود و هیچ به‌روزرسانی
+   * props بومی در هر فریم رخ نمی‌دهد.
+   */
+  pointerX: SharedValue<number>;
+  pointerY: SharedValue<number>;
   pathOpacity: SharedValue<number>;
 }
 
@@ -58,16 +73,25 @@ export interface WheelGestures {
  *  - Move beyond threshold = drag (ownsSelection, swept segment)
  *  - Lift after drag = release (single submit)
  *
- * No pointer event calls React setState. Gesture state, previousPoint, swept
- * segment hit testing and the SVG line live in shared values/worklets. The JS
- * bridge is crossed only for a changed tile sequence, drag lifecycle and the
- * single release commit.
+ * No pointer event calls React setState. Gesture state, previousPoint and the
+ * swept segment hit test live in shared values/worklets. The JS bridge is
+ * crossed only for a changed tile sequence, drag lifecycle and the single
+ * release commit.
+ *
+ * هزینه هر فریم کشیدن عمداً به «دو نوشتن عدد» محدود شده است. پیش‌تر مسیر انتخاب
+ * به شکل یک رشته SVG در هر فریم ساخته و با `useAnimatedProps` روی `Polyline`
+ * نوشته می‌شد؛ Reanimated نمی‌تواند برای `Polyline` (که یک کامپوننت کلاسی و
+ * واسطه است، نه یک نمای بومی) شناسه نمای Fabric بگیرد، پس در هر نمونه لمس یک
+ * عملیات props بومی با shadow node نامعتبر صادر می‌شد و روی اندروید عملاً ترد
+ * رابط کاربری را قفل می‌کرد (همان «هنگ‌کردن هنگام کشیدن حروف»).
  */
 export function useWheelGestures(options: UseWheelGesturesOptions): WheelGestures {
   const interaction = useSharedValue<WheelInteractionState>(createWheelInteractionState());
-  const pathPoints = useSharedValue('');
+  const pointerX = useSharedValue(0);
+  const pointerY = useSharedValue(0);
   const pathOpacity = useSharedValue(0);
   const cancelledByMultiTouch = useSharedValue(false);
+  const activationRequested = useSharedValue(false);
   const {
     enabled,
     geometry,
@@ -87,15 +111,38 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
   }, [interaction, selection]);
 
   const gesture = useMemo(() => {
-
     const fadePath = () => {
       'worklet';
-      pathOpacity.value = withTiming(0, { duration: PATH_FADE_MS }, finished => {
-        'worklet';
-        if (finished) {
-          pathPoints.value = '';
-        }
-      });
+      cancelAnimation(pathOpacity);
+      pathOpacity.value = withTiming(0, { duration: PATH_FADE_MS });
+    };
+
+    /** روشن‌کردن مسیر بدون کار اضافی در حلقه داغ هر فریم. */
+    const showPath = () => {
+      'worklet';
+      // خواندن مقدار در جریان انیمیشن، عدد میانی را برمی‌گرداند؛ پس این شرط
+      // هم انیمیشن محوشدن را قطع می‌کند و هم در بقیه فریم‌ها هیچ نوشتنی ندارد.
+      if (pathOpacity.value !== 1) {
+        cancelAnimation(pathOpacity);
+        pathOpacity.value = 1;
+      }
+    };
+
+    const hidePath = () => {
+      'worklet';
+      cancelAnimation(pathOpacity);
+      pathOpacity.value = 0;
+    };
+
+    /** نوشتن جای انگشت فقط وقتی که واقعاً جابه‌جا شده باشد. */
+    const publishPointer = (point: WheelPoint) => {
+      'worklet';
+      const dx = point.x - pointerX.value;
+      const dy = point.y - pointerY.value;
+      if (dx * dx + dy * dy >= POINTER_WRITE_EPSILON_SQ) {
+        pointerX.value = point.x;
+        pointerY.value = point.y;
+      }
     };
 
     const cancelInteraction = () => {
@@ -134,9 +181,8 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
       }
 
       if (result.state.ownsSelection) {
-        cancelAnimation(pathOpacity);
-        pathOpacity.value = 1;
-        pathPoints.value = buildSelectionPathPoints(geometry, result.state.selection, point);
+        showPath();
+        publishPointer(point);
       }
     };
 
@@ -166,9 +212,12 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
         const point = { x: touch.x, y: touch.y };
         const down = wheelGestureDown(geometry, interaction.value.selection, point);
         interaction.value = down.state;
-        pathPoints.value = '';
-        pathOpacity.value = 0;
         cancelledByMultiTouch.value = false;
+        activationRequested.value = false;
+        hidePath();
+        // مسیر از همان نقطه نخست شروع می‌شود تا «دمِ» خط از گوشه صفحه نپرد.
+        pointerX.value = point.x;
+        pointerY.value = point.y;
 
         // A drag can begin only on a real tile. A blank part of the orbital
         // surface is left to the parent scroll system instead of capturing it.
@@ -188,7 +237,7 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
           }
           return;
         }
-        if (cancelledByMultiTouch.value) {
+        if (cancelledByMultiTouch.value || activationRequested.value) {
           return;
         }
         const current = interaction.value;
@@ -202,6 +251,9 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
         const dx = touch.x - current.downPoint.x;
         const dy = touch.y - current.downPoint.y;
         if (dx * dx + dy * dy >= WHEEL_DRAG_ACTIVATION_DISTANCE * WHEEL_DRAG_ACTIVATION_DISTANCE) {
+          // یک‌بار درخواست فعال‌سازی کافی است؛ تکرار آن در هر نمونه لمس، یک
+          // فراخوانی بومی بی‌اثر روی ترد رابط کاربری می‌گذارد.
+          activationRequested.value = true;
           manager.activate();
         }
       })
@@ -253,10 +305,13 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
         // same holding state without replacing a down point already captured.
         if (enabled && interaction.value.phase === 'idle') {
           interaction.value = wheelGestureDown(geometry, interaction.value.selection, { x: event.x, y: event.y }).state;
+          pointerX.value = event.x;
+          pointerY.value = event.y;
         }
       })
       .onStart(event => {
         'worklet';
+        activationRequested.value = true;
         feedPointer({ x: event.x, y: event.y });
       })
       .onUpdate(event => {
@@ -265,6 +320,7 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
       })
       .onEnd((event, success) => {
         'worklet';
+        activationRequested.value = false;
         if (!success || cancelledByMultiTouch.value || !enabled) {
           return;
         }
@@ -289,6 +345,7 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
       })
       .onFinalize((_event, success) => {
         'worklet';
+        activationRequested.value = false;
         if (!success && interaction.value.phase !== 'idle') {
           cancelInteraction();
         }
@@ -297,6 +354,7 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
 
     return pan;
   }, [
+    activationRequested,
     cancelledByMultiTouch,
     enabled,
     geometry,
@@ -305,12 +363,14 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
     onRelease,
     onSelectionChange,
     pathOpacity,
-    pathPoints,
+    pointerX,
+    pointerY,
   ]);
 
   const cancelOnUI = useMemo(() => {
     const cancel = () => {
       'worklet';
+      activationRequested.value = false;
       const previous = interaction.value;
       if (previous.phase === 'idle') {
         return;
@@ -324,23 +384,19 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
         if (onDragStateChange) {
           runOnJS(onDragStateChange)(false);
         }
-        pathOpacity.value = withTiming(0, { duration: PATH_FADE_MS }, finished => {
-          'worklet';
-          if (finished) {
-            pathPoints.value = '';
-          }
-        });
+        cancelAnimation(pathOpacity);
+        pathOpacity.value = withTiming(0, { duration: PATH_FADE_MS });
       }
       cancelledByMultiTouch.value = false;
     };
     return cancel;
   }, [
+    activationRequested,
     cancelledByMultiTouch,
     interaction,
     onDragStateChange,
     onSelectionChange,
     pathOpacity,
-    pathPoints,
   ]);
 
   useEffect(() => {
@@ -362,5 +418,5 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
     };
   }, [cancelOnUI]);
 
-  return { gesture, pathPoints, pathOpacity };
+  return { gesture, pointerX, pointerY, pathOpacity };
 }

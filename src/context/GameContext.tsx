@@ -109,6 +109,24 @@ type GameAction =
 
 const initialState: GameState = { level: null, session: null, feedback: null };
 
+/** آرایهٔ ثابت و خالی؛ تا «واژهٔ آشکارشده»ای نیست هرگز آرایهٔ تازه ساخته نمی‌شود. */
+const EMPTY_REVEALED_LETTERS: RevealedWordLetters[] = [];
+
+/** نام واژه‌های پیداشده؛ فقط وقتی فهرست عوض شود دوباره ساخته می‌شود. */
+const foundWordNamesCache = new WeakMap<readonly unknown[], string[]>();
+function foundWordNames(found: readonly { word: string }[] | undefined): string[] {
+  if (!found) {
+    return [];
+  }
+  const cached = foundWordNamesCache.get(found);
+  if (cached) {
+    return cached;
+  }
+  const names = found.map(entry => entry.word);
+  foundWordNamesCache.set(found, names);
+  return names;
+}
+
 let feedbackCounter = 0;
 
 function nextFeedbackId(): number {
@@ -586,27 +604,46 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const word = useMemo(() => (session ? buildWord(session) : ''), [session]);
 
+  /**
+   * وابستگی این محاسبه‌ها عمداً باریک شده است.
+   *
+   * هر تغییر انتخاب، آبجکت `session` تازه می‌سازد ولی `foundWords`، `hints`،
+   * `score` و `maxCombo` همان مرجع قبلی‌اند. اگر وابستگی روی خودِ `session`
+   * باشد، در هر حرفِ کشیده‌شده این چهار محاسبه و همهٔ آبجکت‌های میانی‌شان
+   * دوباره ساخته می‌شوند و هویت `progress`/`rewards` عوض می‌شود؛ همان چیزهایی
+   * که هیچ ربطی به انتخاب حرف ندارند. با وابستگی باریک، کشیدن حرف فقط همان
+   * چیزی را دوباره می‌سازد که واقعاً عوض شده است.
+   */
+  const foundWords = session?.foundWords;
+  const hints = session?.hints;
+  const sessionScore = session?.score ?? 0;
+  const sessionCoinsEarned = session?.coinsEarned ?? 0;
+  const sessionMaxCombo = session?.maxCombo ?? 0;
+  const sessionStatus = session?.status ?? null;
+
   const progress = useMemo<LevelProgress>(
     () =>
-      session && level
+      session && level && foundWords
         ? getLevelProgress(session, level)
         : { foundTargets: 0, totalTargets: 0, foundBonus: 0, totalBonus: 0, isCompleted: false },
-    [level, session],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [foundWords, level],
   );
 
   const rewards = useMemo(
-    () => (session && level && isLevelCompleted(session, level) ? calculateLevelRewards(session, level) : null),
-    [level, session],
+    () => (session && level && foundWords && isLevelCompleted(session, level) ? calculateLevelRewards(session, level) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [foundWords, level, sessionCoinsEarned, sessionMaxCombo, sessionScore],
   );
 
   const revealedLetters = useMemo<RevealedWordLetters[]>(() => {
-    if (!session || !level) {
-      return [];
+    if (!session || !level || !hints || hints.length === 0) {
+      return EMPTY_REVEALED_LETTERS;
     }
     const levelWords = new Set([...level.targetWords, ...level.bonusWords]);
     const entries = new Map<string, { indices: Set<number>; full: boolean }>();
 
-    for (const hint of session.hints) {
+    for (const hint of hints) {
       if (!levelWords.has(hint.word)) {
         continue;
       }
@@ -624,20 +661,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       indices: [...entry.indices].sort((a, b) => a - b),
       full: entry.full || entry.indices.size >= entryWord.length,
     }));
-  }, [level, session]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hints, level]);
 
   const autoSubmitReady = useMemo(() => {
-    if (!session || !level || session.status !== 'playing' || session.selection.length < 2) {
+    if (!session || !level || sessionStatus !== 'playing' || session.selection.length < 2) {
       return false;
     }
     const candidate = buildWord(session);
     if (candidate.length < Math.max(level.minWordLength, GAME_CONFIG.gameplay.minWordLength)) {
       return false;
     }
-    const foundWords = session.foundWords.map(entry => entry.word);
-    const validation = validateWord({ raw: candidate, level, foundWords });
+    const alreadyFound = foundWordNames(foundWords);
+    const validation = validateWord({ raw: candidate, level, foundWords: alreadyFound });
     return validation.status === 'accepted';
-  }, [level, session]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [foundWords, level, session?.selection, session?.tiles, sessionStatus]);
 
   const nextHintCost = hintCost('reveal_letter');
   const canUseHint = coins >= nextHintCost && session?.status === 'playing';

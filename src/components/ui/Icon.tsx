@@ -23,9 +23,25 @@ function starPoints(outer: number, inner: number, points = 5, rotation = -Math.P
   return list.join(' ');
 }
 
-function sparklePoints(): string {
-  return '12,2 14.2,9.8 22,12 14.2,14.2 12,22 9.8,14.2 2,12 9.8,9.8';
-}
+/**
+ * نقطه‌های چندضلعی یک‌بار در زمان بارگذاری ماژول ساخته می‌شوند.
+ *
+ * پیش‌تر در هر رندر آیکون، حلقهٔ مثلثاتی ستاره دوباره اجرا و رشته‌اش دوباره
+ * ساخته می‌شد؛ آیکون‌ها در صفحهٔ بازی زیادند و همین کار بیهوده در هر لمس
+ * تکرار می‌شد.
+ */
+const STAR_POINTS = starPoints(9.4, 4.1);
+const SPARKLE_POINTS = '12,2 14.2,9.8 22,12 14.2,14.2 12,22 9.8,14.2 2,12 9.8,9.8';
+
+/**
+ * مسیر قلب در دستگاه مختصات ۲۴×۲۴ آیکون‌ها.
+ *
+ * بیرون برده شده تا `HeartCounter` بتواند همهٔ قلب‌ها را در **یک** نمای
+ * react-native-svg رسم کند؛ پنج نمای SVG جدا روی اندروید پنج بوم مجزا یعنی
+ * هزینهٔ ساخت و رسم پنج‌برابر در سرصفحهٔ بازی.
+ */
+export const HEART_PATH_D =
+  'M12 20.5c-5-3.9-8-6.8-8-10.2A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 8 2.9c0 3.4-3 6.3-8 10.2z';
 
 interface IconShapeProps {
   color: string;
@@ -45,10 +61,7 @@ function renderIcon(name: IconName, { color, strokeWidth }: IconShapeProps): Rea
     case 'heart':
     case 'heartFilled':
       return (
-        <Path
-          d="M12 20.5c-5-3.9-8-6.8-8-10.2A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 8 2.9c0 3.4-3 6.3-8 10.2z"
-          {...(name === 'heartFilled' ? filled : strokeOnly)}
-        />
+        <Path d={HEART_PATH_D} {...(name === 'heartFilled' ? filled : strokeOnly)} />
       );
     case 'coin':
       return (
@@ -59,9 +72,9 @@ function renderIcon(name: IconName, { color, strokeWidth }: IconShapeProps): Rea
         </G>
       );
     case 'star':
-      return <Polygon points={starPoints(9.4, 4.1)} {...filled} />;
+      return <Polygon points={STAR_POINTS} {...filled} />;
     case 'sparkle':
-      return <Polygon points={sparklePoints()} {...filled} />;
+      return <Polygon points={SPARKLE_POINTS} {...filled} />;
     case 'bulb':
       return (
         <G>
@@ -249,11 +262,25 @@ function renderIcon(name: IconName, { color, strokeWidth }: IconShapeProps): Rea
   }
 }
 
-export function Icon({ name, size = 24, color = colors.textPrimary, strokeWidth }: IconProps) {
+/**
+ * آیکون.
+ *
+ * هر آیکون یک نمای مستقل react-native-svg می‌سازد و روی اندروید هر نمای SVG
+ * بوم و Picture خودش را دارد؛ پس هم ساختنش هزینه دارد و هم بازسازی props‌اش.
+ * همهٔ ورودی‌ها عدد/رشته‌اند، بنابراین `React.memo` باعث می‌شود آیکون‌ها در
+ * رندرهای پرتکرار صفحه (هر تغییر انتخاب حرف، هر تیک شمارش معکوس) اصلاً دوباره
+ * ساخته نشوند.
+ */
+export const Icon = React.memo(function Icon({
+  name,
+  size = 24,
+  color = colors.textPrimary,
+  strokeWidth,
+}: IconProps) {
   const scaledStroke = strokeWidth ?? Math.max(1.4, size / 14);
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       {renderIcon(name, { color, strokeWidth: scaledStroke })}
     </Svg>
   );
-}
+});

@@ -46,7 +46,7 @@ export function ScreenContainer({
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: background }]} edges={edges} testID={testID}>
-      {plain ? null : <AmbientBackdrop />}
+      {plain ? null : AMBIENT_BACKDROP}
       {scrollable ? (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -62,7 +62,16 @@ export function ScreenContainer({
   );
 }
 
-function AmbientBackdrop() {
+/**
+ * پس‌زمینهٔ تزئینی.
+ *
+ * این لایه دو گرادیان شعاعی تمام‌صفحه دارد؛ روی اندروید، بازسازی آن در هر رندر
+ * یعنی استخراج دوبارهٔ همهٔ propsهای react-native-svg (براش‌ها، ماتریس‌ها،
+ * viewBox) و رسم دوبارهٔ یک بوم به اندازهٔ کل صفحه. به همین دلیل با
+ * `React.memo` بدون هیچ prop قفل شده است: یک‌بار در هر صفحه ساخته می‌شود و بعد
+ * از آن هرگز دوباره رندر نمی‌شود (مگر اینکه اندازهٔ پنجره عوض شود).
+ */
+const AmbientBackdrop = React.memo(function AmbientBackdrop() {
   const { width, height } = useLayout();
   const glowRadius = Math.max(width * 0.72, height * 0.34);
 
@@ -103,7 +112,16 @@ function AmbientBackdrop() {
       </Svg>
     </View>
   );
-}
+});
+
+/**
+ * یک عنصر ثابت و مشترک برای همهٔ پوسته‌های صفحه.
+ *
+ * چون همیشه همان عنصر (با همان هویت) به درخت داده می‌شود، ری‌اکت حتی مقایسهٔ
+ * props هم انجام نمی‌دهد و لایهٔ پس‌زمینه در رندرهای پرتکرار صفحهٔ بازی (هر
+ * تغییر انتخاب حرف) دست‌نخورده می‌ماند.
+ */
+const AMBIENT_BACKDROP = <AmbientBackdrop />;
 
 const styles = StyleSheet.create({
   safe: {
