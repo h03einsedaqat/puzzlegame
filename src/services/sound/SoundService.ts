@@ -68,6 +68,7 @@ export class SoundService {
   private enabled: boolean;
   private sources: Partial<Record<SoundEvent, SoundSource>>;
   private preloaded = false;
+  private lastEvent: { event: SoundEvent; at: number } | null = null;
 
   constructor({ backend, enabled = true, sources = {} }: SoundServiceOptions) {
     this.backend = backend;
@@ -105,6 +106,15 @@ export class SoundService {
     // رویدادی که فایل صوتی ندارد، به لایه پخش هم فرستاده نمی‌شود.
     if (!this.enabled || this.sources[event] === undefined) {
       return;
+    }
+    // Debounce high-frequency letter events during drag to avoid
+    // overloading the audio backend on low-end Android devices.
+    if (event === 'letter_select' || event === 'letter_remove') {
+      const now = Date.now();
+      if (this.lastEvent && this.lastEvent.event === event && now - this.lastEvent.at < 90) {
+        return;
+      }
+      this.lastEvent = { event, at: now };
     }
     this.backend.play(event);
   }

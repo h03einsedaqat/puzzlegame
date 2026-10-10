@@ -243,7 +243,15 @@ describe('اجزای بازی', () => {
     );
 
     expect(screen.getByText('ک')).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText('حرف ک'));
+    // New implementation uses accessibility action, not RN Pressable, to avoid
+    // Android responder conflict with the wheel Pan gesture.
+    const tile = screen.getByLabelText('حرف ک');
+    // Try accessibility action first (new path), fallback to press for compatibility
+    if (tile.props.onAccessibilityAction) {
+      await tile.props.onAccessibilityAction({ nativeEvent: { actionName: 'activate' } });
+    } else {
+      await fireEvent.press(tile);
+    }
     expect(onPress).toHaveBeenCalledWith('t_1');
   });
 
@@ -253,7 +261,12 @@ describe('اجزای بازی', () => {
       <LetterTile char="ب" size={56} tileId="t_2" onPress={onPress} disabled accessibilityLabel="حرف ب" />,
     );
 
-    await fireEvent.press(screen.getByLabelText('حرف ب'));
+    const tile = screen.getByLabelText('حرف ب');
+    if (tile.props.onAccessibilityAction) {
+      await tile.props.onAccessibilityAction({ nativeEvent: { actionName: 'activate' } });
+    } else {
+      await fireEvent.press(tile);
+    }
     expect(onPress).not.toHaveBeenCalled();
   });
 
@@ -283,7 +296,12 @@ describe('اجزای بازی', () => {
     // پیشرفت کلمه‌های مرحله در مرکز چرخ دیده می‌شود (۲ از ۶)
     expect(screen.getByText('۲/۶')).toBeTruthy();
 
-    await fireEvent.press(screen.getByLabelText(format(strings.accessibility.letterTile, { letter: 'ب' })));
+    const tileElement = screen.getByLabelText(format(strings.accessibility.letterTile, { letter: 'ب' }));
+    if ((tileElement as any).props?.onAccessibilityAction) {
+      await (tileElement as any).props.onAccessibilityAction({ nativeEvent: { actionName: 'activate' } });
+    } else {
+      await fireEvent.press(tileElement);
+    }
     expect(onTilePress).toHaveBeenCalledWith('t3');
   });
 
@@ -301,7 +319,12 @@ describe('اجزای بازی', () => {
     for (const char of ['ک', 'ت', 'ا', 'ب']) {
       expect(screen.getByText(char)).toBeTruthy();
     }
-    await fireEvent.press(screen.getByText('ب'));
+    const tileElement = screen.getByLabelText(format(strings.accessibility.letterTile, { letter: 'ب' }));
+    if ((tileElement as any).props?.onAccessibilityAction) {
+      await (tileElement as any).props.onAccessibilityAction({ nativeEvent: { actionName: 'activate' } });
+    } else {
+      await fireEvent.press(screen.getByText('ب'));
+    }
     expect(onTilePress).toHaveBeenCalledWith('t_4');
   });
 

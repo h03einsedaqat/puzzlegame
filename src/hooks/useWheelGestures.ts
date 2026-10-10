@@ -48,7 +48,15 @@ export interface WheelGestures {
 }
 
 /**
- * UI-thread touch surface.
+ * UI-thread touch surface — unified Tap + Drag.
+ *
+ * Previously tap went through RN Pressable and drag through Pan, causing
+ * Android responder conflicts and missed letters. Now a single Pan gesture
+ * owns the whole interaction:
+ *  - Down on a tile enters holding
+ *  - Small lift = tap (add tile)
+ *  - Move beyond threshold = drag (ownsSelection, swept segment)
+ *  - Lift after drag = release (single submit)
  *
  * No pointer event calls React setState. Gesture state, previousPoint, swept
  * segment hit testing and the SVG line live in shared values/worklets. The JS
@@ -163,7 +171,7 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
         cancelledByMultiTouch.value = false;
 
         // A drag can begin only on a real tile. A blank part of the orbital
-        // surface is left to the parent scroll/tap system instead of capturing it.
+        // surface is left to the parent scroll system instead of capturing it.
         if (down.state.downTileId === null) {
           manager.fail();
         }
@@ -204,11 +212,31 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
         }
         const current = interaction.value;
         if (current.phase === 'holding' && !current.ownsSelection) {
-          interaction.value = {
-            ...createWheelInteractionState(),
-            snapshot: current.selection,
-            selection: current.selection,
-          };
+          // Unified tap handling: previously this was delegated to RN Pressable,
+          // which conflicted with RNGH on Android. Now tap is handled here.
+          if (current.downTileId !== null) {
+            const alreadySelected = current.selection.includes(current.downTileId);
+            let nextSelection: readonly string[] = current.selection;
+            if (!alreadySelected) {
+              nextSelection = [...current.selection, current.downTileId];
+            }
+            // Only emit if actually changed — avoids unnecessary JS work.
+            const changed = nextSelection !== current.selection;
+            interaction.value = {
+              ...createWheelInteractionState(),
+              snapshot: nextSelection,
+              selection: nextSelection,
+            };
+            if (changed) {
+              runOnJS(onSelectionChange)(nextSelection);
+            }
+          } else {
+            interaction.value = {
+              ...createWheelInteractionState(),
+              snapshot: current.selection,
+              selection: current.selection,
+            };
+          }
           manager.fail();
         }
       })

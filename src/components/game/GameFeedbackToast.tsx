@@ -26,7 +26,8 @@ export interface GameFeedbackToastProps {
 const palette = {
   success: { background: '#142824', border: '#2D8F78', accent: colors.success, icon: 'success' as const },
   bonus: { background: '#2A251A', border: '#8A7139', accent: colors.accent, icon: 'sparkle' as const },
-  error: { background: '#2B1A27', border: '#8A3A55', accent: colors.danger, icon: 'info' as const },
+  // Use close (X) for error to make rejection visually distinct and match user's expectation of clear failure.
+  error: { background: '#2B1A27', border: '#8A3A55', accent: colors.danger, icon: 'close' as const },
 };
 
 /** Compact overlay feedback; it never participates in the game layout. */

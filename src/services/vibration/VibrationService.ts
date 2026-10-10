@@ -67,7 +67,11 @@ export class VibrationService {
       return;
     }
     const now = Date.now();
-    if (this.lastEvent && this.lastEvent.event === event && now - this.lastEvent.at < 90) {
+    // Increase debounce for high-frequency drag events to avoid Android ANR
+    // from rapid Vibration API calls. Letter events during drag can fire
+    // quickly when crossing multiple tiles.
+    const debounceMs = event === 'letter_select' || event === 'letter_remove' ? 130 : 90;
+    if (this.lastEvent && this.lastEvent.event === event && now - this.lastEvent.at < debounceMs) {
       return;
     }
     this.lastEvent = { event, at: now };

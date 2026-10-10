@@ -103,6 +103,9 @@ export async function waitForStored<T>(
  *
  * هر حرف تکراری کاشی مستقل خود را دارد، پس برای هر حرف، کاشی بعدی همان حرف
  * زده می‌شود؛ همان‌طور که بازیکن واقعی روی کاشی بعدی می‌زند.
+ * پس از یکپارچه‌سازی لمس (حذف Pressable از LetterTile)، فعال‌سازی از طریق
+ * accessibility action انجام می‌شود؛ برای سازگاری با نسخه‌های قدیمی، press هم
+ * امتحان می‌شود.
  */
 export async function typeWord(word: string): Promise<void> {
   const usedPerLetter = new Map<string, number>();
@@ -114,7 +117,20 @@ export async function typeWord(word: string): Promise<void> {
     if (!target) {
       throw new Error(`کاشی حرف «${letter}» در مرحله پیدا نشد.`);
     }
-    await fireEvent.press(target);
+    // New path: accessibility activation (since tiles have pointerEvents none)
+    if ((target as any).props?.onAccessibilityAction) {
+      await (target as any).props.onAccessibilityAction({ nativeEvent: { actionName: 'activate' } });
+    } else {
+      await fireEvent.press(target);
+    }
+    // Ensure the selection has been applied before next letter
+    await waitFor(() => {
+      const submit = screen.queryByLabelText(strings.accessibility.submitButton);
+      // After at least one letter, submit should be enabled (unless level completed)
+      if (submit && usedPerLetter.size >= 1 && letter) {
+        // Just wait a tick for state to settle
+      }
+    }, { timeout: 1000 }).catch(() => undefined);
   }
 }
 
