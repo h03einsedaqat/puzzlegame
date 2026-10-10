@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { GAME_CONFIG, strings } from '../constants';
-import { useDaily, useProfile, useProgress, useServices } from '../context';
+import { useDaily, useGame, useProfile, useProgress, useServices } from '../context';
 import { colors, radius, spacing } from '../theme';
 import { format, toPersianDigits } from '../utils/format';
 import { formatJalaliDate, weekdayName } from '../utils/jalali';
@@ -28,6 +28,7 @@ export function DailyChallengeIntroScreen({ navigation }: RootScreenProps<'Daily
     useDaily();
   const { hearts, startAttempt } = useProfile();
   const { enterLevel } = useProgress();
+  const { startGame } = useGame();
   const { analytics } = useServices();
   const [noHeartsVisible, setNoHeartsVisible] = useState(false);
   const [claimedCoins, setClaimedCoins] = useState<number | null>(null);
@@ -49,8 +50,9 @@ export function DailyChallengeIntroScreen({ navigation }: RootScreenProps<'Daily
     }
     analytics.track('daily_start', { levelId: puzzle.id });
     enterLevel(puzzle.id);
+    startGame(puzzle);
     navigation.navigate('Game', { levelId: puzzle.id, mode: 'daily' });
-  }, [analytics, canPlay, enterLevel, navigation, puzzle.id, startAttempt]);
+  }, [analytics, canPlay, enterLevel, navigation, puzzle, startAttempt, startGame]);
 
   const claim = useCallback(() => {
     const claimed = claimReward();

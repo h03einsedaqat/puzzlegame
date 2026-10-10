@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -151,7 +151,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   const [hintSheetVisible, setHintSheetVisible] = useState(false);
   const [hintSheetMessage, setHintSheetMessage] = useState<string | null>(null);
   const completedRef = useRef(false);
-  const bestScoreBeforeRef = useRef<number>(0);
+  const bestScoreBeforeRef = useRef<number>(level ? getRecord(level.id)?.bestScore ?? 0 : 0);
 
   const activeLevel = level;
   const isDaily = mode === 'daily';
@@ -175,20 +175,13 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     session.levelId === activeLevel.id &&
     (session.status === 'playing' || session.status === 'completed');
 
-  /**
-   * ساخت نشست پیش از نخستین نقاشی صفحه.
-   *
-   * با `useEffect` معمولی، صفحهٔ بازی یک‌بار «خالی» رنگ می‌شد (چرخ بدون حرف) و
-   * بعد در فریم بعدی نشست ساخته می‌شد و کل درخت چرخ و کاشی‌ها دوباره سوار می‌شد؛
-   * دقیقاً وسط انیمیشن ورود به صفحه. نتیجه همان مکثی است که بازیکن هنگام زدن
-   * دکمهٔ شروع حس می‌کند. `useLayoutEffect` نشست را پیش از نقاشی می‌سازد، پس
-   * فقط یک فریم رنگ می‌شود و درخت سنگین چرخ دو بار سوار نمی‌شود.
-   */
-  useLayoutEffect(() => {
+  // Normal entry points create the session before navigating. This effect is
+  // only a fallback for a direct/deep-linked Game route, and does not block
+  // the navigation transition with a synchronous layout-effect re-render.
+  useEffect(() => {
     if (!activeLevel || completedRef.current || sessionPlayable) {
       return;
     }
-    completedRef.current = false;
     bestScoreBeforeRef.current = getRecord(activeLevel.id)?.bestScore ?? 0;
     startGame(activeLevel);
   }, [activeLevel, getRecord, sessionPlayable, startGame]);

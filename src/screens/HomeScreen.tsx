@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { APP_INFO } from '../constants/appInfo';
 import { strings } from '../constants';
-import { useAchievements, useDaily, useProfile, useProgress } from '../context';
+import { useAchievements, useDaily, useGame, useProfile, useProgress } from '../context';
 import { LEVELS, getLevelById } from '../data/levels/levels';
 import { useCountdown } from '../hooks/useCountdown';
 import { colors, radius, shadows, spacing } from '../theme';
@@ -25,6 +25,7 @@ import type { RootScreenProps } from '../navigation/types';
 export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
   const { profile, hearts, startAttempt, refreshHearts } = useProfile();
   const { progress, continueLevelId, enterLevel } = useProgress();
+  const { startGame } = useGame();
   const daily = useDaily();
   const { unlockedCount, totalCount } = useAchievements();
   const [noHeartsVisible, setNoHeartsVisible] = useState(false);
@@ -55,9 +56,11 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
         return;
       }
       enterLevel(levelId);
+      const level = getLevelById(levelId);
+      if (level) startGame(level);
       navigation.navigate('Game', { levelId, mode: 'level' });
     },
-    [enterLevel, navigation, startAttempt],
+    [enterLevel, navigation, startAttempt, startGame],
   );
 
   const startDaily = useCallback(() => {

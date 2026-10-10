@@ -1,8 +1,6 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { colors, radius, shadows, typography } from '../../theme';
 import { AppText } from '../ui/AppText';
 
@@ -35,23 +33,6 @@ export const LetterTile = React.memo(function LetterTile({
   tileId,
   accessibilityLabel,
 }: LetterTileProps) {
-  const reducedMotion = useReducedMotion();
-  const selectionScale = useSharedValue(selected ? 1.055 : 1);
-
-  useEffect(() => {
-    const target = selected ? 1.055 : 1;
-    if (reducedMotion) {
-      selectionScale.value = target;
-      return;
-    }
-    selectionScale.value = withSpring(target, { damping: 15, stiffness: 250, mass: 0.72 });
-  }, [reducedMotion, selected, selectionScale]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: selectionScale.value }],
-    opacity: disabled ? 0.42 : 1,
-  }));
-
   const handleAccessibilityAction = useCallback(() => {
     if (!disabled) {
       onPress(tileId);
@@ -81,7 +62,8 @@ export const LetterTile = React.memo(function LetterTile({
    * دکمهٔ شروع را می‌زند) را پایین می‌آورد.
    */
   return (
-    <Animated.View
+    <View
+      testID={`wheel-tile-${tileId}`}
       accessible
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
@@ -92,7 +74,8 @@ export const LetterTile = React.memo(function LetterTile({
       pointerEvents="none"
       style={[
         styles.tile,
-        animatedStyle,
+        selected ? styles.selectedScale : null,
+        disabled ? styles.disabled : null,
         {
           width: size,
           height: size,
@@ -132,7 +115,7 @@ export const LetterTile = React.memo(function LetterTile({
       >
         {char}
       </AppText>
-    </Animated.View>
+    </View>
   );
 });
 
@@ -145,6 +128,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 4,
     overflow: 'hidden',
     ...shadows.tile,
+  },
+  selectedScale: {
+    transform: [{ scale: 1.055 }],
+  },
+  disabled: {
+    opacity: 0.42,
   },
   selectedDepth: {
     shadowColor: colors.brandTeal,

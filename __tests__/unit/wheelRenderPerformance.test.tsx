@@ -250,6 +250,28 @@ describe('چرخ حروف بدون SVG در مسیر انتخاب', () => {
     expect(screen.queryAllByTestId(WHEEL_SELECTION_TEST_IDS.tailLine)).toHaveLength(0);
   });
 
+  it('خط عمودی بین حروف بالا و پایین دقیقاً از وسط چرخ می‌گذرد (رگرسیون تصویر RTL)', async () => {
+    const fourTiles = ['ب', 'ه', 'ا', 'ر'].map((char, index) => ({ id: `four-${index}`, char }));
+    await renderWithProviders(
+      <LetterWheel
+        tiles={fourTiles}
+        selectedIds={['four-0', 'four-2']}
+        onTilePress={jest.fn()}
+        onSelectionChange={jest.fn()}
+        onRelease={jest.fn()}
+        diameter={DIAMETER}
+      />,
+    );
+    const wheelStyle = StyleSheet.flatten(screen.getByTestId('letter-wheel-surface').props.style);
+    const lineStyle = StyleSheet.flatten(screen.getByTestId(WHEEL_SELECTION_TEST_IDS.segmentLine).props.style);
+    const transform = lineStyle.transform as { translateX?: number; rotate?: string }[];
+    // Yoga's absolute left is physical left only inside an LTR surface.
+    expect(wheelStyle.direction).toBe('ltr');
+    expect(lineStyle.left).toBe(0);
+    expect((lineStyle.width as number) / 2 + transform[0]!.translateX!).toBeCloseTo(DIAMETER / 2, 5);
+    expect(Math.abs(parseFloat(transform[2]!.rotate!))).toBeCloseTo(Math.PI / 2, 5);
+  });
+
   it('پاره‌خط‌ها به‌جای رشتهٔ SVG، transform عددی می‌گیرند', async () => {
     await renderWheel(['t0', 't1']);
     const [line] = screen.queryAllByTestId(WHEEL_SELECTION_TEST_IDS.segmentLine);
