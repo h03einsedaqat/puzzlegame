@@ -71,71 +71,72 @@ export const LetterTile = React.memo(function LetterTile({
   const textColor = selected ? colors.tileSelectedText : hinted ? colors.accent : colors.tileText;
   const edge = Math.max(3, Math.round(size * 0.075));
 
+  /**
+   * یک نمای کمتر برای هر کاشی.
+   *
+   * پیش‌تر کاشی داخل یک `View` هم‌اندازهٔ خودش پیچیده شده بود که هیچ کاری
+   * جز مرکزکردن همان نمای هم‌اندازه انجام نمی‌داد. روی اندروید هر `View` یک
+   * نمای بومی و یک RenderNode است؛ با ۹ کاشی، حذف این لایهٔ تکراری ۹ نمای بومی
+   * از درخت صفحهٔ بازی کم می‌کند و هزینهٔ ساخت صفحه (همان لحظه‌ای که بازیکن
+   * دکمهٔ شروع را می‌زند) را پایین می‌آورد.
+   */
   return (
-    <View
-      style={[styles.pressable, { width: size, height: size }]}
+    <Animated.View
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ selected, disabled }}
+      accessibilityActions={[{ name: 'activate', label: accessibilityLabel }]}
+      onAccessibilityAction={handleAccessibilityAction}
       // Important: no touch handling here — parent wheel gesture owns touches.
       pointerEvents="none"
+      style={[
+        styles.tile,
+        animatedStyle,
+        {
+          width: size,
+          height: size,
+          borderRadius: Math.round(size * 0.32),
+          borderColor: border,
+          borderBottomWidth: edge,
+          backgroundColor: background,
+        },
+        selected ? styles.selectedDepth : null,
+      ]}
     >
-      <Animated.View
-        accessible
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={{ selected, disabled }}
-        accessibilityActions={[{ name: 'activate', label: accessibilityLabel }]}
-        onAccessibilityAction={handleAccessibilityAction}
+      <View
+        pointerEvents="none"
         style={[
-          styles.tile,
-          animatedStyle,
+          styles.topSheen,
           {
-            width: size,
-            height: size,
-            borderRadius: Math.round(size * 0.32),
-            borderColor: border,
-            borderBottomWidth: edge,
-            backgroundColor: background,
+            borderTopLeftRadius: Math.round(size * 0.32),
+            borderTopRightRadius: Math.round(size * 0.32),
+            height: Math.max(8, Math.round(size * 0.32)),
           },
-          selected ? styles.selectedDepth : null,
         ]}
+      />
+      {hinted && !selected ? <View pointerEvents="none" style={styles.hintDot} /> : null}
+      <AppText
+        style={[
+          typography.letter,
+          {
+            fontSize: Math.round(size * 0.48),
+            lineHeight: Math.round(size * 0.7),
+            color: textColor,
+            textShadowColor: 'rgba(0, 0, 0, 0.28)',
+            textShadowOffset: { width: 0, height: 2 },
+            textShadowRadius: 2,
+          },
+        ]}
+        allowFontScaling={false}
       >
-        <View
-          pointerEvents="none"
-          style={[
-            styles.topSheen,
-            {
-              borderTopLeftRadius: Math.round(size * 0.32),
-              borderTopRightRadius: Math.round(size * 0.32),
-              height: Math.max(8, Math.round(size * 0.32)),
-            },
-          ]}
-        />
-        {hinted && !selected ? <View pointerEvents="none" style={styles.hintDot} /> : null}
-        <AppText
-          style={[
-            typography.letter,
-            {
-              fontSize: Math.round(size * 0.48),
-              lineHeight: Math.round(size * 0.7),
-              color: textColor,
-              textShadowColor: 'rgba(0, 0, 0, 0.28)',
-              textShadowOffset: { width: 0, height: 2 },
-              textShadowRadius: 2,
-            },
-          ]}
-          allowFontScaling={false}
-        >
-          {char}
-        </AppText>
-      </Animated.View>
-    </View>
+        {char}
+      </AppText>
+    </Animated.View>
   );
 });
 
 const styles = StyleSheet.create({
-  pressable: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   tile: {
     position: 'relative',
     alignItems: 'center',

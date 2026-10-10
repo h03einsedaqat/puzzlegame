@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,12 +23,20 @@ import { HintGuide } from '../components/game/HintGuide';
 import { LetterWheel } from '../components/game/LetterWheel';
 import { WordSlots } from '../components/game/WordSlots';
 import type { GameFeedback } from '../context';
-import type { HintType, Level, WordRejectionReason } from '../types';
+import type { FoundWord, HintType, Level, WordRejectionReason } from '../types';
 import type { LetterTileData } from '../types';
 import type { ResultParams, ResultWordSummary, RootScreenProps } from '../navigation/types';
 
+/**
+ * آرایه‌های خالی ثابت.
+ *
+ * `[]` داخل JSX در هر رندر یک آرایهٔ تازه می‌سازد و چون `FoundWordsList` با
+ * `React.memo` محافظت شده، همان آرایهٔ تازه باعث می‌شد فهرست واژه‌ها در هر
+ * تغییر انتخاب حرف (یعنی چند بار در هر کشیدن) کامل دوباره ساخته شود.
+ */
 const EMPTY_TILES: readonly LetterTileData[] = [];
 const EMPTY_SELECTION: readonly string[] = [];
+const EMPTY_FOUND_WORDS: readonly FoundWord[] = [];
 
 function rejectionMessage(reason: WordRejectionReason, level: Level): string {
   switch (reason) {
@@ -68,6 +76,23 @@ function feedbackDetail(feedback: GameFeedback): string | undefined {
     return undefined;
   }
   return `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel} · ${toPersianDigits(feedback.coins ?? 0)} ${strings.result.coinsLabel}`;
+}
+
+/**
+ * کاشی‌های نوار بازخورد.
+ *
+ * در یک `useMemo` بیرونی ساخته می‌شود تا در هر رندر صفحهٔ بازی (که با هر حرفِ
+ * کشیده‌شده اتفاق می‌افتد) آرایهٔ تازه و آبجکت‌های تازه ساخته نشود و هویت
+ * `WordSlots` هم بی‌دلیل عوض نشود.
+ */
+function useFeedbackTiles(feedback: GameFeedback | null): readonly LetterTileData[] {
+  return useMemo<readonly LetterTileData[]>(
+    () =>
+      feedback
+        ? Array.from(feedback.word).map((char, index) => ({ id: `feedback-${feedback.id}-${index}`, char }))
+        : EMPTY_TILES,
+    [feedback],
+  );
 }
 
 /**
@@ -150,7 +175,16 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     session.levelId === activeLevel.id &&
     (session.status === 'playing' || session.status === 'completed');
 
-  useEffect(() => {
+  /**
+   * ساخت نشست پیش از نخستین نقاشی صفحه.
+   *
+   * با `useEffect` معمولی، صفحهٔ بازی یک‌بار «خالی» رنگ می‌شد (چرخ بدون حرف) و
+   * بعد در فریم بعدی نشست ساخته می‌شد و کل درخت چرخ و کاشی‌ها دوباره سوار می‌شد؛
+   * دقیقاً وسط انیمیشن ورود به صفحه. نتیجه همان مکثی است که بازیکن هنگام زدن
+   * دکمهٔ شروع حس می‌کند. `useLayoutEffect` نشست را پیش از نقاشی می‌سازد، پس
+   * فقط یک فریم رنگ می‌شود و درخت سنگین چرخ دو بار سوار نمی‌شود.
+   */
+  useLayoutEffect(() => {
     if (!activeLevel || completedRef.current || sessionPlayable) {
       return;
     }
@@ -383,6 +417,9 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     return matched;
   }, [activeHint, session?.selection]);
 
+  // همهٔ هوک‌ها باید پیش از هر بازگشت زودهنگام صدا زده شوند.
+  const feedbackTiles = useFeedbackTiles(feedback);
+
   if (!activeLevel) {
     return (
       <ScreenContainer>
@@ -399,9 +436,6 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   const tiles = session?.tiles ?? EMPTY_TILES;
   const selection = session?.selection ?? EMPTY_SELECTION;
   const slotSize = layout.slotSize;
-  const feedbackTiles: readonly LetterTileData[] = feedback
-    ? Array.from(feedback.word).map((char, index) => ({ id: `feedback-${feedback.id}-${index}`, char }))
-    : EMPTY_TILES;
   const showFeedbackOnBoard = selection.length === 0 && feedback !== null;
   const boardTiles = selection.length > 0 ? selectedTiles : feedbackTiles;
   const boardFeedbackState = !showFeedbackOnBoard
@@ -552,7 +586,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           <FoundWordsList
             targetWords={activeLevel.targetWords}
             bonusWords={activeLevel.bonusWords}
-            foundWords={session?.foundWords ?? []}
+            foundWords={session?.foundWords ?? EMPTY_FOUND_WORDS}
             hintedWords={revealedLetters}
           />
         </ScrollView>

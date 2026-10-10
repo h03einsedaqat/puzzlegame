@@ -44,15 +44,32 @@ export function GameFeedbackToast({ visible, id, tone, title, detail, word }: Ga
     ],
   }));
 
+  /**
+   * همگام‌سازی متن.
+   *
+   * پیش‌تر `setDisplay` در هر اجرای اثر با یک آبجکت تازه صدا زده می‌شد؛ چون
+   * `Object.is` روی آبجکت تازه همیشه نادرست است، ری‌اکت یک رندر اضافه روی
+   * هر بازخورد تحمیل می‌کرد (و چون `mounted` هم در وابستگی‌ها بود، همان اثر
+   * دوباره اجرا می‌شد). حالا فقط وقتی محتوا واقعاً عوض شده باشد state تغییر
+   * می‌کند.
+   */
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+    setDisplay(previous =>
+      previous.tone === tone && previous.title === title && previous.detail === detail && previous.word === word
+        ? previous
+        : { tone, title, detail, word },
+    );
+  }, [detail, title, tone, visible, word]);
+
+  /** انیمیشن ورود/خروج؛ فقط با تغییر شناسهٔ بازخورد یا پنهان‌شدن اجرا می‌شود. */
   useEffect(() => {
     cancelAnimation(progress);
     if (visible) {
-      setDisplay({ tone, title, detail, word });
       setMounted(true);
       progress.value = withTiming(1, { duration: motion.feedbackEnter });
-      return;
-    }
-    if (!mounted) {
       return;
     }
     progress.value = withTiming(0, { duration: motion.feedbackExit }, finished => {
@@ -61,7 +78,7 @@ export function GameFeedbackToast({ visible, id, tone, title, detail, word }: Ga
         runOnJS(setMounted)(false);
       }
     });
-  }, [detail, id, mounted, progress, title, tone, visible, word]);
+  }, [id, progress, visible]);
 
   if (!mounted) {
     return null;

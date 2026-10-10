@@ -16,12 +16,16 @@ export {
   getSegmentTileHits,
   getTilesCrossedBySegment,
   buildSelectionPathPoints,
+  buildSelectionSegments,
+  buildTailSpec,
   nearestTileId,
   resolveWheelTouch,
   applyWheelTouch,
 } from './wheelGeometry.shared';
 
 export type {
+  WheelSelectionSegment,
+  WheelTailSpec,
   WheelPoint,
   WheelTilePosition,
   WheelGeometryInput,

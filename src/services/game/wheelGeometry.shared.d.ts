@@ -61,6 +61,35 @@ export declare function getTilesCrossedBySegment(
   currentPoint: WheelPoint,
   geometry: WheelGeometry,
 ): readonly string[];
+export interface WheelSelectionSegment {
+  from: string;
+  to: string;
+  midX: number;
+  midY: number;
+  length: number;
+  /** Rotation in radians, ready for a `rotate: '<n>rad'` transform. */
+  angle: number;
+}
+
+export interface WheelTailSpec {
+  visible: boolean;
+  length: number;
+  angle: number;
+  scaleX: number;
+  translateX: number;
+  translateY: number;
+}
+
+export declare function buildSelectionSegments(
+  geometry: WheelGeometry,
+  selectedIds: readonly string[],
+): readonly WheelSelectionSegment[];
+export declare function buildTailSpec(
+  visualRadius: number,
+  barSpan: number,
+  anchor: WheelPoint,
+  pointer: WheelPoint,
+): WheelTailSpec;
 export declare function buildSelectionPathPoints(
   geometry: WheelGeometry,
   selectedIds: readonly string[],
