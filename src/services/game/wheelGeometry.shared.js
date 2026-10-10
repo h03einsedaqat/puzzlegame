@@ -7,11 +7,16 @@
 
 export const MIN_WHEEL_TILE_SIZE = 34;
 export const MAX_WHEEL_TILE_SIZE = 64;
-const MIN_NEIGHBOUR_GAP_RATIO = 0.25;
+const MIN_NEIGHBOUR_GAP_RATIO = 0.22;
 const WHEEL_EDGE_PADDING = 4;
-const HIT_RADIUS_RATIO = 0.75;
-const BISECTOR_MARGIN = 2;
-export const WHEEL_HYSTERESIS_MARGIN = 2;
+// Increased from 0.75 to 0.88: reduces dead zone while still keeping a small
+// intentional gap to avoid random picks. This directly improves perceived
+// accuracy on Android where finger is larger than mouse.
+const HIT_RADIUS_RATIO = 0.88;
+const BISECTOR_MARGIN = 3;
+// Increased hysteresis from 2 to 4 to prevent flickering when finger is at
+// edge of two tiles, without making selection sticky.
+export const WHEEL_HYSTERESIS_MARGIN = 4;
 const EPSILON = 0.000001;
 
 export const EMPTY_WHEEL_GEOMETRY = {

@@ -196,7 +196,8 @@ describe('ضربه‌سنجی (Hit Test)', () => {
     const wheel = geometryFor(5, 300, 40);
     expect(wheel.touchRadius).toBeGreaterThanOrEqual(wheel.tileSize / 2);
     expect(wheel.touchRadius).toBeLessThanOrEqual(wheel.neighbourDistance / 2);
-    expect(wheel.touchRadius).toBeCloseTo(wheel.tileSize * 0.75, 5);
+    // Ratio increased from 0.75 to 0.88 to reduce dead zone and improve Android accuracy
+    expect(wheel.touchRadius).toBeCloseTo(wheel.tileSize * 0.88, 5);
   });
 });
 

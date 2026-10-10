@@ -167,6 +167,14 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     return () => clearTimeout(timer);
   }, [activeLevel, dismissFeedback, feedback]);
 
+  // When drag starts, any previous feedback should disappear immediately
+  // so the user sees only the live selection path, not a stale toast.
+  useEffect(() => {
+    if (isDraggingLetters && feedback) {
+      dismissFeedback();
+    }
+  }, [isDraggingLetters, feedback, dismissFeedback]);
+
   const handleSubmit = useCallback(() => {
     submit();
   }, [submit]);
@@ -475,7 +483,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           onRemove={removeTile}
           feedbackState={boardFeedbackState}
           feedbackId={feedback?.id}
-          readOnly={boardFeedbackState !== 'idle'}
+          readOnly={boardFeedbackState !== 'idle' || isDraggingLetters}
         />
 
         <View style={styles.wheelArea}>

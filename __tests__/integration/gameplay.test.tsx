@@ -74,8 +74,10 @@ it('خروج از مرحله با دکمه بازگشت، ورود دوباره 
   });
 
   await typeWord(LEVEL_ONE.targetWords[0]![0]!);
-  const submit = screen.getByLabelText(strings.accessibility.submitButton);
-  expect(submit.props.accessibilityState?.disabled).toBeFalsy();
+  await waitFor(() => {
+    const submit = screen.getByLabelText(strings.accessibility.submitButton);
+    expect(submit.props.accessibilityState?.disabled).toBeFalsy();
+  });
 
   view.unmount();
 });

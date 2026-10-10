@@ -404,16 +404,39 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // انتخاب خالی هرگز «کلمه اشتباه» حساب نمی‌شود؛ فقط نادیده گرفته می‌شود.
+      // انتخاب خالی: اگر از مسیر release (برداشتن انگشت بدون انتخاب) باشد، نادیده
+      // گرفته می‌شود؛ اما اگر از دکمه بررسی باشد، باید پیام «اول چند حرف انتخاب کن»
+      // نمایش داده شود تا کاربر دلیل را بفهمد (رفع باگ feedback که فقط X نشان می‌داد).
       if (session.selection.length === 0) {
-        return { status: 'ignored' };
+        if (options?.fromRelease) {
+          return { status: 'ignored' };
+        }
+        // Feedback for empty word when user explicitly presses submit
+        sound.play('wrong');
+        vibration.trigger('wrong');
+        applyAction({
+          type: 'feedback',
+          feedback: {
+            id: nextFeedbackId(),
+            status: 'rejected',
+            word: '',
+            reason: 'empty',
+          },
+        });
+        analytics.track('word_wrong', { levelId: level.id, reason: 'empty' });
+        return { status: 'rejected', word: '', reason: 'empty' };
       }
       const pendingWord = buildWord(session);
       // برداشتن انگشت روی یک واژه کوتاه، خطا نیست؛ فقط رها می‌شود.
+      // اما اگر طول 0 باشد قبلاً هندل شد، اگر 1 یا 2 حرف باشد و از release بیاید،
+      // بی‌سروصدا رها می‌شود تا وسط کشیدن پیام خطا نیاید.
       if (
         options?.fromRelease &&
         pendingWord.length < Math.max(level.minWordLength, GAME_CONFIG.gameplay.minWordLength)
       ) {
+        // For very short drags (1 char), ignore silently. For 2 chars when min is 3,
+        // we still ignore to avoid spam, but the explicit submit button will show
+        // the proper too_short message.
         return { status: 'ignored' };
       }
 

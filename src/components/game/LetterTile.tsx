@@ -5,7 +5,6 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { colors, radius, shadows, typography } from '../../theme';
 import { AppText } from '../ui/AppText';
-import { PressableScale } from '../ui/PressableScale';
 
 export interface LetterTileProps {
   char: string;
@@ -18,7 +17,14 @@ export interface LetterTileProps {
   accessibilityLabel: string;
 }
 
-/** Letter tile with independent visual state and a large, non-overlapping hit area. */
+/**
+ * Letter tile — pure visual, no RN Pressable.
+ * All touch handling is done by the parent wheel gesture surface (single
+ * source of truth). This avoids the Android conflict between RN's responder
+ * system (Pressable) and RNGH's Pan gesture, which was a root cause of
+ * missed letters and perceived hang.
+ * Accessibility is preserved via accessibilityActions.
+ */
 export const LetterTile = React.memo(function LetterTile({
   char,
   size,
@@ -46,7 +52,7 @@ export const LetterTile = React.memo(function LetterTile({
     opacity: disabled ? 0.42 : 1,
   }));
 
-  const handlePress = useCallback(() => {
+  const handleAccessibilityAction = useCallback(() => {
     if (!disabled) {
       onPress(tileId);
     }
@@ -66,16 +72,18 @@ export const LetterTile = React.memo(function LetterTile({
   const edge = Math.max(3, Math.round(size * 0.075));
 
   return (
-    <PressableScale
-      onPress={handlePress}
-      disabled={disabled}
-      scaleTo={0.95}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected, disabled }}
+    <View
       style={[styles.pressable, { width: size, height: size }]}
+      // Important: no touch handling here — parent wheel gesture owns touches.
+      pointerEvents="none"
     >
       <Animated.View
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityState={{ selected, disabled }}
+        accessibilityActions={[{ name: 'activate', label: accessibilityLabel }]}
+        onAccessibilityAction={handleAccessibilityAction}
         style={[
           styles.tile,
           animatedStyle,
@@ -119,7 +127,7 @@ export const LetterTile = React.memo(function LetterTile({
           {char}
         </AppText>
       </Animated.View>
-    </PressableScale>
+    </View>
   );
 });
 

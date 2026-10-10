@@ -329,6 +329,7 @@ const WheelTiles = React.memo(function WheelTiles({
         return (
           <View
             key={position.id}
+            pointerEvents="none"
             style={[
               styles.tileSlot,
               {
