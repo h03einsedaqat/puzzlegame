@@ -3,8 +3,8 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { strings } from '../constants';
 import { ACHIEVEMENTS, type AchievementDefinition } from '../data/achievements/achievements';
-import { LEVELS } from '../data/levels/levels';
-import { useAchievements, useProfile, useProgress } from '../context';
+import { LEVELS, getLevelById } from '../data/levels/levels';
+import { useAchievements, useGame, useProfile, useProgress } from '../context';
 import { MAX_STARS, shareText } from '../services';
 import { colors, radius, spacing } from '../theme';
 import { format, toPersianDigits } from '../utils/format';
@@ -31,6 +31,7 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
   const params = route.params;
   const { hearts, startAttempt } = useProfile();
   const { enterLevel } = useProgress();
+  const { startGame } = useGame();
   const { achievements, sync } = useAchievements();
   const [noHeartsVisible, setNoHeartsVisible] = useState(false);
   const [newAchievement, setNewAchievement] = useState<AchievementDefinition | null>(null);
@@ -55,9 +56,11 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
         return;
       }
       enterLevel(levelId);
+      const level = getLevelById(levelId);
+      if (level) startGame(level);
       navigation.replace('Game', { levelId, mode: 'level' });
     },
-    [enterLevel, navigation, startAttempt],
+    [enterLevel, navigation, startAttempt, startGame],
   );
 
   const completionRatio = params.targetTotal === 0 ? 1 : params.targetFound / params.targetTotal;

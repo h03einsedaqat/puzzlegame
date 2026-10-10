@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { AppState, DeviceEventEmitter, type AppStateStatus, type NativeEventSubscription } from 'react-native';
+import { AppState, DeviceEventEmitter, StyleSheet, type AppStateStatus, type NativeEventSubscription } from 'react-native';
 import { State, type PanGesture } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
-import { render, waitFor } from '@testing-library/react-native';
+import { render, screen, waitFor } from '@testing-library/react-native';
 
 import { ServicesProvider } from '../../src/context/ServicesContext';
 import { SettingsProvider } from '../../src/context/SettingsContext';
@@ -114,6 +114,16 @@ const pan = () => getByGestureTestId(WHEEL_PAN_TEST_ID) as unknown as PanGesture
  * برای آزمودن «کشیدنِ در جریان» (مثلاً وقتی برنامه به پس‌زمینه می‌رود) رویدادها
  * را مستقیم روی همان کانالی می‌فرستیم که خود Gesture Handler استفاده می‌کند.
  */
+function emitMove(gesture: PanGesture, point: { x: number; y: number }) {
+  DeviceEventEmitter.emit('onGestureHandlerEvent', {
+    handlerTag: gesture.handlerTag,
+    state: State.ACTIVE,
+    numberOfPointers: 1,
+    x: point.x, y: point.y, absoluteX: point.x, absoluteY: point.y,
+    translationX: 0, translationY: 0, velocityX: 0, velocityY: 0,
+  });
+}
+
 function emitState(
   gesture: PanGesture,
   state: State,
@@ -142,6 +152,37 @@ const lastSelection = (harness: Harness) => {
 };
 
 describe('لمس چرخ با Gesture Handler واقعی', () => {
+  it('در RTL حرف زیر انگشت در سمت راست/چپ انتخاب می‌شود، نه حرف مقابل', async () => {
+    const harness = await renderWheel();
+    const wheel = screen.getByTestId('letter-wheel-surface');
+    // Fabric/Yoga با swapLeftAndRightInRTL=true، left را در RTL به start
+    // تبدیل می‌کند. اگر سطح چرخ LTR نباشد، حرفِ چپ و راست جا عوض می‌کنند
+    // ولی x ژست/بوم SVG همچنان مختصات فیزیکی چپ به راست دارند.
+    expect(StyleSheet.flatten(wheel.props.style).direction).toBe('ltr');
+
+    const rightTile = geometry.positions[1]!;
+    const leftTile = geometry.positions[geometry.positions.length - 1]!;
+    const rightSlot = screen.getByTestId(`wheel-tile-${rightTile.id}`).parent!;
+    const leftSlot = screen.getByTestId(`wheel-tile-${leftTile.id}`).parent!;
+    expect(StyleSheet.flatten(rightSlot.props.style).left).toBeCloseTo(rightTile.x - geometry.tileSize / 2);
+    expect(StyleSheet.flatten(leftSlot.props.style).left).toBeCloseTo(leftTile.x - geometry.tileSize / 2);
+
+    for (const tile of [rightTile, leftTile]) {
+      fireGestureHandler<PanGesture>(pan(), [
+        { x: tile.x, y: tile.y, state: State.BEGAN },
+        { x: tile.x, y: tile.y, state: State.ACTIVE },
+        { x: tile.x, y: tile.y, state: State.END },
+      ]);
+    }
+    expect(lastSelection(harness)).toEqual([rightTile.id, leftTile.id]);
+  });
+
+  it('Pan از ابتدا توسط سیستم لمس بومی فعال است، نه با manager.activate دستی', async () => {
+    await renderWheel();
+    expect(pan().config.minDist).toBe(0);
+    expect(pan().config.manualActivation).not.toBe(true);
+  });
+
   it('حلقهٔ پیشرفت پس از پیدا شدن واژه دقیقاً حول مرکز چرخ قرار می‌گیرد', async () => {
     const rendered = await render(
       <ServicesProvider>
@@ -257,6 +298,48 @@ describe('لمس چرخ با Gesture Handler واقعی', () => {
     expect(lastSelection(harness)).toEqual(['t5']);
   });
 
+  it('ضربهٔ ساده (بدون raw touches) فقط یک حرف اضافه می‌کند؛ submit نمی‌کند', async () => {
+    const harness = await renderWheel();
+    fireGestureHandler<PanGesture>(pan(), [
+      { ...centerOf('t0'), state: State.BEGAN },
+      { ...centerOf('t0'), state: State.ACTIVE },
+      { ...centerOf('t0'), state: State.END },
+    ]);
+    expect(lastSelection(harness)).toEqual(['t0']);
+    expect(harness.onRelease).not.toHaveBeenCalled();
+
+    fireGestureHandler<PanGesture>(pan(), [
+      { ...centerOf('t1'), state: State.BEGAN },
+      { ...centerOf('t1'), state: State.ACTIVE },
+      { ...centerOf('t1'), state: State.END },
+    ]);
+    expect(lastSelection(harness)).toEqual(['t0', 't1']);
+    expect(harness.onRelease).not.toHaveBeenCalled();
+  });
+
+  it('حرکت کوتاه زیر آستانه همچنان tap است و نمونهٔ نهایی جا نمی‌افتد', async () => {
+    const harness = await renderWheel();
+    const origin = centerOf('t2');
+    fireGestureHandler<PanGesture>(pan(), [
+      { ...origin, state: State.BEGAN },
+      { x: origin.x + 3, y: origin.y + 3, state: State.ACTIVE },
+      { x: origin.x + 4, y: origin.y + 4, state: State.END },
+    ]);
+    expect(lastSelection(harness)).toEqual(['t2']);
+    expect(harness.onRelease).not.toHaveBeenCalled();
+  });
+
+  it('با یک جهش سریع و فقط نمونهٔ پایانی، همهٔ حروف در مسیر را ثبت می‌کند', async () => {
+    const harness = await renderWheel();
+    fireGestureHandler<PanGesture>(pan(), [
+      { ...centerOf('t0'), state: State.BEGAN },
+      { ...centerOf('t0'), state: State.ACTIVE },
+      { ...centerOf('t2'), state: State.END },
+    ]);
+    expect(harness.onRelease).toHaveBeenCalledTimes(1);
+    expect(harness.onRelease).toHaveBeenCalledWith(['t0', 't1', 't2']);
+  });
+
   it('چرخ غیرفعال هیچ لمسی را نمی‌پذیرد', async () => {
     const harness = await renderWheel({ disabled: true, selection: ['t0'] });
 
@@ -292,7 +375,8 @@ describe('لمس چرخ با Gesture Handler واقعی', () => {
       // اکنون یک کشیدن نیمه‌کاره شروع می‌شود (بدون رویداد پایان) و برنامه به
       // پس‌زمینه می‌رود.
       emitState(gesture, State.BEGAN, State.UNDETERMINED, centerOf('t3'));
-      emitState(gesture, State.ACTIVE, State.BEGAN, centerOf('t4'));
+      emitState(gesture, State.ACTIVE, State.BEGAN, centerOf('t3'));
+      emitMove(gesture, centerOf('t4'));
       expect(lastSelection(harness)).toEqual(['t3', 't4']);
       expect(listeners.length).toBeGreaterThan(0);
 

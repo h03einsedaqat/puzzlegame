@@ -152,6 +152,7 @@ export const LetterWheel = React.memo(function LetterWheel({
   return (
     <GestureDetector gesture={gesture}>
       <View
+        testID="letter-wheel-surface"
         style={[styles.wheel, { width: diameter, height: diameter }]}
         accessibilityLabel={accessibilityLabel}
       >
@@ -590,6 +591,11 @@ function AnimatedGuideTile({
 
 const styles = StyleSheet.create({
   wheel: {
+    // Gesture x and SVG coordinates always grow from the physical left.
+    // React Native swaps absolute `left` to logical `start` under RTL; without
+    // an LTR island the visible side tiles (and connector bars) are mirrored
+    // while gesture hit-testing is not. Keep RTL for the rest of the game.
+    direction: 'ltr',
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
@@ -597,6 +603,8 @@ const styles = StyleSheet.create({
   },
   centerBadge: {
     position: 'absolute',
+    // متن و شمارنده فارسی بماند؛ فقط مختصات سطح چرخ باید LTR باشد.
+    direction: 'rtl',
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceElevated,
     alignItems: 'center',

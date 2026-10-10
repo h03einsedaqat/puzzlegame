@@ -2,8 +2,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
 import { GAME_CONFIG, strings } from '../constants';
-import { LEVELS } from '../data/levels/levels';
-import { useProfile, useProgress, useServices } from '../context';
+import { LEVELS, getLevelById } from '../data/levels/levels';
+import { useGame, useProfile, useProgress, useServices } from '../context';
 import { colors, radius, spacing } from '../theme';
 import { format, toPersianDigits } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
@@ -31,6 +31,7 @@ export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
   const { progress, isLevelUnlocked, isLevelCompleted, getRecord, enterLevel, buildSummaries } = useProgress();
   const { hearts, startAttempt } = useProfile();
   const { analytics } = useServices();
+  const { startGame } = useGame();
   const [message, setMessage] = useState<{ text: string; id: number } | null>(null);
   const [noHeartsVisible, setNoHeartsVisible] = useState(false);
 
@@ -47,10 +48,12 @@ export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
         return;
       }
       enterLevel(levelId);
+      const level = getLevelById(levelId);
+      if (level) startGame(level);
       analytics.track('level_start', { levelId, source: 'level_map' });
       navigation.navigate('Game', { levelId, mode: 'level' });
     },
-    [analytics, enterLevel, isLevelUnlocked, navigation, startAttempt],
+    [analytics, enterLevel, isLevelUnlocked, navigation, startAttempt, startGame],
   );
 
   const worlds = useMemo(() => {

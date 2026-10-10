@@ -91,7 +91,6 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
   const pointerY = useSharedValue(0);
   const pathOpacity = useSharedValue(0);
   const cancelledByMultiTouch = useSharedValue(false);
-  const activationRequested = useSharedValue(false);
   const {
     enabled,
     geometry,
@@ -186,166 +185,118 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
       }
     };
 
+    /**
+     * Manual activation makes both tap and drag depend on raw touch
+     * callbacks and manager.activate. A failed/intercepted activation can
+     * leave the selection in BEGAN without a release callback on Android.
+     * Use the Pan's normal native lifecycle for *both* paths instead.
+     * minDistance(0) acquires the wheel at touch-down; our own 8dp threshold
+     * distinguishes tap from drag. The wheel is not inside a scroll view.
+     */
+    const start = (point: WheelPoint) => {
+      'worklet';
+      const down = wheelGestureDown(geometry, interaction.value.selection, point);
+      interaction.value = down.state;
+      hidePath();
+      pointerX.value = point.x;
+      pointerY.value = point.y;
+    };
+
+    const move = (point: WheelPoint) => {
+      'worklet';
+      if (!enabled || cancelledByMultiTouch.value) {
+        return;
+      }
+      const current = interaction.value;
+      if (current.phase === 'idle') {
+        // Defensive fallback if a platform emits ACTIVE before BEGAN.
+        start(point);
+        return;
+      }
+      if (current.downTileId === null || !current.downPoint) {
+        return;
+      }
+      if (!current.ownsSelection) {
+        const dx = point.x - current.downPoint.x;
+        const dy = point.y - current.downPoint.y;
+        if (dx * dx + dy * dy < WHEEL_DRAG_ACTIVATION_DISTANCE ** 2) {
+          return;
+        }
+      }
+      feedPointer(point);
+    };
+
     const pan = Gesture.Pan()
       .enabled(enabled)
-      .manualActivation(true)
+      .minDistance(0)
       .maxPointers(1)
       .shouldCancelWhenOutside(false)
       .withTestId(WHEEL_PAN_TEST_ID)
-      .onTouchesDown((event, manager) => {
-        'worklet';
-        if (!enabled) {
-          manager.fail();
-          return;
-        }
-        if (event.numberOfTouches > 1) {
-          cancelledByMultiTouch.value = true;
-          cancelInteraction();
-          return;
-        }
-
-        const touch = event.changedTouches[0] ?? event.allTouches[0];
-        if (!touch) {
-          manager.fail();
-          return;
-        }
-        const point = { x: touch.x, y: touch.y };
-        const down = wheelGestureDown(geometry, interaction.value.selection, point);
-        interaction.value = down.state;
-        cancelledByMultiTouch.value = false;
-        activationRequested.value = false;
-        hidePath();
-        // مسیر از همان نقطه نخست شروع می‌شود تا «دمِ» خط از گوشه صفحه نپرد.
-        pointerX.value = point.x;
-        pointerY.value = point.y;
-
-        // A drag can begin only on a real tile. A blank part of the orbital
-        // surface is left to the parent scroll system instead of capturing it.
-        if (down.state.downTileId === null) {
-          manager.fail();
-        }
-      })
-      .onTouchesMove((event, manager) => {
+      .onTouchesDown(event => {
         'worklet';
         if (event.numberOfTouches > 1) {
-          cancelledByMultiTouch.value = true;
-          cancelInteraction();
-          // maxPointers(1) also rejects the recognizer; fail handles a second
-          // finger that arrives before manual activation.
-          if (interaction.value.phase !== 'dragging') {
-            manager.fail();
-          }
-          return;
-        }
-        if (cancelledByMultiTouch.value || activationRequested.value) {
-          return;
-        }
-        const current = interaction.value;
-        if (current.phase !== 'holding' || !current.downPoint) {
-          return;
-        }
-        const touch = event.allTouches[0];
-        if (!touch) {
-          return;
-        }
-        const dx = touch.x - current.downPoint.x;
-        const dy = touch.y - current.downPoint.y;
-        if (dx * dx + dy * dy >= WHEEL_DRAG_ACTIVATION_DISTANCE * WHEEL_DRAG_ACTIVATION_DISTANCE) {
-          // یک‌بار درخواست فعال‌سازی کافی است؛ تکرار آن در هر نمونه لمس، یک
-          // فراخوانی بومی بی‌اثر روی ترد رابط کاربری می‌گذارد.
-          activationRequested.value = true;
-          manager.activate();
-        }
-      })
-      .onTouchesUp((event, manager) => {
-        'worklet';
-        if (event.numberOfTouches > 0 || cancelledByMultiTouch.value) {
-          return;
-        }
-        const current = interaction.value;
-        if (current.phase === 'holding' && !current.ownsSelection) {
-          // Unified tap handling: previously this was delegated to RN Pressable,
-          // which conflicted with RNGH on Android. Now tap is handled here.
-          if (current.downTileId !== null) {
-            const alreadySelected = current.selection.includes(current.downTileId);
-            let nextSelection: readonly string[] = current.selection;
-            if (!alreadySelected) {
-              nextSelection = [...current.selection, current.downTileId];
-            }
-            // Only emit if actually changed — avoids unnecessary JS work.
-            const changed = nextSelection !== current.selection;
-            interaction.value = {
-              ...createWheelInteractionState(),
-              snapshot: nextSelection,
-              selection: nextSelection,
-            };
-            if (changed) {
-              runOnJS(onSelectionChange)(nextSelection);
-            }
-          } else {
-            interaction.value = {
-              ...createWheelInteractionState(),
-              snapshot: current.selection,
-              selection: current.selection,
-            };
-          }
-          manager.fail();
-        }
-      })
-      .onTouchesCancelled(() => {
-        'worklet';
-        if (interaction.value.phase !== 'idle') {
           cancelledByMultiTouch.value = true;
           cancelInteraction();
         }
       })
       .onBegin(event => {
         'worklet';
-        // Some platforms/tests surface BEGAN before touch callbacks; seed the
-        // same holding state without replacing a down point already captured.
-        if (enabled && interaction.value.phase === 'idle') {
-          interaction.value = wheelGestureDown(geometry, interaction.value.selection, { x: event.x, y: event.y }).state;
-          pointerX.value = event.x;
-          pointerY.value = event.y;
-        }
+        cancelledByMultiTouch.value = false;
+        start({ x: event.x, y: event.y });
       })
       .onStart(event => {
         'worklet';
-        activationRequested.value = true;
-        feedPointer({ x: event.x, y: event.y });
+        if (interaction.value.phase === 'idle') {
+          start({ x: event.x, y: event.y });
+        }
       })
       .onUpdate(event => {
         'worklet';
-        feedPointer({ x: event.x, y: event.y });
+        move({ x: event.x, y: event.y });
       })
       .onEnd((event, success) => {
         'worklet';
-        activationRequested.value = false;
         if (!success || cancelledByMultiTouch.value || !enabled) {
           return;
         }
+        const point = { x: event.x, y: event.y };
+        // A short fast swipe can end before an update sample is delivered.
+        move(point);
         const previous = interaction.value;
-        const ended = wheelGestureEnd(previous, geometry, { x: event.x, y: event.y });
+        if (previous.phase === 'holding') {
+          const tileId = previous.downTileId;
+          if (tileId !== null && !previous.selection.includes(tileId)) {
+            const nextSelection = [...previous.selection, tileId];
+            interaction.value = {
+              ...createWheelInteractionState(),
+              snapshot: nextSelection,
+              selection: nextSelection,
+            };
+            runOnJS(onSelectionChange)(nextSelection);
+          } else {
+            interaction.value = {
+              ...createWheelInteractionState(),
+              snapshot: previous.selection,
+              selection: previous.selection,
+            };
+          }
+          return;
+        }
+        const ended = wheelGestureEnd(previous, geometry, point);
         interaction.value = ended.state;
-        // Publish the final unsampled tile before release; the explicit release
-        // snapshot is still authoritative if a React render is one frame behind.
         if (ended.selection !== null) {
           runOnJS(onSelectionChange)(ended.selection);
         }
-        if (ended.dragEnded && previous.ownsSelection && onDragStateChange) {
+        if (ended.dragEnded && onDragStateChange) {
           runOnJS(onDragStateChange)(false);
         }
-        // onEnd is the only submission edge. onFinalize never submits.
         if (ended.released !== null) {
           runOnJS(onRelease)(ended.released);
-        }
-        if (previous.ownsSelection) {
           fadePath();
         }
       })
       .onFinalize((_event, success) => {
         'worklet';
-        activationRequested.value = false;
         if (!success && interaction.value.phase !== 'idle') {
           cancelInteraction();
         }
@@ -354,7 +305,6 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
 
     return pan;
   }, [
-    activationRequested,
     cancelledByMultiTouch,
     enabled,
     geometry,
@@ -370,7 +320,6 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
   const cancelOnUI = useMemo(() => {
     const cancel = () => {
       'worklet';
-      activationRequested.value = false;
       const previous = interaction.value;
       if (previous.phase === 'idle') {
         return;
@@ -391,7 +340,6 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
     };
     return cancel;
   }, [
-    activationRequested,
     cancelledByMultiTouch,
     interaction,
     onDragStateChange,
