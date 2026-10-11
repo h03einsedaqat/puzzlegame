@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { createServices, type AppServices, type ServicesOverrides } from '../services';
-import { mark } from '../services/diagnostics/touchProbe';
 
 const ServicesContext = createContext<AppServices | null>(null);
 
@@ -13,7 +12,6 @@ export interface ServicesProviderProps {
 }
 
 export function ServicesProvider({ children, overrides, services }: ServicesProviderProps) {
-  mark('render:ServicesProvider');
   const value = useMemo(() => services ?? createServices(overrides), [services, overrides]);
 
   useEffect(() => {

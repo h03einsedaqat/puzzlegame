@@ -30,7 +30,6 @@ import type {
 } from '../types';
 import { useProfile } from './ProfileContext';
 import { useServices } from './ServicesContext';
-import { mark, markEvent } from '../services/diagnostics/touchProbe';
 
 export interface GameFeedback {
   id: number;
@@ -219,7 +218,6 @@ export interface GameContextValue {
 const GameContext = createContext<GameContextValue | null>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
-  mark('render:GameProvider');
   const [state, dispatch] = useReducer(gameReducer, initialState);
   /**
    * آینه‌ی همگام وضعیت بازی.
@@ -250,7 +248,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     (action: GameAction): GameState => {
       const next = gameReducer(stateRef.current, action);
       stateRef.current = next;
-      markEvent(`dispatch:${action.type}`);
       dispatch(action);
       return next;
     },

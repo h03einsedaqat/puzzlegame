@@ -5,7 +5,6 @@ import { usePersistentReducer, type HydrateAction } from '../hooks/usePersistent
 import { progressRepository } from '../services/storage/repositories';
 import type { GameProgress, LevelRecord, LevelSummary } from '../types';
 import { useServices } from './ServicesContext';
-import { mark } from '../services/diagnostics/touchProbe';
 
 export interface LevelCompletionInput {
   levelId: number;
@@ -89,7 +88,6 @@ export interface ProgressContextValue {
 const ProgressContext = createContext<ProgressContextValue | null>(null);
 
 export function ProgressProvider({ children }: { children: React.ReactNode }) {
-  mark('render:ProgressProvider');
   const { state, dispatch, ready, reset } = usePersistentReducer(progressRepository, progressReducer);
   const { analytics } = useServices();
 

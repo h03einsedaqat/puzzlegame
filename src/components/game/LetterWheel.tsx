@@ -27,7 +27,6 @@ import { colors, radius } from '../../theme';
 import { format, toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { LetterTile } from './LetterTile';
-import { mark } from '../../services/diagnostics/touchProbe';
 import type { LetterTileData } from '../../types';
 
 export interface LetterWheelProps {
@@ -137,15 +136,12 @@ export const LetterWheel = React.memo(function LetterWheel({
   const reducedMotion = useReducedMotion();
   const guidePulse = useSharedValue(0);
   useEffect(() => {
-    mark('guide-effect');
     cancelAnimation(guidePulse);
     if (reducedMotion || !guide.nextTileId) {
       guidePulse.value = 0;
-      mark('guide-end');
       return;
     }
     guidePulse.value = withRepeat(withTiming(1, { duration: 640 }), -1, true);
-    mark('guide-end');
     return () => cancelAnimation(guidePulse);
   }, [guide.nextTileId, guidePulse, reducedMotion]);
 

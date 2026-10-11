@@ -18,7 +18,6 @@ import { StatsScreen } from '../screens/StatsScreen';
 import { SplashScreen } from '../screens/SplashScreen';
 import { useSettings } from '../context';
 import type { RootStackParamList } from './types';
-import { mark } from '../services/diagnostics/touchProbe';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -42,7 +41,6 @@ const navigationTheme: Theme = {
  * آموزش آغازین را ندیده باشد، مستقیم به آن هدایت می‌شود.
  */
 export function RootNavigator() {
-  mark('render:RootNavigator');
   const { settings, ready } = useSettings();
   const initialRouteName = useMemo<keyof RootStackParamList>(() => {
     if (!ready) {

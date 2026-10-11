@@ -1,7 +1,6 @@
 import { Platform, Vibration } from 'react-native';
 
 import { patternFor, type HapticEvent } from '../../constants/haptics';
-import { timeOp } from '../diagnostics/touchProbe';
 
 /**
  * بازخورد لمسی.
@@ -27,7 +26,7 @@ export const reactNativeVibrationDriver: VibrationDriver = {
       return;
     }
     try {
-      timeOp('vibrate', () => Vibration.vibrate(pattern as number | number[]));
+      Vibration.vibrate(pattern as number | number[]);
     } catch {
       // نبود مجوز/پشتیبانی‌نشدن دستگاه نباید هیچ‌وقت برنامه را ببندد.
     }

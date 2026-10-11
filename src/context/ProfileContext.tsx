@@ -14,7 +14,6 @@ import {
 import { profileRepository } from '../services/storage/repositories';
 import type { UserProfile } from '../types';
 import { useServices } from './ServicesContext';
-import { mark } from '../services/diagnostics/touchProbe';
 
 export interface WordResultSummary {
   wordsFound: number;
@@ -110,7 +109,6 @@ export interface ProfileContextValue {
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  mark('render:ProfileProvider');
   const { state, dispatch, ready, reset } = usePersistentReducer(profileRepository, profileReducer);
   const { analytics } = useServices();
 

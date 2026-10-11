@@ -17,7 +17,6 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { Icon } from '../components/ui/Icon';
 import type { LevelSummary } from '../types';
 import type { RootScreenProps } from '../navigation/types';
-import { mark } from '../services/diagnostics/touchProbe';
 
 const WORLD_TITLES = ['آغاز واژه‌ها', 'خانه و زندگی', 'شهر و سفر', 'طبیعت و دانایی', 'قلهٔ کلمه‌ساز'] as const;
 
@@ -29,7 +28,6 @@ const WORLD_TITLES = ['آغاز واژه‌ها', 'خانه و زندگی', 'ش�
  * بازی را شروع می‌کند.
  */
 export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
-  mark('render:LevelMapScreen');
   const { progress, isLevelUnlocked, isLevelCompleted, getRecord, enterLevel, buildSummaries } = useProgress();
   const { hearts, startAttempt } = useProfile();
   const { analytics } = useServices();

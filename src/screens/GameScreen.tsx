@@ -21,17 +21,6 @@ import { GameFeedbackToast } from '../components/game/GameFeedbackToast';
 import { GameHeader } from '../components/game/GameHeader';
 import { HintGuide } from '../components/game/HintGuide';
 import { LetterWheel } from '../components/game/LetterWheel';
-import { TouchProbeOverlay } from '../components/game/TouchProbeOverlay';
-import {
-  mark,
-  markRenderEnd,
-  recordOp,
-  recordPassiveAfterRender,
-  recordSelectionCommit,
-  startTouchProbe,
-  stopTouchProbe,
-  timeOp,
-} from '../services/diagnostics/touchProbe';
 import { WordSlots } from '../components/game/WordSlots';
 import type { GameFeedback } from '../context';
 import type { FoundWord, HintType, Level, WordRejectionReason } from '../types';
@@ -120,8 +109,6 @@ function useFeedbackTiles(feedback: GameFeedback | null): readonly LetterTileDat
  * هیچ‌وقت چرخ را جابه‌جا نمی‌کند.
  */
 export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
-  const probeRenderStart = Date.now();
-  mark('render');
   const { levelId, mode } = route.params;
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -199,19 +186,6 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     startGame(activeLevel);
   }, [activeLevel, getRecord, sessionPlayable, startGame]);
 
-  // پروب تشخیصی لمس (موقت): شروع با ورود به صفحه، پایان با خروج.
-  useEffect(() => {
-    startTouchProbe();
-    return () => stopTouchProbe();
-  }, []);
-
-  // ثبت زمان commit انتخاب در React (برای پروب تشخیصی).
-  useEffect(() => {
-    mark('passive');
-    recordPassiveAfterRender();
-    recordSelectionCommit();
-  }, [session?.selection]);
-
   useEffect(() => {
     if (!activeLevel || !feedback) {
       return;
@@ -240,14 +214,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
    * حد مرحله هم بی‌سروصدا رها می‌شود (نه پیام خطا، نه بازنشانی کمبو).
    */
   const handleRelease = useCallback((releasedSelection: readonly string[]) => {
-    timeOp('submit-release', () => submit({ fromRelease: true, selection: releasedSelection }));
+    submit({ fromRelease: true, selection: releasedSelection });
   }, [submit]);
-
-  /** پروب تشخیصی: زمان هر تغییر انتخاب در JS */
-  const handleSelectionChange = useCallback(
-    (next: readonly string[]) => timeOp('replaceSelection', () => replaceSelection(next)),
-    [replaceSelection],
-  );
 
   /**
    * ثبت خودکار (خواسته بازیکن: «بررسی خودکار انجام شود»).
@@ -262,7 +230,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
       return;
     }
     const timer = setTimeout(() => {
-      timeOp('auto-submit', () => submit());
+      submit();
     }, GAME_CONFIG.gameplay.autoSubmitPauseMs);
     return () => clearTimeout(timer);
   }, [autoSubmitReady, isDraggingLetters, session?.status, submit]);
@@ -490,9 +458,6 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     </View>
   ) : null;
 
-  recordOp('render-body', Date.now() - probeRenderStart);
-  mark('render-end');
-  markRenderEnd();
   return (
     <ScreenContainer edges={['top', 'bottom']}>
       <GameHeader
@@ -552,8 +517,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           <LetterWheel
             tiles={tiles}
             selectedIds={selection}
-            onTilePress={tileId => timeOp('selectTile', () => selectTile(tileId))}
-            onSelectionChange={handleSelectionChange}
+            onTilePress={selectTile}
+            onSelectionChange={replaceSelection}
             onRelease={handleRelease}
             disabled={session?.status !== 'playing'}
             diameter={layout.wheelDiameter}
@@ -619,8 +584,6 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           />
         </ScrollView>
       </View>
-
-      <TouchProbeOverlay />
 
       <HintSheet
         visible={hintSheetVisible}
