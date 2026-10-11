@@ -23,6 +23,7 @@ import { HintGuide } from '../components/game/HintGuide';
 import { LetterWheel } from '../components/game/LetterWheel';
 import { TouchProbeOverlay } from '../components/game/TouchProbeOverlay';
 import {
+  mark,
   markRenderEnd,
   recordOp,
   recordPassiveAfterRender,
@@ -120,6 +121,7 @@ function useFeedbackTiles(feedback: GameFeedback | null): readonly LetterTileDat
  */
 export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   const probeRenderStart = Date.now();
+  mark('render');
   const { levelId, mode } = route.params;
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -205,6 +207,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
 
   // ثبت زمان commit انتخاب در React (برای پروب تشخیصی).
   useEffect(() => {
+    mark('passive');
     recordPassiveAfterRender();
     recordSelectionCommit();
   }, [session?.selection]);
@@ -488,6 +491,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   ) : null;
 
   recordOp('render-body', Date.now() - probeRenderStart);
+  mark('render-end');
   markRenderEnd();
   return (
     <ScreenContainer edges={['top', 'bottom']}>

@@ -56,6 +56,28 @@ function initialState(mountAt: number | null): TouchProbeSnapshot {
 }
 
 let state: TouchProbeSnapshot = initialState(null);
+
+/** خط زمانی: آخرین نشانه‌ها با زمان‌شان (برای پیداکردن جای دقیق وقفه) */
+export interface TimelineMark {
+  name: string;
+  at: number;
+}
+const TIMELINE_SIZE = 14;
+let timeline: TimelineMark[] = [];
+
+export function mark(name: string): void {
+  if (!TOUCH_PROBE_ENABLED) {
+    return;
+  }
+  timeline.push({ name, at: Date.now() });
+  if (timeline.length > TIMELINE_SIZE) {
+    timeline = timeline.slice(-TIMELINE_SIZE);
+  }
+}
+
+export function getTimeline(): TimelineMark[] {
+  return timeline.slice();
+}
 let pendingReceiveAt: number | null = null;
 let monitor: ReturnType<typeof setInterval> | null = null;
 let lastTick = 0;
@@ -80,6 +102,7 @@ export function startTouchProbe(): void {
       state.stallCount += 1;
       state.maxStallMs = Math.max(state.maxStallMs, stall);
       state.lastStallAtMs = atMs;
+      timeline.push({ name: `وقفه ${stall}ms`, at: current });
       if (state.firstStallAtMs === null) {
         state.firstStallAtMs = atMs;
       }
@@ -125,14 +148,17 @@ export function timeOp<T>(name: string, fn: () => T): T {
     return fn();
   }
   const start = Date.now();
+  mark(`${name}:start`);
   try {
     return fn();
   } finally {
     recordOp(name, Date.now() - start);
+    mark(`${name}:end`);
   }
 }
 
 let renderEndAt: number | null = null;
+export { mark as markEvent };
 
 /** پایان بدنهٔ رندر GameScreen؛ مبنای اندازه‌گیری فاز commit/effects است. */
 export function markRenderEnd(): void {
@@ -157,6 +183,7 @@ export function recordUiSelection(uiAt: number): void {
     return;
   }
   const now = Date.now();
+  mark('sel-recv');
   state.selectionEvents += 1;
   if (state.firstSelectionAtMs === null && state.mountAt !== null) {
     state.firstSelectionAtMs = now - state.mountAt;

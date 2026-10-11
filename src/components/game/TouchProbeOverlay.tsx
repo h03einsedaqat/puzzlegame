@@ -3,19 +3,25 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import {
   TOUCH_PROBE_ENABLED,
+  getTimeline,
   getTouchProbeSnapshot,
+  type TimelineMark,
   type TouchProbeSnapshot,
 } from '../../services/diagnostics/touchProbe';
 
 /** نمایش زنده‌ی نتایج پروب لمس (موقت، فقط وقتی پروب فعال است). */
 export function TouchProbeOverlay() {
   const [snap, setSnap] = useState<TouchProbeSnapshot | null>(null);
+  const [timeline, setTimeline] = useState<TimelineMark[]>([]);
 
   useEffect(() => {
     if (!TOUCH_PROBE_ENABLED) {
       return;
     }
-    const timer = setInterval(() => setSnap(getTouchProbeSnapshot()), 250);
+    const timer = setInterval(() => {
+      setSnap(getTouchProbeSnapshot());
+      setTimeline(getTimeline());
+    }, 250);
     return () => clearInterval(timer);
   }, []);
 
@@ -36,10 +42,22 @@ export function TouchProbeOverlay() {
     ),
   ];
 
+  const timelineLines = timeline.map((entry, index) => {
+    const prev = index > 0 ? timeline[index - 1] : null;
+    const delta = prev ? entry.at - prev.at : 0;
+    return `${entry.name} (+${delta}ms)`;
+  });
+
   return (
     <View pointerEvents="none" style={styles.box}>
       {lines.map(line => (
         <Text key={line} style={styles.text}>
+          {line}
+        </Text>
+      ))}
+      <Text style={styles.text}>خط زمانی (فاصله از نشانهٔ قبلی):</Text>
+      {timelineLines.map((line, index) => (
+        <Text key={`${index}-${line}`} style={styles.text}>
           {line}
         </Text>
       ))}
@@ -60,8 +78,8 @@ const styles = StyleSheet.create({
   },
   text: {
     color: '#FFD54F',
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 10,
+    lineHeight: 13,
     textAlign: 'left',
   },
 });

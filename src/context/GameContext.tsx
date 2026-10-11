@@ -30,6 +30,7 @@ import type {
 } from '../types';
 import { useProfile } from './ProfileContext';
 import { useServices } from './ServicesContext';
+import { markEvent } from '../services/diagnostics/touchProbe';
 
 export interface GameFeedback {
   id: number;
@@ -248,6 +249,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     (action: GameAction): GameState => {
       const next = gameReducer(stateRef.current, action);
       stateRef.current = next;
+      markEvent(`dispatch:${action.type}`);
       dispatch(action);
       return next;
     },
