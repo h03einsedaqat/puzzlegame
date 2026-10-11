@@ -20,7 +20,7 @@ import {
   type WheelInteractionState,
 } from '../services/game/wheelInteraction';
 import { type WheelGeometry } from '../services/game/wheelGesture';
-import { recordUiSelection } from '../services/diagnostics/touchProbe';
+import { mark, recordUiSelection } from '../services/diagnostics/touchProbe';
 import type { WheelPoint } from '../services/game/wheelGesture';
 
 /** Native activation distance and its pure-machine test contract. */
@@ -104,10 +104,12 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
   // Tap/clear/slot removal are game state: reconcile them into the UI-thread
   // machine after commit, but never overwrite a live drag with a stale render.
   useLayoutEffect(() => {
+    mark('wheel-layout');
     runOnUI((nextSelection: readonly string[]) => {
       'worklet';
       interaction.value = adoptSelection(interaction.value, nextSelection);
     })(selection);
+    mark('wheel-layout-end');
   }, [interaction, selection]);
 
   const gesture = useMemo(() => {
@@ -351,9 +353,11 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
   ]);
 
   useEffect(() => {
+    mark('wheel-enabled-effect');
     if (!enabled) {
       runOnUI(cancelOnUI)();
     }
+    mark('wheel-enabled-end');
   }, [cancelOnUI, enabled]);
 
   useEffect(() => {
