@@ -21,6 +21,8 @@ import { GameFeedbackToast } from '../components/game/GameFeedbackToast';
 import { GameHeader } from '../components/game/GameHeader';
 import { HintGuide } from '../components/game/HintGuide';
 import { LetterWheel } from '../components/game/LetterWheel';
+import { TouchProbeOverlay } from '../components/game/TouchProbeOverlay';
+import { recordSelectionCommit, startTouchProbe, stopTouchProbe } from '../services/diagnostics/touchProbe';
 import { WordSlots } from '../components/game/WordSlots';
 import type { GameFeedback } from '../context';
 import type { FoundWord, HintType, Level, WordRejectionReason } from '../types';
@@ -185,6 +187,17 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     bestScoreBeforeRef.current = getRecord(activeLevel.id)?.bestScore ?? 0;
     startGame(activeLevel);
   }, [activeLevel, getRecord, sessionPlayable, startGame]);
+
+  // پروب تشخیصی لمس (موقت): شروع با ورود به صفحه، پایان با خروج.
+  useEffect(() => {
+    startTouchProbe();
+    return () => stopTouchProbe();
+  }, []);
+
+  // ثبت زمان commit انتخاب در React (برای پروب تشخیصی).
+  useEffect(() => {
+    recordSelectionCommit();
+  }, [session?.selection]);
 
   useEffect(() => {
     if (!activeLevel || !feedback) {
@@ -584,6 +597,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           />
         </ScrollView>
       </View>
+
+      <TouchProbeOverlay />
 
       <HintSheet
         visible={hintSheetVisible}

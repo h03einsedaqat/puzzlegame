@@ -20,6 +20,7 @@ import {
   type WheelInteractionState,
 } from '../services/game/wheelInteraction';
 import { type WheelGeometry } from '../services/game/wheelGesture';
+import { recordUiSelection } from '../services/diagnostics/touchProbe';
 import type { WheelPoint } from '../services/game/wheelGesture';
 
 /** Native activation distance and its pure-machine test contract. */
@@ -174,6 +175,7 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
 
       if (result.selection !== null) {
         runOnJS(onSelectionChange)(result.selection);
+        runOnJS(recordUiSelection)(Date.now());
       }
       if (result.dragStarted && onDragStateChange) {
         runOnJS(onDragStateChange)(true);
@@ -273,6 +275,7 @@ export function useWheelGestures(options: UseWheelGesturesOptions): WheelGesture
               selection: nextSelection,
             };
             runOnJS(onSelectionChange)(nextSelection);
+            runOnJS(recordUiSelection)(Date.now());
           } else {
             interaction.value = {
               ...createWheelInteractionState(),
