@@ -18,6 +18,7 @@ import {
   revealWithHint,
 } from '../services/game/gameEngine';
 import { validateWord } from '../services/game/wordValidator';
+import { mark, measure } from '../services/diagnostics/startupProbe'; // ⚠️ پروب موقت
 import type {
   GameRewards,
   GameSession,
@@ -310,6 +311,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (existing && existing.levelId === nextLevel.id && existing.status === 'playing') {
         return;
       }
+      mark('level:start');
       const session = createGame(nextLevel);
       applyAction({ type: 'start', level: nextLevel, session });
       setActiveHint(null);
@@ -339,6 +341,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const selectTile = useCallback(
     (tileId: string) => {
+      mark('select');
       updateSession(session => selectLetter(session, tileId), { feedback: true });
     },
     [updateSession],
@@ -458,7 +461,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         return { status: 'ignored' };
       }
 
-      const result = submitWordToEngine(session, level);
+      mark('submit:start');
+      const result = measure('submit:engine', () => submitWordToEngine(session, level));
       if (result.validation.status === 'rejected') {
         sound.play('wrong');
         vibration.trigger('wrong');
@@ -491,6 +495,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       };
 
       applyAction({ type: 'apply', session: result.session });
+      mark('submit:applied');
       applyAction({
         type: 'feedback',
         feedback: {
@@ -680,7 +685,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
     const alreadyFound = foundWordNames(currentSession.foundWords);
-    const validation = validateWord({ raw: candidate, level: currentLevel, foundWords: alreadyFound });
+    const validation = measure('autosubmit:validate', () =>
+      validateWord({ raw: candidate, level: currentLevel, foundWords: alreadyFound }),
+    );
     return validation.status === 'accepted';
   }, []);
 

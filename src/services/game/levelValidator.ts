@@ -1,4 +1,4 @@
-import { DICTIONARY, getDictionaryWord, MIN_DICTIONARY_WORD_LENGTH } from '../../data/words/dictionary';
+import { DICTIONARY_WORDS, getDictionaryWord, MIN_DICTIONARY_WORD_LENGTH } from '../../data/words/dictionary';
 import type { Level } from '../../types';
 import { isPersianLetter, isWordBuildable, lettersOf } from '../../utils/persian';
 
@@ -166,7 +166,7 @@ export function validateLevels(levels: readonly Level[]): LevelValidationResult 
     warnings.push(...result.warnings);
   }
 
-  const dictionaryWords = new Set(DICTIONARY.map(entry => entry.word));
+  const dictionaryWords = new Set(DICTIONARY_WORDS.map(entry => entry.word));
   const usedWords = new Set(levels.flatMap(level => [...level.targetWords, ...level.bonusWords]));
   const unknown = [...usedWords].filter(word => !dictionaryWords.has(word));
   if (unknown.length > 0) {

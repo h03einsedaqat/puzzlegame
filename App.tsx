@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
+import { StartupProbeOverlay } from './src/components/diagnostics/StartupProbeOverlay'; // ⚠️ پروب موقت
+import { warmUpDictionary } from './src/data/words/dictionary';
+import { mark } from './src/services/diagnostics/startupProbe'; // ⚠️ پروب موقت
 import { RootNavigator } from './src/navigation/RootNavigator';
 import {
   AchievementsProvider,
@@ -22,7 +25,13 @@ import {
  * (چون صدا و لرزش را کنترل می‌کند)، بعد پروفایل و پیشرفت، سپس چالش روزانه،
  * دستاوردها (وابسته به استریک) و در پایان وضعیت بازی.
  */
+mark('app:module');
+
 function App() {
+  useEffect(() => {
+    // واژه‌نامه را هنگام شروع برنامه می‌سازیم تا اولین ثبت واژه چنین کاری نکند.
+    warmUpDictionary();
+  }, []);
   return (
     <GestureHandlerRootView style={styles.root}>
       <ErrorBoundary>
@@ -35,6 +44,8 @@ function App() {
                   <DailyProvider>
                     <AchievementsProvider>
                       <GameProvider>
+                        {/* ⚠️ پروب موقت */}
+                        <StartupProbeOverlay />
                         <RootNavigator />
                       </GameProvider>
                     </AchievementsProvider>
