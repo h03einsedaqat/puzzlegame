@@ -22,7 +22,15 @@ import { GameHeader } from '../components/game/GameHeader';
 import { HintGuide } from '../components/game/HintGuide';
 import { LetterWheel } from '../components/game/LetterWheel';
 import { TouchProbeOverlay } from '../components/game/TouchProbeOverlay';
-import { recordSelectionCommit, startTouchProbe, stopTouchProbe, timeOp } from '../services/diagnostics/touchProbe';
+import {
+  markRenderEnd,
+  recordOp,
+  recordPassiveAfterRender,
+  recordSelectionCommit,
+  startTouchProbe,
+  stopTouchProbe,
+  timeOp,
+} from '../services/diagnostics/touchProbe';
 import { WordSlots } from '../components/game/WordSlots';
 import type { GameFeedback } from '../context';
 import type { FoundWord, HintType, Level, WordRejectionReason } from '../types';
@@ -111,6 +119,7 @@ function useFeedbackTiles(feedback: GameFeedback | null): readonly LetterTileDat
  * هیچ‌وقت چرخ را جابه‌جا نمی‌کند.
  */
 export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
+  const probeRenderStart = Date.now();
   const { levelId, mode } = route.params;
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -196,6 +205,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
 
   // ثبت زمان commit انتخاب در React (برای پروب تشخیصی).
   useEffect(() => {
+    recordPassiveAfterRender();
     recordSelectionCommit();
   }, [session?.selection]);
 
@@ -249,7 +259,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
       return;
     }
     const timer = setTimeout(() => {
-      submit();
+      timeOp('auto-submit', () => submit());
     }, GAME_CONFIG.gameplay.autoSubmitPauseMs);
     return () => clearTimeout(timer);
   }, [autoSubmitReady, isDraggingLetters, session?.status, submit]);
@@ -477,6 +487,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     </View>
   ) : null;
 
+  recordOp('render-body', Date.now() - probeRenderStart);
+  markRenderEnd();
   return (
     <ScreenContainer edges={['top', 'bottom']}>
       <GameHeader

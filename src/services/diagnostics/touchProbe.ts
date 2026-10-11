@@ -104,6 +104,22 @@ const SLOW_OP_MS = 50;
  * اجرای یک عملیات همگام و ثبت مدت آن.
  * اگر یک عملیات JS خودش وقفه بسازد، اینجا با نام آن دیده می‌شود.
  */
+export function recordOp(name: string, elapsed: number): void {
+  if (!TOUCH_PROBE_ENABLED) {
+    return;
+  }
+  let stat = state.ops.find(op => op.name === name);
+  if (!stat) {
+    stat = { name, count: 0, maxMs: 0, slowCount: 0 };
+    state.ops.push(stat);
+  }
+  stat.count += 1;
+  stat.maxMs = Math.max(stat.maxMs, elapsed);
+  if (elapsed >= SLOW_OP_MS) {
+    stat.slowCount += 1;
+  }
+}
+
 export function timeOp<T>(name: string, fn: () => T): T {
   if (!TOUCH_PROBE_ENABLED) {
     return fn();
@@ -112,18 +128,24 @@ export function timeOp<T>(name: string, fn: () => T): T {
   try {
     return fn();
   } finally {
-    const elapsed = Date.now() - start;
-    let stat = state.ops.find(op => op.name === name);
-    if (!stat) {
-      stat = { name, count: 0, maxMs: 0, slowCount: 0 };
-      state.ops.push(stat);
-    }
-    stat.count += 1;
-    stat.maxMs = Math.max(stat.maxMs, elapsed);
-    if (elapsed >= SLOW_OP_MS) {
-      stat.slowCount += 1;
-    }
+    recordOp(name, Date.now() - start);
   }
+}
+
+let renderEndAt: number | null = null;
+
+/** پایان بدنهٔ رندر GameScreen؛ مبنای اندازه‌گیری فاز commit/effects است. */
+export function markRenderEnd(): void {
+  renderEndAt = Date.now();
+}
+
+/** در useEffect صدا زده می‌شود: فاصلهٔ پایان رندر تا اجرای effect را ثبت می‌کند. */
+export function recordPassiveAfterRender(): void {
+  if (!TOUCH_PROBE_ENABLED || renderEndAt === null) {
+    return;
+  }
+  recordOp('render-to-passive', Date.now() - renderEndAt);
+  renderEndAt = null;
 }
 
 /**

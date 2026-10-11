@@ -31,7 +31,7 @@ export function TouchProbeOverlay() {
     `تأخیر رندر: ${fmt(snap.commitDelayMs)} (بیشینه ${snap.maxCommitDelayMs}ms)`,
     `وقفهٔ JS: ${snap.stallCount} بار | بزرگ‌ترین ${snap.maxStallMs}ms`,
     `اولین وقفه در: ${fmt(snap.firstStallAtMs)} | آخرین در: ${fmt(snap.lastStallAtMs)}`,
-    ...snap.ops.map(
+    ...snap.ops.filter(op => op.name !== 'vibrate').map(
       op => `${op.name}: بیشینه ${op.maxMs}ms | بیش از ۵۰ms: ${op.slowCount}/${op.count}`,
     ),
   ];
