@@ -30,7 +30,7 @@ import type {
 } from '../types';
 import { useProfile } from './ProfileContext';
 import { useServices } from './ServicesContext';
-import { markEvent } from '../services/diagnostics/touchProbe';
+import { mark, markEvent } from '../services/diagnostics/touchProbe';
 
 export interface GameFeedback {
   id: number;
@@ -219,6 +219,7 @@ export interface GameContextValue {
 const GameContext = createContext<GameContextValue | null>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
+  mark('render:GameProvider');
   const [state, dispatch] = useReducer(gameReducer, initialState);
   /**
    * آینه‌ی همگام وضعیت بازی.

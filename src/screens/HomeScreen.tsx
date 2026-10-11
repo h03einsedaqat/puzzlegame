@@ -20,9 +20,11 @@ import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { StatChip } from '../components/ui/StatChip';
 import { HeartCounter } from '../components/game/HeartCounter';
 import type { RootScreenProps } from '../navigation/types';
+import { mark } from '../services/diagnostics/touchProbe';
 
 /** Home 2.0: «ادامه بازی» قهرمان صفحه است؛ موتور و مسیرهای موجود حفظ شده‌اند. */
 export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
+  mark('render:HomeScreen');
   const { profile, hearts, startAttempt, refreshHearts } = useProfile();
   const { progress, continueLevelId, enterLevel } = useProgress();
   const { startGame } = useGame();
