@@ -142,7 +142,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     activeHint,
     hintOptions,
     dismissHint,
-    autoSubmitReady,
+    canAutoSubmit,
   } = useGame();
 
   const [leaveVisible, setLeaveVisible] = useState(false);
@@ -226,14 +226,16 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
    * می‌شود تا وسط کشیدن واژه ثبت نشود.
    */
   useEffect(() => {
-    if (!autoSubmitReady || session?.status !== 'playing' || isDraggingLetters) {
+    if (session?.status !== 'playing' || isDraggingLetters) {
       return;
     }
     const timer = setTimeout(() => {
-      submit();
+      if (canAutoSubmit()) {
+        submit();
+      }
     }, GAME_CONFIG.gameplay.autoSubmitPauseMs);
     return () => clearTimeout(timer);
-  }, [autoSubmitReady, isDraggingLetters, session?.status, submit]);
+  }, [canAutoSubmit, isDraggingLetters, session?.selection, session?.status, submit]);
 
   const handleHint = useCallback(() => {
     setHintSheetMessage(null);

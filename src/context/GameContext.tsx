@@ -192,8 +192,8 @@ export interface GameContextValue {
   /** همه راهنماهای قابل خرید با قیمت و وضعیت affordability */
   hintOptions: HintOption[];
   dismissHint: () => void;
-  /** واژه کنونی خودش یک واژه پذیرفتنی است؛ صفحه بازی می‌تواند خودکار ثبتش کند */
-  autoSubmitReady: boolean;
+  /** واژه کنونی خودش یک واژه پذیرفتنی است؛ صفحه بازی هنگام اجرای تایمر خودکار ثبتش می‌کند */
+  canAutoSubmit: () => boolean;
   startGame: (level: Level) => void;
   abandonGame: () => void;
   leaveGame: () => void;
@@ -619,7 +619,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const sessionScore = session?.score ?? 0;
   const sessionCoinsEarned = session?.coinsEarned ?? 0;
   const sessionMaxCombo = session?.maxCombo ?? 0;
-  const sessionStatus = session?.status ?? null;
 
   const progress = useMemo<LevelProgress>(
     () =>
@@ -664,19 +663,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hints, level]);
 
-  const autoSubmitReady = useMemo(() => {
-    if (!session || !level || sessionStatus !== 'playing' || session.selection.length < 2) {
+  /**
+   * آیا واژه کنونی یک واژه پذیرفتنی است؟ عمداً در رندر محاسبه نمی‌شود؛ هر تغییر
+   * انتخاب فقط یک تایمر کوتاه می‌سازد و این بررسی فقط هنگام اجرای تایمر و
+   * روی آخرین وضعیت (stateRef) انجام می‌شود.
+   */
+  const canAutoSubmit = useCallback((): boolean => {
+    const current = stateRef.current;
+    const currentSession = current.session;
+    const currentLevel = current.level;
+    if (!currentSession || !currentLevel || currentSession.status !== 'playing' || currentSession.selection.length < 2) {
       return false;
     }
-    const candidate = buildWord(session);
-    if (candidate.length < Math.max(level.minWordLength, GAME_CONFIG.gameplay.minWordLength)) {
+    const candidate = buildWord(currentSession);
+    if (candidate.length < Math.max(currentLevel.minWordLength, GAME_CONFIG.gameplay.minWordLength)) {
       return false;
     }
-    const alreadyFound = foundWordNames(foundWords);
-    const validation = validateWord({ raw: candidate, level, foundWords: alreadyFound });
+    const alreadyFound = foundWordNames(currentSession.foundWords);
+    const validation = validateWord({ raw: candidate, level: currentLevel, foundWords: alreadyFound });
     return validation.status === 'accepted';
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [foundWords, level, session?.selection, session?.tiles, sessionStatus]);
+  }, []);
 
   const nextHintCost = hintCost('reveal_letter');
   const canUseHint = coins >= nextHintCost && session?.status === 'playing';
@@ -712,7 +718,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       activeHint,
       hintOptions,
       dismissHint,
-      autoSubmitReady,
+      canAutoSubmit,
       startGame,
       abandonGame: abandonGameSession,
       leaveGame,
@@ -739,7 +745,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       activeHint,
       hintOptions,
       dismissHint,
-      autoSubmitReady,
+      canAutoSubmit,
       startGame,
       abandonGameSession,
       leaveGame,
