@@ -21,6 +21,8 @@ import { GameFeedbackToast } from '../components/game/GameFeedbackToast';
 import { GameHeader } from '../components/game/GameHeader';
 import { HintGuide } from '../components/game/HintGuide';
 import { LetterWheel } from '../components/game/LetterWheel';
+import { TouchProbeOverlay } from '../components/game/TouchProbeOverlay';
+import { recordSelectionCommit, startTouchProbe, stopTouchProbe, timeOp } from '../services/diagnostics/touchProbe';
 import { WordSlots } from '../components/game/WordSlots';
 import type { GameFeedback } from '../context';
 import type { FoundWord, HintType, Level, WordRejectionReason } from '../types';
@@ -186,6 +188,17 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     startGame(activeLevel);
   }, [activeLevel, getRecord, sessionPlayable, startGame]);
 
+  // پروب تشخیصی لمس (موقت): شروع با ورود به صفحه، پایان با خروج.
+  useEffect(() => {
+    startTouchProbe();
+    return () => stopTouchProbe();
+  }, []);
+
+  // ثبت زمان commit انتخاب در React (برای پروب تشخیصی).
+  useEffect(() => {
+    recordSelectionCommit();
+  }, [session?.selection]);
+
   useEffect(() => {
     if (!activeLevel || !feedback) {
       return;
@@ -214,8 +227,14 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
    * حد مرحله هم بی‌سروصدا رها می‌شود (نه پیام خطا، نه بازنشانی کمبو).
    */
   const handleRelease = useCallback((releasedSelection: readonly string[]) => {
-    submit({ fromRelease: true, selection: releasedSelection });
+    timeOp('submit-release', () => submit({ fromRelease: true, selection: releasedSelection }));
   }, [submit]);
+
+  /** پروب تشخیصی: زمان هر تغییر انتخاب در JS */
+  const handleSelectionChange = useCallback(
+    (next: readonly string[]) => timeOp('replaceSelection', () => replaceSelection(next)),
+    [replaceSelection],
+  );
 
   /**
    * ثبت خودکار (خواسته بازیکن: «بررسی خودکار انجام شود»).
@@ -517,8 +536,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           <LetterWheel
             tiles={tiles}
             selectedIds={selection}
-            onTilePress={selectTile}
-            onSelectionChange={replaceSelection}
+            onTilePress={tileId => timeOp('selectTile', () => selectTile(tileId))}
+            onSelectionChange={handleSelectionChange}
             onRelease={handleRelease}
             disabled={session?.status !== 'playing'}
             diameter={layout.wheelDiameter}
@@ -584,6 +603,8 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
           />
         </ScrollView>
       </View>
+
+      <TouchProbeOverlay />
 
       <HintSheet
         visible={hintSheetVisible}
