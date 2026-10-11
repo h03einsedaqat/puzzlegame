@@ -1,7 +1,6 @@
 import { isPersianWord, lettersOf, normalizePersianWord } from '../../utils/persian';
 import { WORDS } from './words';
 import type { WordCategory, WordEntry, WordTier } from './types';
-import { measure, mark } from '../../services/diagnostics/startupProbe';
 
 const ZWNJ = '\u200c';
 
@@ -82,7 +81,7 @@ function buildDictionary(entries: readonly WordEntry[]): {
   };
 }
 
-const dictionary = measure('dict:build', () => buildDictionary(WORDS));
+const dictionary = buildDictionary(WORDS);
 
 /** همه واژه‌ها به ترتیب ورود (بدون مرتب‌سازی؛ برای بررسی‌های بدون ترتیب) */
 export const DICTIONARY_WORDS: readonly DictionaryWord[] = dictionary.words;
@@ -103,7 +102,6 @@ export function getSortedDictionary(): readonly DictionaryWord[] {
 
 /** پیش‌گرم‌سازی: ماژول دیکشنری را هنگام شروع برنامه (نه اولین ثبت واژه) ارزیابی می‌کند. */
 export function warmUpDictionary(): number {
-  mark('dict:warm', DICTIONARY_SIZE);
   return DICTIONARY_SIZE;
 }
 

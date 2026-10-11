@@ -26,7 +26,6 @@ import type { GameFeedback } from '../context';
 import type { FoundWord, HintType, Level, WordRejectionReason } from '../types';
 import type { LetterTileData } from '../types';
 import type { ResultParams, ResultWordSummary, RootScreenProps } from '../navigation/types';
-import { mark } from '../services/diagnostics/startupProbe'; // ⚠️ پروب موقت
 
 /**
  * آرایه‌های خالی ثابت.
@@ -231,7 +230,6 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
       return;
     }
     const timer = setTimeout(() => {
-      mark('autosubmit:fire');
       if (canAutoSubmit()) {
         submit();
       }
