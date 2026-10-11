@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
+import { warmUpDictionary } from './src/data/words/dictionary';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import {
   AchievementsProvider,
@@ -23,6 +24,10 @@ import {
  * دستاوردها (وابسته به استریک) و در پایان وضعیت بازی.
  */
 function App() {
+  useEffect(() => {
+    // واژه‌نامه را هنگام شروع برنامه می‌سازیم تا اولین ثبت واژه چنین کاری نکند.
+    warmUpDictionary();
+  }, []);
   return (
     <GestureHandlerRootView style={styles.root}>
       <ErrorBoundary>

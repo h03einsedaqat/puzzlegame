@@ -17,6 +17,12 @@ export interface DictionaryWord {
 /**
  * نمایه جست‌وجوی واژه‌ها. واژه‌های تکراری در دسته‌های مختلف یک‌بار شمرده
  * می‌شوند و سطح پرکاربردتر (basic) اولویت دارد.
+ *
+ * ⚠️ این ساخت هیچ مرتب‌سازی محلی‌وابسته (localeCompare) ندارد. در Hermes روی
+ * اندروید، `localeCompare` گاهی چند ثانیه طول می‌کشد؛ اگر در مسیر بازی اجرا
+ * شود، اولین ثبت واژه پس از شروع برنامه را کند می‌کند. ترتیب مرتب‌شده فقط
+ * برای ابزار ساخت مرحله لازم است و تنها بار اول و خارج از بازی ساخته می‌شود
+ * (ببینید getSortedDictionary).
  */
 function buildDictionary(entries: readonly WordEntry[]): {
   words: DictionaryWord[];
@@ -57,7 +63,7 @@ function buildDictionary(entries: readonly WordEntry[]): {
     console.warn(`واژه‌های نامعتبر در واژه‌نامه نادیده گرفته شدند: ${rejected.join('، ')}`);
   }
 
-  const words = [...collected.values()].sort((a, b) => a.word.localeCompare(b.word, 'fa'));
+  const words = [...collected.values()];
   const byLength = new Map<number, DictionaryWord[]>();
   for (const entry of words) {
     const bucket = byLength.get(entry.word.length);
@@ -77,8 +83,27 @@ function buildDictionary(entries: readonly WordEntry[]): {
 
 const dictionary = buildDictionary(WORDS);
 
-export const DICTIONARY: readonly DictionaryWord[] = dictionary.words;
-export const DICTIONARY_SIZE = DICTIONARY.length;
+/** همه واژه‌ها به ترتیب ورود (بدون مرتب‌سازی؛ برای بررسی‌های بدون ترتیب) */
+export const DICTIONARY_WORDS: readonly DictionaryWord[] = dictionary.words;
+export const DICTIONARY_SIZE = DICTIONARY_WORDS.length;
+
+let sortedDictionary: DictionaryWord[] | null = null;
+
+/**
+ * واژه‌ها به ترتیب فارسی مرتب‌شده. فقط ابزارهای ساخت مرحله (Node) به آن نیاز
+ * دارند و در مسیر بازی فراخوانی نمی‌شود؛ نتیجه کش می‌شود.
+ */
+export function getSortedDictionary(): readonly DictionaryWord[] {
+  if (!sortedDictionary) {
+    sortedDictionary = [...dictionary.words].sort((a, b) => a.word.localeCompare(b.word, 'fa'));
+  }
+  return sortedDictionary;
+}
+
+/** پیش‌گرم‌سازی: ماژول دیکشنری را هنگام شروع برنامه (نه اولین ثبت واژه) ارزیابی می‌کند. */
+export function warmUpDictionary(): number {
+  return DICTIONARY_SIZE;
+}
 
 export function isDictionaryWord(word: string): boolean {
   return dictionary.lookup.has(normalizePersianWord(word));
@@ -93,7 +118,7 @@ export function wordsOfLength(length: number): readonly DictionaryWord[] {
 }
 
 export function getCategoryWords(category: WordCategory): readonly DictionaryWord[] {
-  return DICTIONARY.filter(entry => entry.category === category);
+  return getSortedDictionary().filter(entry => entry.category === category);
 }
 
 export type { WordCategory, WordTier };

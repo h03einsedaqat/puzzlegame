@@ -20,7 +20,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { DICTIONARY, type DictionaryWord } from '../src/data/words/dictionary';
+import { getSortedDictionary, type DictionaryWord } from '../src/data/words/dictionary';
+
+/** واژه‌نامه مرتب‌شده (ترتیب ثابت، تا خروجی ساخت مرحله تغییر نکند) */
+const DICTIONARY = getSortedDictionary();
 import { DAILY_TITLES, LEVEL_TITLES } from '../src/data/levels/levelTitles';
 import { GAME_CONFIG } from '../src/constants/gameConfig';
 import {
