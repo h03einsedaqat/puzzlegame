@@ -449,6 +449,53 @@ const expansion18 = group(
   'basic',
   `تیاتر کنسرت کافه`,
 );
+// واژه‌های تازه برای گسترش ترکیب‌های حروف و کاهش بازگشت به پاسخ‌های یکسان.
+const natureFresh = group(
+  'طبیعت',
+  'basic',
+  ` آذرخش تندر غبار آبگیر گلزار چمنزار شقایق لاله بنفشه نرگس شبدر بلوط توسکا پهنه خوشه `,
+);
+const homeFresh = group(
+  'خانه',
+  'extended',
+  ` قالب صافی گهواره پیشخوان آستانه سرپناه `,
+);
+const generalFresh = group(
+  'عمومی',
+  'basic',
+  ` تندیس پیکره ژرفا پیوند همدلی گشایش رهایی سپهر سلامت نگارش اندوه `,
+);
+const verbFresh = group(
+  'افعال',
+  'basic',
+  ` پرس خوانده خواهند `,
+);
+const adjectiveFresh = group(
+  'صفت‌ها',
+  'basic',
+  ` پرتر `,
+);
+const clothingFresh = group(
+  'پوشاک',
+  'basic',
+  ` بارانی `,
+);
+const timeFresh = group(
+  'زمان',
+  'basic',
+  ` مرداد `,
+);
+const natureFreshWords = group(
+  'طبیعت',
+  'basic',
+  ` خروش `,
+);
+const travelFresh = group(
+  'سفر',
+  'extended',
+  ` بارانداز رهگذر رهسپار جهانگرد `,
+);
+
 export const WORDS: readonly WordEntry[] = [
   ...expansion01,
   ...expansion02,
@@ -544,6 +591,15 @@ export const WORDS: readonly WordEntry[] = [
   ...timeExtended,
   ...generalBasic,
   ...generalExtended,
+  ...natureFresh,
+  ...homeFresh,
+  ...generalFresh,
+  ...verbFresh,
+  ...adjectiveFresh,
+  ...clothingFresh,
+  ...timeFresh,
+  ...natureFreshWords,
+  ...travelFresh,
 ];
 
 export type { WordCategory, WordEntry, WordTier };

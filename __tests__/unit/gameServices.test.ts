@@ -22,6 +22,19 @@ const MINUTE = 60 * 1000;
 const REFILL_MS = GAME_CONFIG.economy.heartRefillMinutes * MINUTE;
 const START = 1_700_000_000_000;
 
+describe('تنوع مرحله‌ها', () => {
+  it('واژه کلیدی دیگر با کشیدن حلقوی از بالای چرخ پیدا نمی‌شود', () => {
+    for (const level of LEVELS) {
+      expect(level.letters.join('')).not.toBe(level.metadata.anchorWord);
+    }
+  });
+
+  it('هیچ واژه اصلی بین مرحله‌ها تکرار نمی‌شود', () => {
+    const targetWords = LEVELS.flatMap(level => level.targetWords);
+    expect(new Set(targetWords).size).toBe(targetWords.length);
+  });
+});
+
 describe('قلب‌ها', () => {
   it('وقتی قلب‌ها پر است، تایمر بعدی ندارد', () => {
     const state = computeHeartState({ hearts: 5, maxHearts: 5, lastRefillAt: null, now: START });

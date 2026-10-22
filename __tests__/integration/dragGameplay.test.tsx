@@ -52,7 +52,10 @@ it('شروع بازی → کشیدن واژهٔ واقعی → ثبت خودکا
     ]);
   };
 
-  swipe('ابر');
+  const firstTarget = LEVEL_ONE.targetWords[0]!;
+  const secondTarget = LEVEL_ONE.targetWords[1]!;
+
+  swipe(firstTarget);
   await waitFor(() =>
     expect(
       screen.getAllByLabelText(
@@ -67,7 +70,7 @@ it('شروع بازی → کشیدن واژهٔ واقعی → ثبت خودکا
     screen.getByLabelText(strings.accessibility.submitButton).props.accessibilityState?.disabled,
   ).toBe(true);
 
-  swipe('اره');
+  swipe(secondTarget);
   await waitFor(() =>
     expect(
       screen.getAllByLabelText(

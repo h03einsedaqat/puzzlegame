@@ -89,6 +89,22 @@ function letterSignature(letters: readonly string[]): string {
   return [...letters].sort().join('');
 }
 
+/** چینش چرخ را از ترتیب واژه کلیدی مستقل می‌کند؛ seed ثابت، خروجی را بازتولیدپذیر نگه می‌دارد. */
+function shuffleLetters(letters: readonly string[], seed: number): string[] {
+  const shuffled = [...letters];
+  const random = createRandom(seed);
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex]!, shuffled[index]!];
+  }
+
+  // حتی اگر shuffle اتفاقاً ترتیب قبلی را ساخت، از تکرار مسیر مستقیمِ واژه کلیدی جلوگیری کن.
+  if (shuffled.join('') === letters.join('') && shuffled.length > 1) {
+    shuffled.push(shuffled.shift()!);
+  }
+  return shuffled;
+}
+
 function solutionsFor(letters: readonly string[]): string[] {
   return DICTIONARY.filter(
     entry => entry.word.length >= MIN_WORD_LENGTH && isWordBuildable(entry.word, letters),
@@ -228,23 +244,73 @@ function sortSolutions(solutions: readonly string[]): string[] {
   return [...solutions].sort((a, b) => b.length - a.length || a.localeCompare(b, 'fa'));
 }
 
-function buildLevel(candidate: LevelCandidate, id: number, title: string, isTutorial: boolean): Level {
+function buildLevel(
+  candidate: LevelCandidate,
+  id: number,
+  title: string,
+  isTutorial: boolean,
+  reservedAnchors: ReadonlySet<string>,
+  usedLevelWords: Set<string>,
+  usedTargetWords: Set<string>,
+): Level {
   const ordered = sortSolutions(candidate.solutions);
-  const targets = [candidate.anchor.word, ...ordered.filter(word => word !== candidate.anchor.word)]
-    .slice(0, candidate.targetCount)
-    .filter((word, index, all) => all.indexOf(word) === index);
+  const freshTargets = ordered.filter(
+    word => word !== candidate.anchor.word && !reservedAnchors.has(word) && !usedLevelWords.has(word),
+  );
+  const reusableBonusWords = ordered.filter(
+    word =>
+      word !== candidate.anchor.word &&
+      !reservedAnchors.has(word) &&
+      usedLevelWords.has(word) &&
+      !usedTargetWords.has(word),
+  );
+  const reusableTargets = ordered.filter(
+    word => word !== candidate.anchor.word && !reservedAnchors.has(word) && usedTargetWords.has(word),
+  );
+  // اولویت: واژه جدید، سپس واژه‌ای که قبلاً فقط امتیازی بوده؛ تکرارِ واژه اصلی آخرین گزینه است.
+  const targets = [candidate.anchor.word, ...freshTargets, ...reusableBonusWords, ...reusableTargets]
+    .slice(0, candidate.targetCount);
+  if (targets.length < candidate.targetCount) {
+    const otherAnchors = ordered.filter(
+      word => word !== candidate.anchor.word && reservedAnchors.has(word) && !targets.includes(word),
+    );
+    targets.push(...otherAnchors.slice(0, candidate.targetCount - targets.length));
+  }
+  if (targets.length < candidate.targetCount) {
+    throw new Error(`برای مرحله ${id} واژه اصلی کافی پیدا نشد.`);
+  }
 
   const finalTargets = isTutorial
     ? [...targets].sort((a, b) => a.length - b.length || a.localeCompare(b, 'fa'))
     : targets;
+  finalTargets.forEach(word => {
+    usedLevelWords.add(word);
+    usedTargetWords.add(word);
+  });
 
-  const bonus = ordered.filter(word => !finalTargets.includes(word));
+  // هر سطح، تا جای ممکن واژه‌های امتیازیِ تازه می‌گیرد؛ واژه‌های مراحل قبل
+  // فقط در مجموعه‌های خیلی محدود و برای حفظ حداقل یک پاسخ امتیازی تکرار می‌شوند.
+  const freshBonus = ordered.filter(
+    word => !finalTargets.includes(word) && !reservedAnchors.has(word) && !usedLevelWords.has(word),
+  );
+  const fallbackBonus = ordered.filter(word => !finalTargets.includes(word));
+  const bonus = [...freshBonus];
+  const minimumBonusCount = Math.max(1, 5 - finalTargets.length);
+  for (const word of fallbackBonus) {
+    if (bonus.length >= minimumBonusCount) {
+      break;
+    }
+    if (!bonus.includes(word)) {
+      bonus.push(word);
+    }
+  }
+  bonus.forEach(word => usedLevelWords.add(word));
 
   return {
     id,
     title,
     difficulty: candidate.difficulty,
-    letters: candidate.letters,
+    letters: shuffleLetters(candidate.letters, SEED + id * 7919),
     targetWords: finalTargets,
     bonusWords: bonus,
     minWordLength: MIN_WORD_LENGTH,
@@ -260,6 +326,94 @@ function buildLevel(candidate: LevelCandidate, id: number, title: string, isTuto
   };
 }
 
+/** با یک تطبیق دوبخشی، واژه‌های اصلی را بین مرحله‌ها یکتا می‌کنیم. */
+function assignUniqueLevelTargets(levels: readonly Level[]): Level[] {
+  interface TargetSlot {
+    levelIndex: number;
+    choices: string[];
+  }
+
+  const anchors = new Set(levels.map(level => level.metadata.anchorWord));
+  const slots: TargetSlot[] = [];
+  levels.forEach((level, levelIndex) => {
+    const currentWords = level.targetWords.filter(word => word !== level.metadata.anchorWord);
+    const alternatives = solutionsFor(level.letters).filter(
+      word => word !== level.metadata.anchorWord && !anchors.has(word),
+    );
+    const choices = [...currentWords, ...alternatives.filter(word => !currentWords.includes(word))];
+    for (let index = 0; index < level.targetWords.length - 1; index += 1) {
+      slots.push({ levelIndex, choices });
+    }
+  });
+
+  // مرحله‌های محدودتر اول تخصیص می‌گیرند تا پاسخ‌های یکتا برایشان محفوظ بماند.
+  slots.sort((a, b) => a.choices.length - b.choices.length || a.levelIndex - b.levelIndex);
+  const wordToSlot = new Map<string, TargetSlot>();
+  const assign = (slot: TargetSlot, visited: Set<string>): boolean => {
+    for (const word of slot.choices) {
+      if (visited.has(word)) continue;
+      visited.add(word);
+      const previous = wordToSlot.get(word);
+      if (!previous || assign(previous, visited)) {
+        wordToSlot.set(word, slot);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (const slot of slots) {
+    if (!assign(slot, new Set())) {
+      throw new Error('برای یکتا کردن واژه‌های اصلیِ مرحله‌ها جواب کافی وجود ندارد.');
+    }
+  }
+
+  const assignedByLevel = new Map<number, string[]>();
+  for (const [word, slot] of wordToSlot) {
+    const assigned = assignedByLevel.get(slot.levelIndex) ?? [];
+    assigned.push(word);
+    assignedByLevel.set(slot.levelIndex, assigned);
+  }
+  const allTargets = new Set([...anchors, ...wordToSlot.keys()]);
+
+  return levels.map((level, levelIndex) => {
+    const assigned = assignedByLevel.get(levelIndex) ?? [];
+    const priorOrder = new Map(level.targetWords.map((word, index) => [word, index]));
+    assigned.sort((a, b) =>
+      (priorOrder.get(a) ?? Number.MAX_SAFE_INTEGER) - (priorOrder.get(b) ?? Number.MAX_SAFE_INTEGER) ||
+      a.localeCompare(b, 'fa'),
+    );
+    const targetWords = [level.metadata.anchorWord, ...assigned];
+    const bonusWords = level.bonusWords.filter(word => !allTargets.has(word));
+    const minimumBonusCount = Math.max(1, 5 - targetWords.length);
+    const availableWords = solutionsFor(level.letters);
+    for (const word of availableWords) {
+      if (bonusWords.length >= minimumBonusCount) break;
+      if (!allTargets.has(word) && !bonusWords.includes(word)) {
+        bonusWords.push(word);
+      }
+    }
+    // در مرحله‌های بسیار محدود، پاسخ امتیازی می‌تواند با واژه اصلیِ مرحله دیگری مشترک باشد؛
+    // واژه‌های اصلی خودشان همچنان یکتا می‌مانند.
+    for (const word of availableWords) {
+      if (bonusWords.length >= minimumBonusCount) break;
+      if (!targetWords.includes(word) && !bonusWords.includes(word)) {
+        bonusWords.push(word);
+      }
+    }
+    if (bonusWords.length < minimumBonusCount) {
+      throw new Error(`مرحله ${level.id} پس از یکتا کردن جواب‌ها واژه امتیازی کافی ندارد.`);
+    }
+
+    return {
+      ...level,
+      targetWords,
+      bonusWords,
+      scoreReward: GAME_CONFIG.levelRewardByDifficulty[level.difficulty].score + bonusWords.length * 5,
+    };
+  });
+}
+
 function buildDailyPuzzle(set: LetterSet, id: number, title: string): Level {
   const ordered = sortSolutions(set.solutions);
   // چهار واژه اصلی و بقیه امتیازی: چالش روزانه هم مثل مرحله‌های اصلی مفهوم
@@ -272,7 +426,7 @@ function buildDailyPuzzle(set: LetterSet, id: number, title: string): Level {
     id,
     title,
     difficulty: set.difficulty,
-    letters: set.letters,
+    letters: shuffleLetters(set.letters, SEED + id * 7919),
     targetWords: targets,
     bonusWords: ordered.filter(word => !targets.includes(word)),
     minWordLength: MIN_WORD_LENGTH,
@@ -402,17 +556,27 @@ function pickLevelCandidates(): {
   chosen.sort((a, b) => a.score - b.score);
 
   const levels: Level[] = [];
+  const reservedAnchors = new Set([
+    ...(tutorial ? [tutorial.anchor.word] : []),
+    ...chosen.map(candidate => candidate.anchor.word),
+  ]);
+  const usedLevelWords = new Set<string>();
+  const usedTargetWords = new Set<string>();
   if (tutorial) {
     levels.push(
       buildLevel(
         {
           ...tutorial,
           difficulty: 'easy',
-          targetCount: Math.max(1, tutorial.solutions.length - 1),
+          // آموزش فقط سه واژه اصلی می‌گیرد تا هم کوتاه بماند و هم جواب اضافه داشته باشد.
+          targetCount: Math.min(3, Math.max(1, tutorial.solutions.length - 1)),
         },
         1,
         LEVEL_TITLES[0] ?? 'شروعی تازه',
         true,
+        reservedAnchors,
+        usedLevelWords,
+        usedTargetWords,
       ),
     );
   }
@@ -423,9 +587,15 @@ function pickLevelCandidates(): {
         levels.length + 1,
         LEVEL_TITLES[levels.length % LEVEL_TITLES.length] ?? `مرحله ${levels.length + 1}`,
         false,
+        reservedAnchors,
+        usedLevelWords,
+        usedTargetWords,
       ),
     );
   }
+
+  const levelsWithUniqueTargets = assignUniqueLevelTargets(levels);
+  levels.splice(0, levels.length, ...levelsWithUniqueTargets);
 
   const mismatches = levels.filter((level, index) => {
     const candidate = index === 0 && tutorial ? tutorial : chosen[index - (tutorial ? 1 : 0)];
