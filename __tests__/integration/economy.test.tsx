@@ -12,6 +12,7 @@ import {
   launchApp,
   resetDeviceStorage,
   returnHomeFromResult,
+  submitWord,
   waitForHomeWithProgress,
   waitForStored,
 } from './helpers';
@@ -54,6 +55,29 @@ it('قلب با شروع مرحله خرج می‌شود و با تکمیل مر
     count: afterAttempt.hearts,
     max: afterAttempt.maxHearts,
   }))).toBeTruthy();
+
+  // تکمیل موفق مرحله دوم باید همان قلب را برگرداند؛ در غیر این صورت پس از چند مرحله
+  // بازیکن مجبور می‌شود برای پرکردن قلب‌ها سکه خرج کند.
+  let found = 0;
+  for (const word of LEVEL_TWO.targetWords) {
+    found += 1;
+    await submitWord(word, found, LEVEL_TWO.targetWords.length, found === LEVEL_TWO.targetWords.length);
+  }
+  const afterSuccessfulLevel = await waitForStored<UserProfile>(
+    STORAGE_KEYS.profile,
+    value => value.totalGamesCompleted > 1,
+  );
+  expect(afterSuccessfulLevel.hearts).toBe(ECONOMY.initialHearts);
+  expect(afterSuccessfulLevel.lastHeartRefillAt).toBeNull();
+
+  // ورود به مرحله بعد و خروج نیمه‌کاره همچنان قلب را خرج‌شده نگه می‌دارد.
+  await returnHomeFromResult();
+  await fireEvent.press(screen.getByText(strings.home.playButton));
+  await waitFor(() => expect(screen.getByText(format(strings.common.levelNumber, { number: 3 }))).toBeTruthy());
+  await waitForStored<UserProfile>(
+    STORAGE_KEYS.profile,
+    value => value.hearts < ECONOMY.initialHearts,
+  );
 
   // خروج با دکمه بازگشت: پیشرفت نیمه‌کاره رها می‌شود و به خانه برمی‌گردیم
   await fireEvent.press(screen.getAllByLabelText(strings.common.back)[0]!);

@@ -75,6 +75,11 @@ function main(): void {
     'واژه کلیدی میان مرحله‌ها تکرار شده است',
     new Set(LEVELS.map(level => level.metadata.anchorWord)).size === LEVELS.length,
   );
+  const mainWords = LEVELS.flatMap(level => level.targetWords);
+  check(
+    'واژه‌های اصلی میان مرحله‌ها تکراری هستند',
+    new Set(mainWords).size === mainWords.length,
+  );
   check('مجموعه مرحله‌ها معتبر نیست', validateLevels(LEVELS).valid);
 
   console.log('— بررسی پازل‌های روزانه —');

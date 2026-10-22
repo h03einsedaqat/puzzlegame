@@ -113,7 +113,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { puzzle, completeChallenge } = useDaily();
-  const { profile, hearts, recordLevelCompletion } = useProfile();
+  const { profile, hearts, recordLevelCompletion, refundAttempt } = useProfile();
   const { completeLevel, getRecord } = useProgress();
   const { sync: syncAchievements } = useAchievements();
 
@@ -295,6 +295,10 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     setLeaveVisible(false);
     setHintSheetVisible(false);
 
+    // تلاش موفق نباید در نهایت به خرج سکه برای پرکردن قلب‌ها منجر شود.
+    // قلبِ شروع مرحله پس از تکمیل برمی‌گردد؛ تلاش‌های ناموفق همچنان هزینه دارند.
+    refundAttempt(activeLevel.id);
+
     const rewards = calculateLevelRewards(session, activeLevel);
     const dailyBonusCoins = isDaily ? GAME_CONFIG.daily.challengeCoinReward : 0;
     const dailyBonusScore = isDaily ? GAME_CONFIG.daily.challengeScoreReward : 0;
@@ -364,6 +368,7 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     mode,
     navigation,
     recordLevelCompletion,
+    refundAttempt,
     session,
     syncAchievements,
   ]);
