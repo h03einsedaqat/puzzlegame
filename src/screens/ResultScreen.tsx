@@ -6,7 +6,9 @@ import { ACHIEVEMENTS, type AchievementDefinition } from '../data/achievements/a
 import { LEVELS, getLevelById } from '../data/levels/levels';
 import { useAchievements, useGame, useProfile, useProgress } from '../context';
 import { MAX_STARS, shareText } from '../services';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import type { AppColors } from '../theme/colors';
 import { format, toPersianDigits } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
 import { Button } from '../components/ui/Button';
@@ -28,6 +30,8 @@ const AUTO_ADVANCE_DELAY_MS = 5000;
  * بازخورد پیشرفتش را ببیند.
  */
 export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const params = route.params;
   const { hearts, startAttempt } = useProfile();
   const { enterLevel } = useProgress();
@@ -46,8 +50,14 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
   }, [sync]);
 
   const isDaily = params.mode === 'daily';
-  const targetWords = useMemo(() => params.words.filter(entry => entry.kind === 'target'), [params.words]);
-  const bonusWords = useMemo(() => params.words.filter(entry => entry.kind === 'bonus'), [params.words]);
+  const targetWords = useMemo(
+    () => params.words.filter(entry => entry.kind === 'target'),
+    [params.words],
+  );
+  const bonusWords = useMemo(
+    () => params.words.filter(entry => entry.kind === 'bonus'),
+    [params.words],
+  );
 
   const goToLevel = useCallback(
     (levelId: number) => {
@@ -69,11 +79,14 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
   const autoTransitionStarted = useRef(false);
   const [autoAdvancePending, setAutoAdvancePending] = useState(false);
 
-  const goToLevelImmediately = useCallback((levelId: number) => {
-    autoTransitionStarted.current = true;
-    setAutoAdvancePending(false);
-    goToLevel(levelId);
-  }, [goToLevel]);
+  const goToLevelImmediately = useCallback(
+    (levelId: number) => {
+      autoTransitionStarted.current = true;
+      setAutoAdvancePending(false);
+      goToLevel(levelId);
+    },
+    [goToLevel],
+  );
 
   const returnHomeImmediately = useCallback(() => {
     autoTransitionStarted.current = true;
@@ -119,7 +132,12 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
       <ConfettiCelebration active={completionRatio >= 1} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <View style={[styles.heroBadge, completionRatio >= 1 ? styles.heroBadgeComplete : styles.heroBadgePartial]}>
+          <View
+            style={[
+              styles.heroBadge,
+              completionRatio >= 1 ? styles.heroBadgeComplete : styles.heroBadgePartial,
+            ]}
+          >
             <Icon
               name={completionRatio >= 1 ? 'success' : 'refresh'}
               size={34}
@@ -136,8 +154,12 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
           ) : null}
           <AppText variant="body" color={colors.textSecondary} align="center">
             {isFinalLevel
-              ? format(strings.result.gameFinishedSubtitle, { total: toPersianDigits(LEVELS.length) })
-              : `${format(strings.common.levelNumber, { number: params.levelId })} · ${params.levelTitle}`}
+              ? format(strings.result.gameFinishedSubtitle, {
+                  total: toPersianDigits(LEVELS.length),
+                })
+              : `${format(strings.common.levelNumber, { number: params.levelId })} · ${
+                  params.levelTitle
+                }`}
           </AppText>
           {params.unlockedLevelId ? (
             <View style={styles.unlockPill}>
@@ -151,7 +173,9 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
             <AppText variant="caption" color={colors.accentDark} align="center">
               {isFinalLevel
                 ? strings.result.autoHomeHint
-                : format(strings.result.autoNextLevelHint, { number: toPersianDigits(params.nextLevelId ?? 0) })}
+                : format(strings.result.autoNextLevelHint, {
+                    number: toPersianDigits(params.nextLevelId ?? 0),
+                  })}
             </AppText>
           ) : null}
         </View>
@@ -222,7 +246,10 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
         <Card variant="surface" padding="lg">
           <AppText variant="subheading">{strings.result.wordsTitle}</AppText>
           <AppText variant="caption" color={colors.textMuted}>
-            {format(strings.result.wordsFoundOf, { found: params.targetFound, total: params.targetTotal })}
+            {format(strings.result.wordsFoundOf, {
+              found: params.targetFound,
+              total: params.targetTotal,
+            })}
           </AppText>
           <View style={styles.wordChips}>
             {targetWords.map(entry => (
@@ -291,7 +318,11 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
         </View>
 
         <View style={styles.heartsRow}>
-          <HeartCounter hearts={hearts.hearts} maxHearts={hearts.maxHearts} nextRefillAt={hearts.nextRefillAt} />
+          <HeartCounter
+            hearts={hearts.hearts}
+            maxHearts={hearts.maxHearts}
+            nextRefillAt={hearts.nextRefillAt}
+          />
           <AppText variant="caption" color={colors.textMuted}>
             {format(strings.achievements.subtitle, {
               unlocked: achievements.filter(item => item.unlocked).length,
@@ -306,95 +337,97 @@ export function ResultScreen({ navigation, route }: RootScreenProps<'Result'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
-  },
-  hero: {
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingTop: spacing.lg,
-  },
-  heroBadge: {
-    width: 84,
-    height: 84,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  heroBadgeComplete: {
-    backgroundColor: colors.successLight,
-  },
-  heroBadgePartial: {
-    backgroundColor: colors.accentLight,
-  },
-  unlockPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.successLight,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  dailyBonus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  achievementRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  achievementTexts: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  wordChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  wordChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  bonusChip: {
-    backgroundColor: colors.accentLight,
-  },
-  bonusTitle: {
-    marginTop: spacing.md,
-  },
-  actions: {
-    gap: spacing.sm,
-  },
-  heartsRow: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    content: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xxl,
+      gap: spacing.lg,
+    },
+    hero: {
+      alignItems: 'center',
+      gap: spacing.xs,
+      paddingTop: spacing.lg,
+    },
+    heroBadge: {
+      width: 84,
+      height: 84,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+    },
+    heroBadgeComplete: {
+      backgroundColor: colors.successLight,
+    },
+    heroBadgePartial: {
+      backgroundColor: colors.accentLight,
+    },
+    unlockPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      backgroundColor: colors.successLight,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+    },
+    starsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    statCard: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 2,
+    },
+    dailyBonus: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    achievementRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    achievementTexts: {
+      flex: 1,
+      alignItems: 'flex-start',
+    },
+    wordChips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginTop: spacing.sm,
+    },
+    wordChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+    },
+    bonusChip: {
+      backgroundColor: colors.accentLight,
+    },
+    bonusTitle: {
+      marginTop: spacing.md,
+    },
+    actions: {
+      gap: spacing.sm,
+    },
+    heartsRow: {
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+  });
+}

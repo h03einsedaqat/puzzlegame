@@ -4,7 +4,8 @@ import Svg, { G, Path } from 'react-native-svg';
 
 import { strings } from '../../constants';
 import { useCountdown } from '../../hooks/useCountdown';
-import { colors, spacing } from '../../theme';
+import { spacing } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import { format, toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { HEART_PATH_D } from '../ui/Icon';
@@ -37,6 +38,7 @@ const HeartSegments = React.memo(function HeartSegments({
   hearts: number;
   maxHearts: number;
 }) {
+  const { colors } = useTheme();
   const segmentCount = Math.max(1, Math.min(maxHearts, 5));
   // همهٔ اندازه‌ها داخل SVG در دستگاه ۲۴ واحدی آیکون‌اند؛ خودِ viewBox آن‌ها را
   // به اندازهٔ ۱۵ پیکسلی روی صفحه مقیاس می‌کند، پس در `G` مقیاس دوباره لازم نیست.
@@ -76,6 +78,7 @@ const RefillCountdown = React.memo(function RefillCountdown({
 }: {
   nextRefillAt: number;
 }) {
+  const { colors } = useTheme();
   const countdown = useCountdown(nextRefillAt);
   return (
     <AppText variant="caption" color={colors.textMuted} numberOfLines={1}>
@@ -91,6 +94,9 @@ export const HeartCounter = React.memo(function HeartCounter({
   nextRefillAt,
   showCountdown = true,
 }: HeartCounterProps) {
+  const { colors } = useTheme();
+  const styles = createStyles();
+
   const label = format(strings.accessibility.heartCounter, { count: hearts, max: maxHearts });
 
   return (
@@ -109,24 +115,28 @@ export const HeartCounter = React.memo(function HeartCounter({
           {toPersianDigits(`${hearts}/${maxHearts}`)}
         </AppText>
       </View>
-      {showCountdown && nextRefillAt !== null ? <RefillCountdown nextRefillAt={nextRefillAt} /> : null}
+      {showCountdown && nextRefillAt !== null ? (
+        <RefillCountdown nextRefillAt={nextRefillAt} />
+      ) : null}
     </View>
   );
 });
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'flex-start',
-    gap: 1,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  segments: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 1,
-  },
-});
+function createStyles() {
+  return StyleSheet.create({
+    container: {
+      alignItems: 'flex-start',
+      gap: 1,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    segments: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 1,
+    },
+  });
+}

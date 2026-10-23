@@ -9,7 +9,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { colors, radius, spacing, typography } from '../../theme';
+import { radius, spacing, typography } from '../../theme';
+import type { AppColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { AppText } from '../ui/AppText';
 import { PressableScale } from '../ui/PressableScale';
 import type { LetterTileData } from '../../types';
@@ -46,6 +48,9 @@ export const WordSlots = React.memo(function WordSlots({
   feedbackId,
   readOnly = false,
 }: WordSlotsProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const reducedMotion = useReducedMotion();
   const slotCount = Math.max(
     MIN_SLOTS,
@@ -115,6 +120,9 @@ const WordSlot = React.memo(function WordSlot({
   reducedMotion: boolean;
   onRemove: (tileId: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const filled = tile !== undefined;
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -134,13 +142,14 @@ const WordSlot = React.memo(function WordSlot({
     feedbackState === 'confirmed'
       ? styles.confirmed
       : feedbackState === 'error'
-        ? styles.error
-        : filled
-          ? styles.filled
-          : null;
-  const textColor = feedbackState === 'error'
-    ? colors.danger
-    : feedbackState === 'confirmed'
+      ? styles.error
+      : filled
+      ? styles.filled
+      : null;
+  const textColor =
+    feedbackState === 'error'
+      ? colors.danger
+      : feedbackState === 'confirmed'
       ? colors.success
       : colors.slotText;
   const slotRadius = Math.round(size * 0.3);
@@ -209,40 +218,42 @@ const WordSlot = React.memo(function WordSlot({
   );
 });
 
-const styles = StyleSheet.create({
-  container: {
-    minHeight: 52,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  slot: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.slotBorder,
-    backgroundColor: colors.slotBackground,
-  },
-  filled: {
-    backgroundColor: colors.slotFilledBackground,
-    borderColor: colors.primaryDark,
-  },
-  confirmed: {
-    backgroundColor: colors.successLight,
-    borderColor: colors.success,
-    shadowColor: colors.success,
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  error: {
-    backgroundColor: colors.errorLight,
-    borderColor: colors.danger,
-  },
-  activeMark: {
-    width: 5,
-    height: 5,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    container: {
+      minHeight: 52,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    slot: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.slotBorder,
+      backgroundColor: colors.slotBackground,
+    },
+    filled: {
+      backgroundColor: colors.slotFilledBackground,
+      borderColor: colors.primaryDark,
+    },
+    confirmed: {
+      backgroundColor: colors.successLight,
+      borderColor: colors.success,
+      shadowColor: colors.success,
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    error: {
+      backgroundColor: colors.errorLight,
+      borderColor: colors.danger,
+    },
+    activeMark: {
+      width: 5,
+      height: 5,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+    },
+  });
+}

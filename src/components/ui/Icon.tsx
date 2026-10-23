@@ -1,7 +1,7 @@
 import React from 'react';
 import Svg, { Circle, Ellipse, G, Line, Path, Polygon, Rect } from 'react-native-svg';
 
-import { colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import type { IconName } from '../../types';
 
 export interface IconProps {
@@ -46,29 +46,50 @@ export const HEART_PATH_D =
 interface IconShapeProps {
   color: string;
   strokeWidth: number;
+  surfaceColor: string;
 }
 
 /**
  * هر آیکون با شکل‌های ساده هندسی رسم می‌شود تا در اندازه‌های کوچک هم خوانا
  * بماند. ضخامت خطوط نسبی است و با اندازه آیکون مقیاس می‌شود.
  */
-function renderIcon(name: IconName, { color, strokeWidth }: IconShapeProps): React.ReactNode {
-  const stroke = { stroke: color, strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+function renderIcon(
+  name: IconName,
+  { color, strokeWidth, surfaceColor }: IconShapeProps,
+): React.ReactNode {
+  const stroke = {
+    stroke: color,
+    strokeWidth,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
   const filled = { fill: color };
   const strokeOnly = { fill: 'none', ...stroke };
 
   switch (name) {
     case 'heart':
     case 'heartFilled':
-      return (
-        <Path d={HEART_PATH_D} {...(name === 'heartFilled' ? filled : strokeOnly)} />
-      );
+      return <Path d={HEART_PATH_D} {...(name === 'heartFilled' ? filled : strokeOnly)} />;
     case 'coin':
       return (
         <G>
           <Circle cx={12} cy={12} r={9} {...filled} />
-          <Circle cx={12} cy={12} r={5.4} fill="none" stroke={colors.surface} strokeWidth={strokeWidth} />
-          <Line x1={12} y1={8.6} x2={12} y2={15.4} stroke={colors.surface} strokeWidth={strokeWidth} />
+          <Circle
+            cx={12}
+            cy={12}
+            r={5.4}
+            fill="none"
+            stroke={surfaceColor}
+            strokeWidth={strokeWidth}
+          />
+          <Line
+            x1={12}
+            y1={8.6}
+            x2={12}
+            y2={15.4}
+            stroke={surfaceColor}
+            strokeWidth={strokeWidth}
+          />
         </G>
       );
     case 'star':
@@ -78,7 +99,10 @@ function renderIcon(name: IconName, { color, strokeWidth }: IconShapeProps): Rea
     case 'bulb':
       return (
         <G>
-          <Path d="M12 3.2a5.6 5.6 0 0 0-3.2 10.2v1.7h6.4v-1.7A5.6 5.6 0 0 0 12 3.2z" {...strokeOnly} />
+          <Path
+            d="M12 3.2a5.6 5.6 0 0 0-3.2 10.2v1.7h6.4v-1.7A5.6 5.6 0 0 0 12 3.2z"
+            {...strokeOnly}
+          />
           <Line x1={9.6} y1={18.4} x2={14.4} y2={18.4} {...stroke} />
           <Line x1={10.6} y1={21} x2={13.4} y2={21} {...stroke} />
         </G>
@@ -140,7 +164,14 @@ function renderIcon(name: IconName, { color, strokeWidth }: IconShapeProps): Rea
       return (
         <G>
           <Circle cx={12} cy={12} r={9} {...filled} />
-          <Path d="M7.8 12.4l2.9 2.8 5.5-6" fill="none" stroke={colors.surface} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+          <Path
+            d="M7.8 12.4l2.9 2.8 5.5-6"
+            fill="none"
+            stroke={surfaceColor}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </G>
       );
     case 'play':
@@ -193,7 +224,10 @@ function renderIcon(name: IconName, { color, strokeWidth }: IconShapeProps): Rea
     case 'shield':
       return (
         <G>
-          <Path d="M12 3l7.5 2.8v5.4c0 4.6-3.1 8.7-7.5 10.4-4.4-1.7-7.5-5.8-7.5-10.4V5.8z" {...strokeOnly} />
+          <Path
+            d="M12 3l7.5 2.8v5.4c0 4.6-3.1 8.7-7.5 10.4-4.4-1.7-7.5-5.8-7.5-10.4V5.8z"
+            {...strokeOnly}
+          />
           <Path d="M8.8 12.2l2.6 2.5 4.2-4.9" {...stroke} />
         </G>
       );
@@ -257,6 +291,34 @@ function renderIcon(name: IconName, { color, strokeWidth }: IconShapeProps): Rea
           <Circle cx={12} cy={12} r={2.6} {...filled} />
         </G>
       );
+    case 'sun':
+      return (
+        <G>
+          <Circle cx={12} cy={12} r={4.1} {...strokeOnly} />
+          <Line x1={12} y1={2.5} x2={12} y2={5} {...stroke} />
+          <Line x1={12} y1={19} x2={12} y2={21.5} {...stroke} />
+          <Line x1={2.5} y1={12} x2={5} y2={12} {...stroke} />
+          <Line x1={19} y1={12} x2={21.5} y2={12} {...stroke} />
+          <Line x1={5.2} y1={5.2} x2={7} y2={7} {...stroke} />
+          <Line x1={17} y1={17} x2={18.8} y2={18.8} {...stroke} />
+          <Line x1={17} y1={7} x2={18.8} y2={5.2} {...stroke} />
+          <Line x1={5.2} y1={18.8} x2={7} y2={17} {...stroke} />
+        </G>
+      );
+    case 'moon':
+      return <Path d="M19.6 15.2A8.2 8.2 0 0 1 8.8 4.4 8.4 8.4 0 1 0 19.6 15.2z" {...strokeOnly} />;
+    case 'coffee':
+      return (
+        <G>
+          <Path d="M5 9h11v6.2a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z" {...strokeOnly} />
+          <Path d="M16 10h1.3a2.8 2.8 0 0 1 0 5.6H16" {...strokeOnly} />
+          <Path
+            d="M7.2 5.7c-1.1-1.2 1.1-1.6 0-2.8M11 5.7c-1.1-1.2 1.1-1.6 0-2.8M14.8 5.7c-1.1-1.2 1.1-1.6 0-2.8"
+            {...strokeOnly}
+          />
+          <Line x1={4} y1={20.5} x2={19.5} y2={20.5} {...stroke} />
+        </G>
+      );
     default:
       return <Circle cx={12} cy={12} r={8.6} {...strokeOnly} />;
   }
@@ -271,16 +333,17 @@ function renderIcon(name: IconName, { color, strokeWidth }: IconShapeProps): Rea
  * رندرهای پرتکرار صفحه (هر تغییر انتخاب حرف، هر تیک شمارش معکوس) اصلاً دوباره
  * ساخته نشوند.
  */
-export const Icon = React.memo(function Icon({
-  name,
-  size = 24,
-  color = colors.textPrimary,
-  strokeWidth,
-}: IconProps) {
+export const Icon = React.memo(function Icon({ name, size = 24, color, strokeWidth }: IconProps) {
+  const { colors } = useTheme();
+  const resolvedColor = color ?? colors.textPrimary;
   const scaledStroke = strokeWidth ?? Math.max(1.4, size / 14);
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      {renderIcon(name, { color, strokeWidth: scaledStroke })}
+      {renderIcon(name, {
+        color: resolvedColor,
+        strokeWidth: scaledStroke,
+        surfaceColor: colors.surface,
+      })}
     </Svg>
   );
 });

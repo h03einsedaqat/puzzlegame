@@ -6,7 +6,9 @@ import { strings } from '../constants';
 import { useAchievements, useDaily, useGame, useProfile, useProgress } from '../context';
 import { LEVELS, getLevelById } from '../data/levels/levels';
 import { useCountdown } from '../hooks/useCountdown';
-import { colors, radius, shadows, spacing } from '../theme';
+import { radius, shadows, spacing } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import type { AppColors } from '../theme/colors';
 import { format, formatNumber, toPersianDigits } from '../utils/format';
 import { formatJalaliDate, weekdayName } from '../utils/jalali';
 import { AppText } from '../components/ui/AppText';
@@ -23,6 +25,8 @@ import type { RootScreenProps } from '../navigation/types';
 
 /** Home 2.0: «ادامه بازی» قهرمان صفحه است؛ موتور و مسیرهای موجود حفظ شده‌اند. */
 export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { profile, hearts, startAttempt, refreshHearts } = useProfile();
   const { progress, continueLevelId, enterLevel } = useProgress();
   const { startGame } = useGame();
@@ -33,7 +37,10 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
   const [claimedCoins, setClaimedCoins] = useState<number | null>(null);
 
   const countdown = useCountdown(hearts.nextRefillAt);
-  const todayLabel = useMemo(() => `${weekdayName(new Date())}، ${formatJalaliDate(new Date())}`, []);
+  const todayLabel = useMemo(
+    () => `${weekdayName(new Date())}، ${formatJalaliDate(new Date())}`,
+    [],
+  );
   const currentLevel = useMemo(() => getLevelById(continueLevelId) ?? LEVELS[0], [continueLevelId]);
   const completedCount = progress.records.length;
   const gameFinished = LEVELS.length > 0 && completedCount >= LEVELS.length;
@@ -103,6 +110,9 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
             <AppText variant="title" color={colors.letterGold} allowFontScaling={false}>
               ک
             </AppText>
+            <View style={styles.brandCoffee}>
+              <Icon name="coffee" size={14} color={colors.brass} />
+            </View>
           </View>
           <View style={styles.brandCopy}>
             <AppText variant="subheading">{strings.app.name}</AppText>
@@ -137,7 +147,9 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
             </View>
             <View style={styles.levelCopy}>
               <AppText variant="title" numberOfLines={1}>
-                {gameFinished ? strings.home.gameFinishedTitle : currentLevel?.title ?? strings.app.name}
+                {gameFinished
+                  ? strings.home.gameFinishedTitle
+                  : currentLevel?.title ?? strings.app.name}
               </AppText>
               <AppText variant="caption" color={colors.textSecondary}>
                 {gameFinished
@@ -152,7 +164,10 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
               پیشرفت مسیر
             </AppText>
             <AppText variant="caption" color={colors.textPrimary}>
-              {format(strings.home.progressOfLevels, { completed: completedCount, total: LEVELS.length })}
+              {format(strings.home.progressOfLevels, {
+                completed: completedCount,
+                total: LEVELS.length,
+              })}
             </AppText>
           </View>
           <ProgressBar
@@ -171,15 +186,17 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
               gameFinished
                 ? strings.home.gameFinishedButton
                 : completedCount > 0 || progress.lastPlayedLevelId !== null
-                  ? strings.home.playButton
-                  : strings.home.playNewButton
+                ? strings.home.playButton
+                : strings.home.playNewButton
             }
             variant="primary"
             icon={gameFinished ? 'grid' : 'play'}
             size="large"
             onPress={() => {
               if (gameFinished) {
-                navigation.navigate('LevelMap', { focusLevelId: LEVELS[LEVELS.length - 1]?.id ?? 1 });
+                navigation.navigate('LevelMap', {
+                  focusLevelId: LEVELS[LEVELS.length - 1]?.id ?? 1,
+                });
                 return;
               }
               playLevel(continueLevelId);
@@ -230,7 +247,9 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
             <View style={styles.dailyCopy}>
               <View style={styles.dailyTitleRow}>
                 <AppText variant="subheading">{strings.daily.title}</AppText>
-                {daily.isCompletedToday ? <Icon name="check" size={17} color={colors.success} /> : null}
+                {daily.isCompletedToday ? (
+                  <Icon name="check" size={17} color={colors.success} />
+                ) : null}
               </View>
               <AppText variant="caption" color={colors.textMuted}>
                 {daily.isCompletedToday ? strings.daily.completedBody : strings.daily.subtitle}
@@ -261,7 +280,9 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
           />
           <View style={styles.dailyActions}>
             <Button
-              label={daily.isCompletedToday ? strings.daily.comeBackTomorrow : strings.daily.startButton}
+              label={
+                daily.isCompletedToday ? strings.daily.comeBackTomorrow : strings.daily.startButton
+              }
               variant="secondary"
               icon={daily.isCompletedToday ? 'check' : 'play'}
               size="medium"
@@ -288,7 +309,10 @@ export function HomeScreen({ navigation }: RootScreenProps<'Home'>) {
           <Shortcut
             icon="grid"
             title={strings.home.levelsButton}
-            detail={format(strings.home.progressOfLevels, { completed: completedCount, total: LEVELS.length })}
+            detail={format(strings.home.progressOfLevels, {
+              completed: completedCount,
+              total: LEVELS.length,
+            })}
             onPress={() => navigation.navigate('LevelMap', { focusLevelId: continueLevelId })}
           />
           <Shortcut
@@ -355,204 +379,221 @@ function Shortcut({
       iconPosition="start"
       size="medium"
       fullWidth={false}
-      style={styles.shortcutButton}
+      style={shortcutStyles.shortcutButton}
       accessibilityLabel={`${title}، ${detail}`}
     />
   );
 }
 
-const styles = StyleSheet.create({
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.lg,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 52,
-  },
-  greeting: {
-    alignItems: 'flex-start',
-    gap: 1,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  brandMark: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandCopy: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  streakPill: {
-    minHeight: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: spacing.md,
-  },
-  heroCard: {
-    overflow: 'hidden',
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    ...shadows.card,
-  },
-  heroGlow: {
-    position: 'absolute',
-    width: 210,
-    height: 210,
-    top: -128,
-    right: -85,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    opacity: 0.12,
-  },
-  heroEyebrow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: radius.pill,
-    backgroundColor: colors.brandTeal,
-  },
-  levelIntro: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  levelBadge: {
-    width: 58,
-    height: 58,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryDark,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  levelCopy: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'flex-start',
-  },
-  progressLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  continueButton: {
-    marginTop: spacing.xs,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  statCell: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.sm,
-  },
-  heartCell: {
-    flex: 1.25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.xs,
-    minHeight: 48,
-  },
-  dailyCard: {
-    borderRadius: radius.xl,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  dailyCardReady: {
-    borderColor: colors.accentDark,
-    backgroundColor: '#17182A',
-  },
-  dailyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  dailyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceElevated,
-  },
-  dailyCopy: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  dailyTitleRow: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  dailyMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  dailyMetric: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  dailyActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  dailyButton: {
-    flex: 1,
-  },
-  shortcuts: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    content: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.xxxl,
+      gap: spacing.lg,
+    },
+    topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: 52,
+    },
+    greeting: {
+      alignItems: 'flex-start',
+      gap: 1,
+    },
+    brandRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    brandMark: {
+      position: 'relative',
+      width: 48,
+      height: 48,
+      borderRadius: radius.md,
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    brandCoffee: {
+      position: 'absolute',
+      left: -4,
+      bottom: -4,
+      width: 22,
+      height: 22,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.brass,
+    },
+    brandCopy: {
+      flex: 1,
+      alignItems: 'flex-start',
+    },
+    streakPill: {
+      minHeight: 40,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceMuted,
+      paddingHorizontal: spacing.md,
+    },
+    heroCard: {
+      overflow: 'hidden',
+      borderRadius: radius.xl,
+      padding: spacing.lg,
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      ...shadows.card,
+    },
+    heroGlow: {
+      position: 'absolute',
+      width: 210,
+      height: 210,
+      top: -128,
+      right: -85,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      opacity: 0.12,
+    },
+    heroEyebrow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    liveDot: {
+      width: 7,
+      height: 7,
+      borderRadius: radius.pill,
+      backgroundColor: colors.brandTeal,
+    },
+    levelIntro: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    levelBadge: {
+      width: 58,
+      height: 58,
+      borderRadius: radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primaryDark,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    levelCopy: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'flex-start',
+    },
+    progressLabels: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    continueButton: {
+      marginTop: spacing.xs,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    statCell: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: spacing.sm,
+    },
+    heartCell: {
+      flex: 1.25,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surface,
+      paddingHorizontal: spacing.xs,
+      minHeight: 48,
+    },
+    dailyCard: {
+      borderRadius: radius.xl,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.lg,
+      gap: spacing.md,
+    },
+    dailyCardReady: {
+      borderColor: colors.accentDark,
+      backgroundColor: colors.accentLight,
+    },
+    dailyHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    dailyIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceElevated,
+    },
+    dailyCopy: {
+      flex: 1,
+      alignItems: 'flex-start',
+    },
+    dailyTitleRow: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    dailyMeta: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    dailyMetric: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    dailyActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    dailyButton: {
+      flex: 1,
+    },
+    shortcuts: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    version: {
+      paddingTop: spacing.xs,
+    },
+  });
+}
+
+const shortcutStyles = StyleSheet.create({
   shortcutButton: {
     flex: 1,
     minHeight: 50,
     borderWidth: 1,
     borderRadius: radius.md,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
-  },
-  version: {
-    paddingTop: spacing.xs,
   },
 });

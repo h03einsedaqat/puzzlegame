@@ -1,7 +1,9 @@
 import React from 'react';
 import { Text, type StyleProp, type TextProps, type TextStyle } from 'react-native';
 
-import { colors, typography, type TypographyVariant } from '../../theme';
+import { createTypography, type TypographyVariant } from '../../theme/typography';
+import { palettes } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export interface AppTextProps extends TextProps {
   variant?: TypographyVariant;
@@ -24,10 +26,17 @@ export function AppText({
   children,
   ...rest
 }: AppTextProps) {
+  const { colors } = useTheme();
+  const typography = createTypography(colors);
   return (
     <Text
       {...rest}
-      style={[typography[variant], color ? { color } : null, align ? { textAlign: align } : null, style]}
+      style={[
+        typography[variant],
+        color ? { color } : null,
+        align ? { textAlign: align } : null,
+        style,
+      ]}
     >
       {children}
     </Text>
@@ -35,8 +44,8 @@ export function AppText({
 }
 
 export const textColors = {
-  primary: colors.textPrimary,
-  secondary: colors.textSecondary,
-  muted: colors.textMuted,
-  inverse: colors.textInverse,
+  primary: palettes.light.textPrimary,
+  secondary: palettes.light.textSecondary,
+  muted: palettes.light.textMuted,
+  inverse: palettes.light.textInverse,
 } as const;

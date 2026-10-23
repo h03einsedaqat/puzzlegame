@@ -32,4 +32,7 @@ export type IconName =
   | 'clock'
   | 'eye'
   | 'medal'
-  | 'success';
+  | 'success'
+  | 'sun'
+  | 'moon'
+  | 'coffee';

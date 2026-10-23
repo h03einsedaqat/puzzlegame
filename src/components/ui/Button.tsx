@@ -2,7 +2,9 @@ import React, { useCallback } from 'react';
 import { ActivityIndicator, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useServices } from '../../context';
-import { colors, MIN_TOUCH_TARGET, radius, spacing } from '../../theme';
+import { MIN_TOUCH_TARGET, radius, spacing } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import type { AppColors } from '../../theme/colors';
 import { Icon } from './Icon';
 import { AppText } from './AppText';
 import { PressableScale } from './PressableScale';
@@ -32,10 +34,12 @@ export interface ButtonProps {
  * بالای دکمه و متن ضخیم با سایه کوتاه. با فشردن، دکمه کمی پایین می‌رود؛ همین
  * حرکت ساده باعث می‌شود لمس‌کردن دکمه‌ها حسِ بازی بدهد، نه فرم.
  */
-const variantStyles: Record<
+const getVariantStyles = (
+  colors: AppColors,
+): Record<
   ButtonVariant,
   { background: string; edge: string; border: string; text: string; textShadow: string }
-> = {
+> => ({
   primary: {
     background: colors.primary,
     edge: colors.primaryDark,
@@ -71,9 +75,12 @@ const variantStyles: Record<
     text: colors.textSecondary,
     textShadow: 'rgba(0, 0, 0, 0)',
   },
-};
+});
 
-const sizeStyles: Record<ButtonSize, { paddingVertical: number; paddingHorizontal: number; icon: number; edge: number }> = {
+const sizeStyles: Record<
+  ButtonSize,
+  { paddingVertical: number; paddingHorizontal: number; icon: number; edge: number }
+> = {
   large: { paddingVertical: spacing.lg, paddingHorizontal: spacing.xl, icon: 24, edge: 6 },
   medium: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg, icon: 20, edge: 5 },
   small: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, icon: 18, edge: 4 },
@@ -93,6 +100,8 @@ export function Button({
   accessibilityLabel,
 }: ButtonProps) {
   const { sound, vibration } = useServices();
+  const { colors } = useTheme();
+  const variantStyles = getVariantStyles(colors);
   const palette = variantStyles[variant];
   const metrics = sizeStyles[size];
   const isInactive = disabled || loading;
@@ -136,7 +145,13 @@ export function Button({
         ]}
       >
         {isFlat || isInactive ? null : (
-          <View pointerEvents="none" style={[styles.gloss, { borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]} />
+          <View
+            pointerEvents="none"
+            style={[
+              styles.gloss,
+              { borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+            ]}
+          />
         )}
         {loading ? (
           <ActivityIndicator color={palette.text} size="small" />
@@ -146,7 +161,16 @@ export function Button({
             <AppText
               variant="button"
               color={isInactive ? colors.textMuted : palette.text}
-              style={[styles.label, isFlat ? null : { textShadowColor: palette.textShadow, textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 1.5 }]}
+              style={[
+                styles.label,
+                isFlat
+                  ? null
+                  : {
+                      textShadowColor: palette.textShadow,
+                      textShadowOffset: { width: 0, height: 1 },
+                      textShadowRadius: 1.5,
+                    },
+              ]}
               numberOfLines={1}
             >
               {label}

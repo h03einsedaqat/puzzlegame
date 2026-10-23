@@ -32,7 +32,11 @@ export interface GameProgress {
   lastPlayedLevelId: number | null;
 }
 
+export type ThemeMode = 'system' | 'light' | 'dark';
+
 export interface AppSettings {
+  /** تم دستی یا پیروی از ظاهر دستگاه */
+  themeMode: ThemeMode;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
   /** کاهش انیمیشن‌ها برای کاربران حساس به حرکت */

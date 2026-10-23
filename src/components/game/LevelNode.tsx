@@ -3,7 +3,8 @@ import { StyleSheet, View } from 'react-native';
 
 import { DIFFICULTY_LABELS } from '../../types';
 import { MAX_STARS } from '../../services/game/levelRating';
-import { colors, radius, shadows, spacing } from '../../theme';
+import { radius, shadows, spacing } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import { toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { Icon } from '../ui/Icon';
@@ -38,18 +39,22 @@ export const LevelNode = React.memo(function LevelNode({
   stars = 0,
   accessibilityLabel,
 }: LevelNodeProps) {
+  const { colors } = useTheme();
+  const styles = createStyles();
+
   const isLocked = state === 'locked';
 
   const background =
     state === 'completed'
       ? colors.levelCompleted
       : state === 'current'
-        ? colors.levelCurrent
-        : state === 'unlocked'
-          ? colors.levelUnlocked
-          : colors.levelLocked;
+      ? colors.levelCurrent
+      : state === 'unlocked'
+      ? colors.levelUnlocked
+      : colors.levelLocked;
 
-  const textColor = state === 'completed' || state === 'current' ? colors.textInverse : colors.textPrimary;
+  const textColor =
+    state === 'completed' || state === 'current' ? colors.textInverse : colors.textPrimary;
 
   // Locked nodes remain tappable so the map can explain how to unlock them.
   return (
@@ -60,7 +65,15 @@ export const LevelNode = React.memo(function LevelNode({
       accessibilityState={{ disabled: false, selected: state === 'current' }}
       style={styles.pressable}
     >
-      <View style={[styles.node, { backgroundColor: background, borderColor: isLocked ? colors.levelLockedBorder : background }]}>
+      <View
+        style={[
+          styles.node,
+          {
+            backgroundColor: background,
+            borderColor: isLocked ? colors.levelLockedBorder : background,
+          },
+        ]}
+      >
         {isLocked ? (
           <Icon name="lock" size={20} color={colors.textSecondary} />
         ) : state === 'completed' ? (
@@ -73,11 +86,17 @@ export const LevelNode = React.memo(function LevelNode({
       </View>
 
       <View style={styles.meta}>
-        <AppText variant="caption" color={colors.textPrimary} numberOfLines={1} style={styles.title}>
+        <AppText
+          variant="caption"
+          color={colors.textPrimary}
+          numberOfLines={1}
+          style={styles.title}
+        >
           {summary.title}
         </AppText>
         <AppText variant="caption" color={colors.textMuted}>
-          {DIFFICULTY_LABELS[summary.difficulty as Difficulty]} · {toPersianDigits(summary.targetCount)} کلمه
+          {DIFFICULTY_LABELS[summary.difficulty as Difficulty]} ·{' '}
+          {toPersianDigits(summary.targetCount)} کلمه
         </AppText>
         {state === 'completed' ? (
           <View style={styles.starsRow}>
@@ -107,33 +126,35 @@ export const LevelNode = React.memo(function LevelNode({
 
 const NODE_SIZE = 62;
 
-const styles = StyleSheet.create({
-  pressable: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    alignSelf: 'stretch',
-  },
-  node: {
-    width: NODE_SIZE,
-    height: NODE_SIZE,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    ...shadows.soft,
-  },
-  meta: {
-    flex: 1,
-    alignItems: 'flex-start',
-    gap: 1,
-  },
-  title: {
-    lineHeight: 20,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-});
+function createStyles() {
+  return StyleSheet.create({
+    pressable: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      alignSelf: 'stretch',
+    },
+    node: {
+      width: NODE_SIZE,
+      height: NODE_SIZE,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      ...shadows.soft,
+    },
+    meta: {
+      flex: 1,
+      alignItems: 'flex-start',
+      gap: 1,
+    },
+    title: {
+      lineHeight: 20,
+    },
+    starsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+  });
+}

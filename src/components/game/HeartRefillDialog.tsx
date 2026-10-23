@@ -2,7 +2,8 @@ import React, { useCallback, useState } from 'react';
 
 import { GAME_CONFIG, strings } from '../../constants';
 import { useProfile, useServices } from '../../context';
-import { colors } from '../../theme';
+import {} from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import { format, toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -24,6 +25,8 @@ export interface HeartRefillDialogProps {
  * سکه کافی نباشد دکمه غیرفعال می‌شود تا بازیکن سرخورده نشود.
  */
 export function HeartRefillDialog({ visible, onClose, onRefilled, note }: HeartRefillDialogProps) {
+  const { colors } = useTheme();
+
   const { profile, hearts, spendCoins, fillHearts } = useProfile();
   const { sound, vibration } = useServices();
   const [error, setError] = useState<string | null>(null);
@@ -53,8 +56,16 @@ export function HeartRefillDialog({ visible, onClose, onRefilled, note }: HeartR
     <ConfirmDialog
       visible={visible}
       title={strings.hearts.buyTitle}
-      body={alreadyFull ? strings.hearts.heartsFull : format(strings.hearts.buyBody, { cost: toPersianDigits(cost) })}
-      confirmLabel={alreadyFull ? strings.common.gotIt : format(strings.hearts.buyButton, { cost: toPersianDigits(cost) })}
+      body={
+        alreadyFull
+          ? strings.hearts.heartsFull
+          : format(strings.hearts.buyBody, { cost: toPersianDigits(cost) })
+      }
+      confirmLabel={
+        alreadyFull
+          ? strings.common.gotIt
+          : format(strings.hearts.buyButton, { cost: toPersianDigits(cost) })
+      }
       cancelLabel={strings.common.later}
       confirmDisabled={!alreadyFull && !canAfford}
       onConfirm={handleRefill}

@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { strings } from '../../constants';
-import { colors, radius, shadows, spacing } from '../../theme';
+import { radius, shadows, spacing } from '../../theme';
+import type { AppColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { format, toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { Button } from '../ui/Button';
@@ -56,6 +58,9 @@ export function HintSheet({
   onClose,
   lastMessage,
 }: HintSheetProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const sorted = useMemo(() => [...options].sort((a, b) => a.cost - b.cost), [options]);
   const canAffordAny = sorted.some(option => option.affordable);
 
@@ -113,7 +118,11 @@ export function HintSheet({
           </View>
         </View>
 
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        >
           {sorted.map(option => {
             const disabled = !option.affordable || !option.available;
             return (
@@ -147,13 +156,19 @@ export function HintSheet({
                     </AppText>
                   </View>
                   <Button
-                    label={option.affordable ? strings.game.hintUseButton : strings.game.hintNoCoinsButton}
+                    label={
+                      option.affordable
+                        ? strings.game.hintUseButton
+                        : strings.game.hintNoCoinsButton
+                    }
                     variant={option.affordable && option.available ? 'sunny' : 'secondary'}
                     size="small"
                     fullWidth={false}
                     disabled={disabled}
                     onPress={() => handleSelect(option.type, option.affordable, option.available)}
-                    accessibilityLabel={format(strings.game.hintUseLabel, { title: HINT_TITLES[option.type] })}
+                    accessibilityLabel={format(strings.game.hintUseLabel, {
+                      title: HINT_TITLES[option.type],
+                    })}
                     style={styles.useButton}
                   />
                 </View>
@@ -171,131 +186,138 @@ export function HintSheet({
           )}
         </ScrollView>
 
-        <Button label={strings.common.close} variant="ghost" onPress={onClose} accessibilityLabel={strings.common.close} />
+        <Button
+          label={strings.common.close}
+          variant="ghost"
+          onPress={onClose}
+          accessibilityLabel={strings.common.close}
+        />
       </Animated.View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'flex-end',
-    zIndex: 20,
-  },
-  backdropWrap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: colors.screenOverlay,
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-    paddingTop: spacing.sm,
-    gap: spacing.md,
-    maxHeight: '82%',
-    ...shadows.raised,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 52,
-    height: 5,
-    borderRadius: radius.pill,
-    backgroundColor: colors.borderStrong,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  headerTexts: {
-    flex: 1,
-    gap: 2,
-  },
-  coinPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.accentLight,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-  },
-  list: {
-    alignSelf: 'stretch',
-  },
-  listContent: {
-    gap: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  row: {
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.md,
-    backgroundColor: colors.surfaceMuted,
-  },
-  rowDisabled: {
-    opacity: 0.6,
-  },
-  rowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  iconBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowTexts: {
-    flex: 1,
-    gap: 2,
-  },
-  rowFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  costPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.accentLight,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs,
-  },
-  useButton: {
-    minWidth: 110,
-  },
-  tipBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radius.md,
-    padding: spacing.md,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'flex-end',
+      zIndex: 20,
+    },
+    backdropWrap: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    backdrop: {
+      flex: 1,
+      backgroundColor: colors.screenOverlay,
+    },
+    sheet: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xl,
+      paddingTop: spacing.sm,
+      gap: spacing.md,
+      maxHeight: '82%',
+      ...shadows.raised,
+    },
+    handle: {
+      alignSelf: 'center',
+      width: 52,
+      height: 5,
+      borderRadius: radius.pill,
+      backgroundColor: colors.borderStrong,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+    },
+    headerTexts: {
+      flex: 1,
+      gap: 2,
+    },
+    coinPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      backgroundColor: colors.accentLight,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+    },
+    list: {
+      alignSelf: 'stretch',
+    },
+    listContent: {
+      gap: spacing.md,
+      paddingBottom: spacing.sm,
+    },
+    row: {
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      gap: spacing.md,
+      backgroundColor: colors.surfaceMuted,
+    },
+    rowDisabled: {
+      opacity: 0.6,
+    },
+    rowHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    iconBadge: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.md,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rowTexts: {
+      flex: 1,
+      gap: 2,
+    },
+    rowFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    costPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      backgroundColor: colors.accentLight,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: spacing.xs,
+    },
+    useButton: {
+      minWidth: 110,
+    },
+    tipBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: radius.md,
+      padding: spacing.md,
+    },
+  });
+}

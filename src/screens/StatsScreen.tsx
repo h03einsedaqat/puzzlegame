@@ -5,7 +5,7 @@ import { strings } from '../constants';
 import { useDaily, useProfile, useProgress } from '../context';
 import { LEVELS } from '../data/levels/levels';
 import { averageStars, MAX_STARS } from '../services';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
 import { format, toPersianDigits } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
 import { Card } from '../components/ui/Card';
@@ -14,6 +14,8 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import type { RootScreenProps } from '../navigation/types';
+import { useTheme } from '../context/ThemeContext';
+import type { AppColors } from '../theme/colors';
 
 /**
  * صفحه آمار.
@@ -23,6 +25,8 @@ import type { RootScreenProps } from '../navigation/types';
  * پیشرفت را ببیند: چند کلمه، چند مرحله، چند ستاره و میانگین عملکردش.
  */
 export function StatsScreen({ navigation }: RootScreenProps<'Stats'>) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { profile } = useProfile();
   const { progress } = useProgress();
   const daily = useDaily();
@@ -70,10 +74,22 @@ export function StatsScreen({ navigation }: RootScreenProps<'Stats'>) {
 
         <View style={styles.grid}>
           <StatCard icon="word" label={strings.stats.wordsFound} value={profile.totalWordsFound} />
-          <StatCard icon="sparkle" label={strings.stats.bonusWords} value={profile.bonusWordsFound} />
+          <StatCard
+            icon="sparkle"
+            label={strings.stats.bonusWords}
+            value={profile.bonusWordsFound}
+          />
           <StatCard icon="flame" label={strings.stats.bestCombo} value={profile.bestCombo} />
-          <StatCard icon="play" label={strings.stats.gamesPlayed} value={profile.totalGamesPlayed} />
-          <StatCard icon="check" label={strings.stats.gamesCompleted} value={profile.totalGamesCompleted} />
+          <StatCard
+            icon="play"
+            label={strings.stats.gamesPlayed}
+            value={profile.totalGamesPlayed}
+          />
+          <StatCard
+            icon="check"
+            label={strings.stats.gamesCompleted}
+            value={profile.totalGamesCompleted}
+          />
           <StatCard icon="bulb" label={strings.stats.hintsUsed} value={profile.totalHintsUsed} />
           <StatCard icon="star" label={strings.stats.totalScore} value={profile.score} />
           <StatCard icon="coin" label={strings.stats.coins} value={profile.coins} />
@@ -84,7 +100,9 @@ export function StatsScreen({ navigation }: RootScreenProps<'Stats'>) {
           <View style={styles.starsHeader}>
             <Icon name="star" size={20} color={colors.star} />
             <AppText variant="bodyStrong">
-              {format(strings.accessibility.starEarned, { count: toPersianDigits(Math.round(stars)) })}
+              {format(strings.accessibility.starEarned, {
+                count: toPersianDigits(Math.round(stars)),
+              })}
             </AppText>
           </View>
           <AppText variant="caption" color={colors.textSecondary}>
@@ -128,6 +146,8 @@ interface StatCardProps {
 }
 
 function StatCard({ icon, label, value }: StatCardProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   return (
     <Card
       variant="surface"
@@ -149,47 +169,49 @@ function StatCard({ icon, label, value }: StatCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    justifyContent: 'space-between',
-  },
-  statCard: {
-    width: '31%',
-    alignItems: 'flex-start',
-    gap: spacing.xs,
-  },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  starsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    content: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xxl,
+      gap: spacing.lg,
+    },
+    progressHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      justifyContent: 'space-between',
+    },
+    statCard: {
+      width: '31%',
+      alignItems: 'flex-start',
+      gap: spacing.xs,
+    },
+    statIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: radius.md,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    starsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginBottom: spacing.xs,
+    },
+    starsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginTop: spacing.sm,
+    },
+  });
+}

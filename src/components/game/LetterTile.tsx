@@ -1,7 +1,9 @@
 import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { colors, radius, shadows, typography } from '../../theme';
+import { radius, shadows, typography } from '../../theme';
+import type { AppColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { AppText } from '../ui/AppText';
 
 export interface LetterTileProps {
@@ -33,6 +35,9 @@ export const LetterTile = React.memo(function LetterTile({
   tileId,
   accessibilityLabel,
 }: LetterTileProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const handleAccessibilityAction = useCallback(() => {
     if (!disabled) {
       onPress(tileId);
@@ -42,13 +47,13 @@ export const LetterTile = React.memo(function LetterTile({
   const background = selected
     ? colors.tileSelectedBackground
     : hinted
-      ? colors.tileHintBackground
-      : colors.tileDeep;
+    ? colors.tileHintBackground
+    : colors.tileDeep;
   const border = selected
     ? colors.tileSelectedBorder
     : hinted
-      ? colors.tileHintBorder
-      : colors.tileDeepBorder;
+    ? colors.tileHintBorder
+    : colors.tileDeepBorder;
   const textColor = selected ? colors.tileSelectedText : hinted ? colors.accent : colors.tileText;
   const edge = Math.max(3, Math.round(size * 0.075));
 
@@ -119,42 +124,44 @@ export const LetterTile = React.memo(function LetterTile({
   );
 });
 
-const styles = StyleSheet.create({
-  tile: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderBottomWidth: 4,
-    overflow: 'hidden',
-    ...shadows.tile,
-  },
-  selectedScale: {
-    transform: [{ scale: 1.055 }],
-  },
-  disabled: {
-    opacity: 0.42,
-  },
-  selectedDepth: {
-    shadowColor: colors.brandTeal,
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  topSheen: {
-    position: 'absolute',
-    top: 2,
-    left: 4,
-    right: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.055)',
-  },
-  hintDot: {
-    position: 'absolute',
-    top: 7,
-    right: 7,
-    width: 6,
-    height: 6,
-    borderRadius: radius.pill,
-    backgroundColor: colors.accent,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    tile: {
+      position: 'relative',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderBottomWidth: 4,
+      overflow: 'hidden',
+      ...shadows.tile,
+    },
+    selectedScale: {
+      transform: [{ scale: 1.055 }],
+    },
+    disabled: {
+      opacity: 0.42,
+    },
+    selectedDepth: {
+      shadowColor: colors.brandTeal,
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    topSheen: {
+      position: 'absolute',
+      top: 2,
+      left: 4,
+      right: 4,
+      backgroundColor: 'rgba(255, 255, 255, 0.055)',
+    },
+    hintDot: {
+      position: 'absolute',
+      top: 7,
+      right: 7,
+      width: 6,
+      height: 6,
+      borderRadius: radius.pill,
+      backgroundColor: colors.accent,
+    },
+  });
+}

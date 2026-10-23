@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { APP_INFO } from '../constants/appInfo';
 import { strings } from '../constants';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
 import { AppText } from '../components/ui/AppText';
 import { Card } from '../components/ui/Card';
 import { Icon } from '../components/ui/Icon';
@@ -11,6 +11,8 @@ import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import type { IconName } from '../types';
 import type { RootScreenProps } from '../navigation/types';
+import { useTheme } from '../context/ThemeContext';
+import type { AppColors } from '../theme/colors';
 
 const FEATURES: readonly { icon: IconName; text: string }[] = [
   { icon: 'grid', text: strings.about.feature1 },
@@ -21,6 +23,8 @@ const FEATURES: readonly { icon: IconName; text: string }[] = [
 
 /** درباره بازی: معرفی کوتاه، امکانات، منبع واژه‌ها و راه ارتباط. */
 export function AboutScreen({ navigation }: RootScreenProps<'About'>) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   return (
     <ScreenContainer>
       <ScreenHeader
@@ -80,40 +84,42 @@ export function AboutScreen({ navigation }: RootScreenProps<'About'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  content: {
-    padding: spacing.lg,
-    gap: spacing.md,
-    paddingBottom: spacing.xxl,
-  },
-  card: {
-    gap: spacing.sm,
-  },
-  features: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  featureIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureText: {
-    flex: 1,
-    textAlign: 'left',
-  },
-  contactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    content: {
+      padding: spacing.lg,
+      gap: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    card: {
+      gap: spacing.sm,
+    },
+    features: {
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+    featureRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    featureIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    featureText: {
+      flex: 1,
+      textAlign: 'left',
+    },
+    contactRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+  });
+}

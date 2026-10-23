@@ -11,6 +11,7 @@ type SettingsAction =
   | { type: 'setVibration'; enabled: boolean }
   | { type: 'setReducedMotion'; enabled: boolean }
   | { type: 'setNotifications'; enabled: boolean }
+  | { type: 'setThemeMode'; mode: AppSettings['themeMode'] }
   | { type: 'completeOnboarding' };
 
 function settingsReducer(state: AppSettings, action: SettingsAction): AppSettings {
@@ -25,6 +26,8 @@ function settingsReducer(state: AppSettings, action: SettingsAction): AppSetting
       return { ...state, reducedMotion: action.enabled };
     case 'setNotifications':
       return { ...state, notificationsEnabled: action.enabled };
+    case 'setThemeMode':
+      return { ...state, themeMode: action.mode };
     case 'completeOnboarding':
       return { ...state, onboardingCompleted: true };
     default:
@@ -39,6 +42,7 @@ export interface SettingsContextValue {
   setVibrationEnabled: (enabled: boolean) => void;
   setReducedMotion: (enabled: boolean) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
+  setThemeMode: (mode: AppSettings['themeMode']) => void;
   completeOnboarding: () => void;
 }
 
@@ -90,7 +94,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     [dispatch],
   );
 
-  const completeOnboarding = useCallback(() => dispatch({ type: 'completeOnboarding' }), [dispatch]);
+  const setThemeMode = useCallback(
+    (mode: AppSettings['themeMode']) => dispatch({ type: 'setThemeMode', mode }),
+    [dispatch],
+  );
+
+  const completeOnboarding = useCallback(
+    () => dispatch({ type: 'completeOnboarding' }),
+    [dispatch],
+  );
 
   const value = useMemo<SettingsContextValue>(
     () => ({
@@ -100,6 +112,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setVibrationEnabled,
       setReducedMotion,
       setNotificationsEnabled,
+      setThemeMode,
       completeOnboarding,
     }),
     [
@@ -109,6 +122,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setVibrationEnabled,
       setReducedMotion,
       setNotificationsEnabled,
+      setThemeMode,
       completeOnboarding,
     ],
   );

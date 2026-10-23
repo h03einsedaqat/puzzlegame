@@ -2,7 +2,9 @@ import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useServices } from '../../context';
-import { colors, radius, spacing } from '../../theme';
+import { radius, spacing } from '../../theme';
+import type { AppColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { AppText } from './AppText';
 import { Icon } from './Icon';
 import { PressableScale } from './PressableScale';
@@ -29,6 +31,9 @@ export function ToggleRow({
   disabled = false,
   note,
 }: ToggleRowProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { sound, vibration } = useServices();
 
   const handlePress = useCallback(() => {
@@ -76,63 +81,65 @@ export function ToggleRow({
 
 const THUMB_SIZE = 22;
 
-const styles = StyleSheet.create({
-  pressable: {
-    alignSelf: 'stretch',
-  },
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-  iconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryLight,
-  },
-  texts: {
-    flex: 1,
-    alignItems: 'flex-start',
-    gap: 2,
-  },
-  switchTrack: {
-    width: 46,
-    height: 26,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    justifyContent: 'center',
-    paddingHorizontal: 2,
-  },
-  switchTrackOn: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-  switchThumb: {
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    alignSelf: 'flex-start',
-  },
-  switchThumbOn: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryDark,
-    alignSelf: 'flex-end',
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    pressable: {
+      alignSelf: 'stretch',
+    },
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    disabled: {
+      opacity: 0.6,
+    },
+    iconWrapper: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primaryLight,
+    },
+    texts: {
+      flex: 1,
+      alignItems: 'flex-start',
+      gap: 2,
+    },
+    switchTrack: {
+      width: 46,
+      height: 26,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surfaceMuted,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      justifyContent: 'center',
+      paddingHorizontal: 2,
+    },
+    switchTrackOn: {
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.primary,
+    },
+    switchThumb: {
+      width: THUMB_SIZE,
+      height: THUMB_SIZE,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      alignSelf: 'flex-start',
+    },
+    switchThumbOn: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primaryDark,
+      alignSelf: 'flex-end',
+    },
+  });
+}

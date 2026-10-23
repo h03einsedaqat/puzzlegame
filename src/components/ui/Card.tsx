@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, radius, shadows, spacing } from '../../theme';
+import { radius, shadows, spacing } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 export interface CardProps {
   children: React.ReactNode;
@@ -12,18 +13,26 @@ export interface CardProps {
   accessibilityLabel?: string;
 }
 
-const variants: Record<NonNullable<CardProps['variant']>, ViewStyle> = {
-  surface: { backgroundColor: colors.surface, borderColor: colors.border },
-  muted: { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
-  accent: { backgroundColor: colors.accentLight, borderColor: colors.accent },
-  outlined: { backgroundColor: 'transparent', borderColor: colors.borderStrong },
-};
-
 /** سطح پایه برای گروه‌بندی محتوا با گوشه‌های نرم و سایه سبک. */
-export function Card({ children, style, variant = 'surface', padding = 'lg', accessibilityLabel }: CardProps) {
+export function Card({
+  children,
+  style,
+  variant = 'surface',
+  padding = 'lg',
+  accessibilityLabel,
+}: CardProps) {
+  const { colors } = useTheme();
+  const variantStyle: ViewStyle =
+    variant === 'surface'
+      ? { backgroundColor: colors.surface, borderColor: colors.border }
+      : variant === 'muted'
+      ? { backgroundColor: colors.surfaceMuted, borderColor: colors.border }
+      : variant === 'accent'
+      ? { backgroundColor: colors.accentLight, borderColor: colors.accent }
+      : { backgroundColor: 'transparent', borderColor: colors.borderStrong };
   return (
     <View
-      style={[styles.base, variants[variant], { padding: spacing[padding] }, style]}
+      style={[styles.base, variantStyle, { padding: spacing[padding] }, style]}
       accessible={accessibilityLabel !== undefined}
       accessibilityLabel={accessibilityLabel}
     >
