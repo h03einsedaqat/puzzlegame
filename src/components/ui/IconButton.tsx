@@ -2,7 +2,8 @@ import React, { useCallback } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useServices } from '../../context';
-import { colors, MIN_TOUCH_TARGET, radius } from '../../theme';
+import { MIN_TOUCH_TARGET, radius } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import { Icon } from './Icon';
 import { PressableScale } from './PressableScale';
 import type { IconName } from '../../types';
@@ -25,12 +26,15 @@ export function IconButton({
   onPress,
   accessibilityLabel,
   size = 22,
-  color = colors.textPrimary,
-  background = colors.surface,
+  color,
+  background,
   border = true,
   disabled = false,
   style,
 }: IconButtonProps) {
+  const { colors } = useTheme();
+  const styles = createStyles();
+
   const { sound, vibration } = useServices();
 
   const handlePress = useCallback(() => {
@@ -55,28 +59,34 @@ export function IconButton({
         style={[
           styles.container,
           {
-            backgroundColor: background,
+            backgroundColor: background ?? colors.surface,
             borderColor: border ? colors.border : 'transparent',
             borderWidth: border ? 1 : 0,
           },
           disabled ? styles.disabled : null,
         ]}
       >
-        <Icon name={icon} size={size} color={disabled ? colors.textMuted : color} />
+        <Icon
+          name={icon}
+          size={size}
+          color={disabled ? colors.textMuted : color ?? colors.textPrimary}
+        />
       </View>
     </PressableScale>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    width: MIN_TOUCH_TARGET,
-    height: MIN_TOUCH_TARGET,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-});
+function createStyles() {
+  return StyleSheet.create({
+    container: {
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    disabled: {
+      opacity: 0.5,
+    },
+  });
+}

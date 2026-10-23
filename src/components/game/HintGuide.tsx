@@ -3,7 +3,9 @@ import { Animated, StyleSheet, View } from 'react-native';
 
 import { strings } from '../../constants';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { colors, radius, spacing, STATUS_SLOT_TWO_LINE_MIN } from '../../theme';
+import { radius, spacing, STATUS_SLOT_TWO_LINE_MIN } from '../../theme';
+import type { AppColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { Icon } from '../ui/Icon';
@@ -31,6 +33,9 @@ export interface HintGuideProps {
  * تنظیم «کاهش انیمیشن» خاموش می‌شود، بی‌آنکه کارکرد راهنما عوض شود.
  */
 export function HintGuide({ hint, matchedCount, onDismiss, height }: HintGuideProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const reducedMotion = useReducedMotion();
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -59,7 +64,11 @@ export function HintGuide({ hint, matchedCount, onDismiss, height }: HintGuidePr
 
   return (
     <Animated.View
-      style={[styles.container, height !== undefined ? { height } : null, { transform: [{ scale }] }]}
+      style={[
+        styles.container,
+        height !== undefined ? { height } : null,
+        { transform: [{ scale }] },
+      ]}
     >
       <View style={styles.iconBadge}>
         <Icon name="bulb" size={18} color={colors.accent} />
@@ -67,12 +76,22 @@ export function HintGuide({ hint, matchedCount, onDismiss, height }: HintGuidePr
 
       <View style={styles.texts}>
         {showTitle ? (
-          <AppText variant="caption" color={colors.textSecondary} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+          <AppText
+            variant="caption"
+            color={colors.textSecondary}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}
+          >
             {strings.game.hintGuideTitle}
           </AppText>
         ) : null}
         <View style={styles.patternRow}>
-          <AppText variant="bodyStrong" color={colors.accent} numberOfLines={1} allowFontScaling={false}>
+          <AppText
+            variant="bodyStrong"
+            color={colors.accent}
+            numberOfLines={1}
+            allowFontScaling={false}
+          >
             {hint.pattern}
           </AppText>
           <AppText
@@ -99,38 +118,40 @@ export function HintGuide({ hint, matchedCount, onDismiss, height }: HintGuidePr
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.accentLight,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.sm,
-    alignSelf: 'stretch',
-    overflow: 'hidden',
-  },
-  iconBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  texts: {
-    flex: 1,
-    minWidth: 0,
-  },
-  patternRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  meta: {
-    flex: 1,
-    minWidth: 0,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.accentLight,
+      borderWidth: 2,
+      borderColor: colors.accent,
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.sm,
+      alignSelf: 'stretch',
+      overflow: 'hidden',
+    },
+    iconBadge: {
+      width: 26,
+      height: 26,
+      borderRadius: radius.sm,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    texts: {
+      flex: 1,
+      minWidth: 0,
+    },
+    patternRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    meta: {
+      flex: 1,
+      minWidth: 0,
+    },
+  });
+}

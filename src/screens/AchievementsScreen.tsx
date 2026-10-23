@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, View } from 'react-native';
 
 import { strings } from '../constants';
 import { useAchievements } from '../context';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
 import { format, toPersianDigits } from '../utils/format';
 import { formatJalaliDate } from '../utils/jalali';
 import { AppText } from '../components/ui/AppText';
@@ -14,6 +14,8 @@ import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import type { AchievementView } from '../context';
 import type { RootScreenProps } from '../navigation/types';
+import { useTheme } from '../context/ThemeContext';
+import type { AppColors } from '../theme/colors';
 
 /**
  * دستاوردها.
@@ -22,6 +24,8 @@ import type { RootScreenProps } from '../navigation/types';
  * بازدید از این صفحه می‌ماند و پس از آن پاک می‌شود.
  */
 export function AchievementsScreen({ navigation }: RootScreenProps<'Achievements'>) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { achievements, unlockedCount, totalCount, markSeen } = useAchievements();
 
   useEffect(() => {
@@ -33,7 +37,10 @@ export function AchievementsScreen({ navigation }: RootScreenProps<'Achievements
     <ScreenContainer>
       <ScreenHeader
         title={strings.achievements.title}
-        subtitle={format(strings.achievements.subtitle, { unlocked: unlockedCount, total: totalCount })}
+        subtitle={format(strings.achievements.subtitle, {
+          unlocked: unlockedCount,
+          total: totalCount,
+        })}
         onBack={() => navigation.goBack()}
         backLabel={strings.common.back}
       />
@@ -50,6 +57,8 @@ export function AchievementsScreen({ navigation }: RootScreenProps<'Achievements
 }
 
 function AchievementRow({ item }: { item: AchievementView }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   return (
     <Card variant={item.unlocked ? 'surface' : 'muted'} padding="md" style={styles.row}>
       <View style={[styles.badge, item.unlocked ? styles.badgeUnlocked : styles.badgeLocked]}>
@@ -79,7 +88,10 @@ function AchievementRow({ item }: { item: AchievementView }) {
           ratio={item.ratio}
           height={8}
           color={item.unlocked ? colors.success : colors.primary}
-          accessibilityLabel={format(strings.achievements.progress, { current: item.current, target: item.target })}
+          accessibilityLabel={format(strings.achievements.progress, {
+            current: item.current,
+            target: item.target,
+          })}
         />
         <View style={styles.metaRow}>
           <AppText variant="caption" color={colors.textMuted}>
@@ -100,48 +112,50 @@ function AchievementRow({ item }: { item: AchievementView }) {
   );
 }
 
-const styles = StyleSheet.create({
-  content: {
-    padding: spacing.lg,
-    gap: spacing.sm,
-    paddingBottom: spacing.xxl,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
-  },
-  badge: {
-    width: 46,
-    height: 46,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeUnlocked: {
-    backgroundColor: colors.primary,
-  },
-  badgeLocked: {
-    backgroundColor: colors.surfaceMuted,
-  },
-  texts: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  newBadge: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 1,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    content: {
+      padding: spacing.lg,
+      gap: spacing.sm,
+      paddingBottom: spacing.xxl,
+    },
+    row: {
+      flexDirection: 'row',
+      gap: spacing.md,
+      alignItems: 'flex-start',
+    },
+    badge: {
+      width: 46,
+      height: 46,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badgeUnlocked: {
+      backgroundColor: colors.primary,
+    },
+    badgeLocked: {
+      backgroundColor: colors.surfaceMuted,
+    },
+    texts: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    newBadge: {
+      backgroundColor: colors.accent,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 1,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+  });
+}

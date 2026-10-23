@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
 
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 export interface ConfettiCelebrationProps {
   /** تعداد کاغذرنگی‌ها؛ روی گوشی ضعیف کم‌تر بگذار */
@@ -12,15 +12,6 @@ export interface ConfettiCelebrationProps {
   /** مدت یک دور کامل بارش (میلی‌ثانیه) */
   duration?: number;
 }
-
-const PIECE_COLORS = [
-  colors.confettiYellow,
-  colors.confettiCoral,
-  colors.confettiGreen,
-  colors.confettiPurple,
-  colors.confettiBlue,
-  colors.accent,
-];
 
 interface Piece {
   startX: number;
@@ -41,10 +32,26 @@ interface Piece {
  * لمس دکمه‌ها را می‌گیرند. اگر بازیکن «کاهش انیمیشن» را روشن کرده باشد، هیچ‌چیز
  * رندر نمی‌شود.
  */
-export function ConfettiCelebration({ count = 26, active = true, duration = 2600 }: ConfettiCelebrationProps) {
+export function ConfettiCelebration({
+  count = 26,
+  active = true,
+  duration = 2600,
+}: ConfettiCelebrationProps) {
+  const { colors } = useTheme();
   const reducedMotion = useReducedMotion();
   const { width, height } = Dimensions.get('window');
   const progress = useRef(new Animated.Value(0)).current;
+  const pieceColors = useMemo(
+    () => [
+      colors.confettiYellow,
+      colors.confettiCoral,
+      colors.confettiGreen,
+      colors.confettiPurple,
+      colors.confettiBlue,
+      colors.accent,
+    ],
+    [colors],
+  );
 
   const pieces = useMemo<Piece[]>(() => {
     const safeCount = Math.max(6, Math.min(count, 60));
@@ -60,11 +67,11 @@ export function ConfettiCelebration({ count = 26, active = true, duration = 2600
         rotate: Math.round(random * 720 - 360),
         delay: Math.round(random2 * 700),
         duration: duration * (0.7 + random * 0.6),
-        color: PIECE_COLORS[index % PIECE_COLORS.length] as string,
+        color: pieceColors[index % pieceColors.length] ?? colors.accent,
         round: index % 3 === 0,
       };
     });
-  }, [count, duration, width]);
+  }, [count, duration, pieceColors, width]);
 
   useEffect(() => {
     if (!active || reducedMotion) {

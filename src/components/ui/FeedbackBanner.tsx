@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { colors, radius, spacing, STATUS_SLOT_TWO_LINE_MIN } from '../../theme';
+import { radius, spacing, STATUS_SLOT_TWO_LINE_MIN } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import { AppText } from './AppText';
 import { Icon } from './Icon';
 
@@ -16,12 +17,6 @@ export interface FeedbackBannerProps {
   height?: number;
 }
 
-const tonePalette = {
-  success: { background: colors.successLight, border: colors.success, text: colors.success, icon: 'success' },
-  error: { background: colors.dangerLight, border: colors.danger, text: colors.danger, icon: 'info' },
-  info: { background: colors.primaryLight, border: colors.primary, text: colors.primary, icon: 'info' },
-} as const;
-
 /**
  * نوار بازخورد کوتاه.
  *
@@ -33,6 +28,29 @@ const tonePalette = {
  * به‌جای خط دوم در همان خط پیام می‌آید تا هیچ متنی بریده نشود.
  */
 export function FeedbackBanner({ message, tone, messageId, detail, height }: FeedbackBannerProps) {
+  const { colors } = useTheme();
+  const styles = createStyles();
+
+  const tonePalette = {
+    success: {
+      background: colors.successLight,
+      border: colors.success,
+      text: colors.success,
+      icon: 'success',
+    },
+    error: {
+      background: colors.dangerLight,
+      border: colors.danger,
+      text: colors.danger,
+      icon: 'info',
+    },
+    info: {
+      background: colors.primaryLight,
+      border: colors.primary,
+      text: colors.primary,
+      icon: 'info',
+    },
+  } as const;
   const palette = tonePalette[tone];
   const roomForTwoLines = height === undefined || height >= STATUS_SLOT_TWO_LINE_MIN;
   const firstLine = detail && !roomForTwoLines ? `${message} · ${detail}` : message;
@@ -45,7 +63,12 @@ export function FeedbackBanner({ message, tone, messageId, detail, height }: Fee
       return;
     }
     progress.setValue(0);
-    Animated.spring(progress, { toValue: 1, useNativeDriver: true, friction: 7, tension: 80 }).start();
+    Animated.spring(progress, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 7,
+      tension: 80,
+    }).start();
   }, [message, messageId, progress, reducedMotion]);
 
   return (
@@ -58,17 +81,29 @@ export function FeedbackBanner({ message, tone, messageId, detail, height }: Fee
           backgroundColor: palette.background,
           borderColor: palette.border,
           opacity: progress,
-          transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) }],
+          transform: [
+            { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) },
+          ],
         },
       ]}
     >
       <Icon name={palette.icon} size={18} color={palette.text} />
       <View style={styles.texts}>
-        <AppText variant="bodyStrong" color={palette.text} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+        <AppText
+          variant="bodyStrong"
+          color={palette.text}
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.2}
+        >
           {firstLine}
         </AppText>
         {detail && roomForTwoLines ? (
-          <AppText variant="caption" color={colors.textSecondary} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+          <AppText
+            variant="caption"
+            color={colors.textSecondary}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}
+          >
             {detail}
           </AppText>
         ) : null}
@@ -77,20 +112,22 @@ export function FeedbackBanner({ message, tone, messageId, detail, height }: Fee
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    alignSelf: 'stretch',
-    overflow: 'hidden',
-  },
-  texts: {
-    flex: 1,
-    minWidth: 0,
-  },
-});
+function createStyles() {
+  return StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.lg,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      alignSelf: 'stretch',
+      overflow: 'hidden',
+    },
+    texts: {
+      flex: 1,
+      minWidth: 0,
+    },
+  });
+}

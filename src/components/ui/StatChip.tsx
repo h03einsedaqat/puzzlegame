@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, radius, spacing } from '../../theme';
+import { radius, spacing } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import { Icon } from './Icon';
 import { AppText } from './AppText';
 import { AnimatedCounter } from './AnimatedCounter';
@@ -23,14 +24,22 @@ export function StatChip({
   icon,
   value,
   hint,
-  iconColor = colors.coin,
-  background = colors.surface,
+  iconColor,
+  background,
   label,
   style,
 }: StatChipProps) {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.container, { backgroundColor: background }, style]} accessibilityLabel={label}>
-      <Icon name={icon} size={18} color={iconColor} />
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: background ?? colors.surface, borderColor: colors.border },
+        style,
+      ]}
+      accessibilityLabel={label}
+    >
+      <Icon name={icon} size={18} color={iconColor ?? colors.coin} />
       <View style={styles.values}>
         <AnimatedCounter value={value} textStyle={styles.value} />
         {hint ? (
@@ -52,7 +61,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   values: {
     alignItems: 'flex-start',

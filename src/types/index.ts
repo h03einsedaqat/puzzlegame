@@ -17,6 +17,6 @@ export type {
   WordValidation,
 } from './game';
 export type { IconName } from './icons';
-export type { MembershipTier } from './user';
+export type { MembershipTier, ThemeMode } from './user';
 export type { AchievementState, AppSettings, DailyState, GameProgress, UserProfile } from './user';
 export type { LevelSummary, PersistedSlice, StorageEnvelope, StorageSnapshot } from './storage';

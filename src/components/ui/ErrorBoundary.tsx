@@ -1,8 +1,9 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Appearance, ScrollView, StyleSheet, View } from 'react-native';
 
 import { strings } from '../../constants';
-import { colors, radius, spacing } from '../../theme';
+import { radius, spacing } from '../../theme';
+import { palettes } from '../../theme/colors';
 import { AppText } from './AppText';
 import { Button } from './Button';
 import { Icon } from './Icon';
@@ -48,14 +49,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   override render() {
     const { error, showDetails } = this.state;
+    const colors = palettes[Appearance.getColorScheme() === 'dark' ? 'dark' : 'light'];
     if (!error) {
       return this.props.children;
     }
 
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.badge}>
+          <View style={[styles.badge, { backgroundColor: colors.accentLight }]}>
             <Icon name="info" size={30} color={colors.warning} />
           </View>
           <AppText variant="title" align="center">
@@ -74,7 +76,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           />
 
           {showDetails ? (
-            <View style={styles.details}>
+            <View style={[styles.details, { backgroundColor: colors.surfaceMuted }]}>
               <AppText variant="caption" color={colors.textMuted} selectable>
                 {error.message}
               </AppText>
@@ -89,7 +91,6 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     flexGrow: 1,
@@ -102,13 +103,11 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: radius.pill,
-    backgroundColor: colors.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   details: {
     alignSelf: 'stretch',
-    backgroundColor: colors.surfaceMuted,
     borderRadius: radius.md,
     padding: spacing.md,
   },

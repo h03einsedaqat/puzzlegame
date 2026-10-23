@@ -2,12 +2,13 @@ import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { strings } from '../constants';
-import { colors, spacing } from '../theme';
+import { spacing } from '../theme';
 import { AppText } from '../components/ui/AppText';
 import { Card } from '../components/ui/Card';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import type { RootScreenProps } from '../navigation/types';
+import { useTheme } from '../context/ThemeContext';
 
 const SECTIONS: readonly { title: string; body: string }[] = [
   { title: strings.privacy.section1Title, body: strings.privacy.section1Body },
@@ -24,6 +25,8 @@ const SECTIONS: readonly { title: string; body: string }[] = [
  * رفتار واقعی برنامه (مجوزها، تبلیغات، خرید) بازبینی شوند.
  */
 export function PrivacyScreen({ navigation }: RootScreenProps<'Privacy'>) {
+  const { colors } = useTheme();
+  const styles = createStyles();
   return (
     <ScreenContainer>
       <ScreenHeader
@@ -52,16 +55,18 @@ export function PrivacyScreen({ navigation }: RootScreenProps<'Privacy'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  content: {
-    padding: spacing.lg,
-    gap: spacing.md,
-    paddingBottom: spacing.xxl,
-  },
-  card: {
-    gap: spacing.xs,
-  },
-  footer: {
-    paddingHorizontal: spacing.lg,
-  },
-});
+function createStyles() {
+  return StyleSheet.create({
+    content: {
+      padding: spacing.lg,
+      gap: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    card: {
+      gap: spacing.xs,
+    },
+    footer: {
+      paddingHorizontal: spacing.lg,
+    },
+  });
+}

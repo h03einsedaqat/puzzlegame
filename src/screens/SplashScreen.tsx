@@ -5,9 +5,12 @@ import Svg, { Circle, G, Polygon } from 'react-native-svg';
 
 import { useProfile, useProgress, useServices, useSettings } from '../context';
 import { useReducedMotion } from '../hooks/useReducedMotion';
-import { colors, radius, shadows, spacing } from '../theme';
+import { radius, shadows, spacing } from '../theme';
 import { AppText } from '../components/ui/AppText';
+import { Icon } from '../components/ui/Icon';
 import type { RootScreenProps } from '../navigation/types';
+import { useTheme } from '../context/ThemeContext';
+import type { AppColors } from '../theme/colors';
 
 const MIN_SPLASH_MS = 900;
 
@@ -20,6 +23,8 @@ const MIN_SPLASH_MS = 900;
  * با حرف طلایی «ک» روی آسمانِ شاد و پرتوهای آفتاب.
  */
 export function SplashScreen({ navigation }: RootScreenProps<'Splash'>) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { ready: settingsReady, settings } = useSettings();
   const { ready: profileReady, refreshHearts } = useProfile();
   const { ready: progressReady } = useProgress();
@@ -34,7 +39,12 @@ export function SplashScreen({ navigation }: RootScreenProps<'Splash'>) {
 
   useEffect(() => {
     if (!reducedMotion) {
-      Animated.spring(logoScale, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }).start();
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 5,
+        tension: 60,
+        useNativeDriver: true,
+      }).start();
     }
   }, [logoScale, reducedMotion]);
 
@@ -80,9 +90,17 @@ export function SplashScreen({ navigation }: RootScreenProps<'Splash'>) {
 
       <Animated.View style={[styles.logo, { transform: [{ scale: logoScale }] }]}>
         <View style={styles.logoGloss} pointerEvents="none" />
-        <AppText variant="display" color={colors.letterGold} style={styles.logoLetter} allowFontScaling={false}>
+        <AppText
+          variant="display"
+          color={colors.letterGold}
+          style={styles.logoLetter}
+          allowFontScaling={false}
+        >
           ک
         </AppText>
+        <View style={styles.logoCoffee}>
+          <Icon name="coffee" size={17} color={colors.brass} />
+        </View>
       </Animated.View>
 
       <AppText variant="display" color={colors.primary} style={styles.title}>
@@ -95,48 +113,63 @@ export function SplashScreen({ navigation }: RootScreenProps<'Splash'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-    overflow: 'hidden',
-  },
-  rays: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: -180,
-  },
-  logo: {
-    width: 132,
-    height: 132,
-    borderRadius: 40,
-    backgroundColor: colors.tileDeep,
-    borderWidth: 3,
-    borderColor: colors.tileDeepBorder,
-    borderBottomWidth: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-    overflow: 'hidden',
-    ...shadows.raised,
-  },
-  logoGloss: {
-    position: 'absolute',
-    top: 8,
-    left: 12,
-    right: 12,
-    height: 46,
-    borderRadius: radius.xl,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-  },
-  logoLetter: {
-    fontSize: 76,
-    lineHeight: 96,
-  },
-  title: {
-    marginTop: spacing.xs,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.background,
+      overflow: 'hidden',
+    },
+    rays: {
+      position: 'absolute',
+      top: '50%',
+      marginTop: -180,
+    },
+    logo: {
+      width: 132,
+      height: 132,
+      borderRadius: 40,
+      backgroundColor: colors.tileDeep,
+      borderWidth: 3,
+      borderColor: colors.tileDeepBorder,
+      borderBottomWidth: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
+      overflow: 'hidden',
+      ...shadows.raised,
+    },
+    logoGloss: {
+      position: 'absolute',
+      top: 8,
+      left: 12,
+      right: 12,
+      height: 46,
+      borderRadius: radius.xl,
+      backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    },
+    logoLetter: {
+      fontSize: 76,
+      lineHeight: 96,
+    },
+    logoCoffee: {
+      position: 'absolute',
+      right: 14,
+      bottom: 12,
+      width: 32,
+      height: 32,
+      borderRadius: radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.brass,
+    },
+    title: {
+      marginTop: spacing.xs,
+    },
+  });
+}

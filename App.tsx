@@ -14,6 +14,8 @@ import {
   ProgressProvider,
   ServicesProvider,
   SettingsProvider,
+  ThemeProvider,
+  useTheme,
 } from './src/context';
 
 /**
@@ -32,26 +34,33 @@ function App() {
     <GestureHandlerRootView style={styles.root}>
       <ErrorBoundary>
         <SafeAreaProvider>
-          <StatusBar barStyle="light-content" />
           <ServicesProvider>
             <SettingsProvider>
-              <ProfileProvider>
-                <ProgressProvider>
-                  <DailyProvider>
-                    <AchievementsProvider>
-                      <GameProvider>
-                        <RootNavigator />
-                      </GameProvider>
-                    </AchievementsProvider>
-                  </DailyProvider>
-                </ProgressProvider>
-              </ProfileProvider>
+              <ThemeProvider>
+                <AppStatusBar />
+                <ProfileProvider>
+                  <ProgressProvider>
+                    <DailyProvider>
+                      <AchievementsProvider>
+                        <GameProvider>
+                          <RootNavigator />
+                        </GameProvider>
+                      </AchievementsProvider>
+                    </DailyProvider>
+                  </ProgressProvider>
+                </ProfileProvider>
+              </ThemeProvider>
             </SettingsProvider>
           </ServicesProvider>
         </SafeAreaProvider>
       </ErrorBoundary>
     </GestureHandlerRootView>
   );
+}
+
+function AppStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />;
 }
 
 const styles = StyleSheet.create({

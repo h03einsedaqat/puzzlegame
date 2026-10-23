@@ -1,7 +1,12 @@
 export { ServicesProvider, useServices, useOptionalServices } from './ServicesContext';
 export { SettingsProvider, useSettings } from './SettingsContext';
+export { ThemeProvider, useTheme, useThemeColors } from './ThemeContext';
 export { ProfileProvider, useProfile } from './ProfileContext';
-export type { LevelCompletionSummary, ProfileContextValue, WordResultSummary } from './ProfileContext';
+export type {
+  LevelCompletionSummary,
+  ProfileContextValue,
+  WordResultSummary,
+} from './ProfileContext';
 export { ProgressProvider, useProgress } from './ProgressContext';
 export { DailyProvider, useDaily } from './DailyContext';
 export { AchievementsProvider, useAchievements } from './AchievementsContext';

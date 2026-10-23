@@ -1,5 +1,11 @@
 import { GAME_CONFIG } from '../../constants';
-import type { AchievementState, AppSettings, DailyState, GameProgress, UserProfile } from '../../types';
+import type {
+  AchievementState,
+  AppSettings,
+  DailyState,
+  GameProgress,
+  UserProfile,
+} from '../../types';
 import { dateKey } from '../../utils/date';
 import { createLocalId } from '../../utils/id';
 
@@ -36,6 +42,7 @@ export function createDefaultProgress(): GameProgress {
 
 export function createDefaultSettings(): AppSettings {
   return {
+    themeMode: 'system',
     soundEnabled: true,
     vibrationEnabled: true,
     reducedMotion: false,

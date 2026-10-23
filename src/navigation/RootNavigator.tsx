@@ -1,9 +1,8 @@
 import React, { useMemo } from 'react';
-import { StatusBar, StyleSheet } from 'react-native';
 import { DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { colors } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { AboutScreen } from '../screens/AboutScreen';
 import { AchievementsScreen } from '../screens/AchievementsScreen';
 import { DailyChallengeIntroScreen } from '../screens/DailyChallengeIntroScreen';
@@ -21,18 +20,6 @@ import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const navigationTheme: Theme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: colors.background,
-    card: colors.surface,
-    text: colors.textPrimary,
-    border: colors.border,
-    primary: colors.primary,
-  },
-};
-
 /**
  * ناوبری برنامه.
  *
@@ -42,6 +29,23 @@ const navigationTheme: Theme = {
  */
 export function RootNavigator() {
   const { settings, ready } = useSettings();
+  const { colors, isDark } = useTheme();
+  const navigationTheme = useMemo<Theme>(
+    () => ({
+      ...DefaultTheme,
+      dark: isDark,
+      colors: {
+        ...DefaultTheme.colors,
+        background: colors.background,
+        card: colors.surface,
+        text: colors.textPrimary,
+        border: colors.border,
+        primary: colors.primary,
+        notification: colors.accent,
+      },
+    }),
+    [colors, isDark],
+  );
   const initialRouteName = useMemo<keyof RootStackParamList>(() => {
     if (!ready) {
       return 'Splash';
@@ -51,12 +55,11 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer theme={navigationTheme}>
-      <StatusBar barStyle="light-content" />
       <Stack.Navigator
         initialRouteName={initialRouteName}
         screenOptions={{
           headerShown: false,
-          contentStyle: styles.content,
+          contentStyle: { backgroundColor: colors.background },
           animation: 'slide_from_left',
         }}
       >
@@ -80,9 +83,3 @@ export function RootNavigator() {
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  content: {
-    backgroundColor: colors.background,
-  },
-});

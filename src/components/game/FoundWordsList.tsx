@@ -2,7 +2,9 @@ import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { strings } from '../../constants';
-import { colors, radius, spacing } from '../../theme';
+import { radius, spacing } from '../../theme';
+import type { AppColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { Icon } from '../ui/Icon';
@@ -63,8 +65,17 @@ export const FoundWordsList = React.memo(function FoundWordsList({
   hintedWords,
   showBonus = true,
 }: FoundWordsListProps) {
-  const targetRows = useMemo(() => buildRows(targetWords, foundWords, hintedWords), [targetWords, foundWords, hintedWords]);
-  const bonusRows = useMemo(() => buildRows(bonusWords, foundWords, hintedWords), [bonusWords, foundWords, hintedWords]);
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
+  const targetRows = useMemo(
+    () => buildRows(targetWords, foundWords, hintedWords),
+    [targetWords, foundWords, hintedWords],
+  );
+  const bonusRows = useMemo(
+    () => buildRows(bonusWords, foundWords, hintedWords),
+    [bonusWords, foundWords, hintedWords],
+  );
   const foundBonus = bonusRows.filter(row => row.found);
 
   return (
@@ -87,8 +98,14 @@ export const FoundWordsList = React.memo(function FoundWordsList({
                 {Array.from(row.word).map((char, index) => {
                   const revealed = row.revealedIndices.includes(index);
                   return (
-                    <View key={`${row.word}-${index}`} style={[styles.letterBox, revealed ? styles.letterBoxRevealed : null]}>
-                      <AppText variant="caption" color={revealed ? colors.primary : colors.textMuted}>
+                    <View
+                      key={`${row.word}-${index}`}
+                      style={[styles.letterBox, revealed ? styles.letterBoxRevealed : null]}
+                    >
+                      <AppText
+                        variant="caption"
+                        color={revealed ? colors.primary : colors.textMuted}
+                      >
                         {revealed ? char : '•'}
                       </AppText>
                     </View>
@@ -132,64 +149,66 @@ export const FoundWordsList = React.memo(function FoundWordsList({
   );
 });
 
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing.md,
-    alignSelf: 'stretch',
-  },
-  rows: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  row: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.sm + 2,
-  },
-  rowFound: {
-    backgroundColor: colors.successLight,
-    borderColor: colors.success,
-  },
-  letterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  letterBox: {
-    minWidth: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.xs,
-    backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: 2,
-    paddingVertical: 1,
-  },
-  letterBoxRevealed: {
-    backgroundColor: colors.primaryLight,
-  },
-  bonusSection: {
-    gap: spacing.xs,
-  },
-  bonusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  bonusWords: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  bonusChip: {
-    backgroundColor: colors.accentLight,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    paddingVertical: 2,
-    paddingHorizontal: spacing.sm,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    container: {
+      gap: spacing.md,
+      alignSelf: 'stretch',
+    },
+    rows: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    row: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: spacing.xs + 2,
+      paddingHorizontal: spacing.sm + 2,
+    },
+    rowFound: {
+      backgroundColor: colors.successLight,
+      borderColor: colors.success,
+    },
+    letterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    letterBox: {
+      minWidth: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.xs,
+      backgroundColor: colors.surfaceMuted,
+      paddingHorizontal: 2,
+      paddingVertical: 1,
+    },
+    letterBoxRevealed: {
+      backgroundColor: colors.primaryLight,
+    },
+    bonusSection: {
+      gap: spacing.xs,
+    },
+    bonusHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    bonusWords: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+    },
+    bonusChip: {
+      backgroundColor: colors.accentLight,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      paddingVertical: 2,
+      paddingHorizontal: spacing.sm,
+    },
+  });
+}

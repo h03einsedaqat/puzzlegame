@@ -8,7 +8,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { colors, motion, radius, shadows, spacing } from '../../theme';
+import { motion, radius, shadows, spacing } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import { AppText } from '../ui/AppText';
 import { Icon } from '../ui/Icon';
 
@@ -23,25 +24,44 @@ export interface GameFeedbackToastProps {
   word?: string;
 }
 
-const palette = {
-  success: { background: '#142824', border: '#2D8F78', accent: colors.success, icon: 'success' as const },
-  bonus: { background: '#2A251A', border: '#8A7139', accent: colors.accent, icon: 'sparkle' as const },
-  // Use close (X) for error to make rejection visually distinct and match user's expectation of clear failure.
-  error: { background: '#2B1A27', border: '#8A3A55', accent: colors.danger, icon: 'close' as const },
-};
-
 /** Compact overlay feedback; it never participates in the game layout. */
-export function GameFeedbackToast({ visible, id, tone, title, detail, word }: GameFeedbackToastProps) {
+export function GameFeedbackToast({
+  visible,
+  id,
+  tone,
+  title,
+  detail,
+  word,
+}: GameFeedbackToastProps) {
+  const { colors } = useTheme();
+  const palette = {
+    success: {
+      background: colors.successLight,
+      border: colors.success,
+      accent: colors.success,
+      icon: 'success' as const,
+    },
+    bonus: {
+      background: colors.accentLight,
+      border: colors.accent,
+      accent: colors.accentDark,
+      icon: 'sparkle' as const,
+    },
+    // ضربدر قرمز باعث می‌شود ردّ واژه از بازخورد مثبت به‌سرعت تشخیص داده شود.
+    error: {
+      background: colors.dangerLight,
+      border: colors.danger,
+      accent: colors.danger,
+      icon: 'close' as const,
+    },
+  };
   const [mounted, setMounted] = useState(visible);
   const [display, setDisplay] = useState(() => ({ tone, title, detail, word }));
   const progress = useSharedValue(visible ? 1 : 0);
   const colorsForTone = palette[display.tone];
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [
-      { translateY: (1 - progress.value) * 8 },
-      { scale: 0.97 + progress.value * 0.03 },
-    ],
+    transform: [{ translateY: (1 - progress.value) * 8 }, { scale: 0.97 + progress.value * 0.03 }],
   }));
 
   /**
@@ -58,7 +78,10 @@ export function GameFeedbackToast({ visible, id, tone, title, detail, word }: Ga
       return;
     }
     setDisplay(previous =>
-      previous.tone === tone && previous.title === title && previous.detail === detail && previous.word === word
+      previous.tone === tone &&
+      previous.title === title &&
+      previous.detail === detail &&
+      previous.word === word
         ? previous
         : { tone, title, detail, word },
     );
@@ -108,10 +131,13 @@ export function GameFeedbackToast({ visible, id, tone, title, detail, word }: Ga
               «{display.word}»
             </AppText>
           ) : null}
-          {display.word && display.detail ? <View style={styles.separator} /> : null}
+          {display.word && display.detail ? (
+            <View style={[styles.separator, { backgroundColor: colors.textMuted }]} />
+          ) : null}
           {display.detail ? (
             <AppText variant="caption" color={colors.textSecondary} numberOfLines={1}>
-              {display.detail}</AppText>
+              {display.detail}
+            </AppText>
           ) : null}
         </View>
       </View>
@@ -155,6 +181,5 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: radius.pill,
-    backgroundColor: colors.textMuted,
   },
 });

@@ -7,7 +7,9 @@ import { computeStars } from '../services';
 import { useAchievements, useDaily, useGame, useProfile, useProgress } from '../context';
 import { getLevelById, getNextLevelId } from '../data/levels/levels';
 import { calculateLevelRewards } from '../services/game/gameEngine';
-import { colors, computeGameLayout, motion, radius, spacing } from '../theme';
+import { computeGameLayout, motion, radius, spacing } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import type { AppColors } from '../theme/colors';
 import { format, toPersianDigits } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
 import { Button } from '../components/ui/Button';
@@ -75,7 +77,9 @@ function feedbackDetail(feedback: GameFeedback): string | undefined {
   if (feedback.status !== 'accepted') {
     return undefined;
   }
-  return `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel} · ${toPersianDigits(feedback.coins ?? 0)} ${strings.result.coinsLabel}`;
+  return `${toPersianDigits(feedback.score ?? 0)} ${strings.result.scoreLabel} · ${toPersianDigits(
+    feedback.coins ?? 0,
+  )} ${strings.result.coinsLabel}`;
 }
 
 /**
@@ -89,7 +93,10 @@ function useFeedbackTiles(feedback: GameFeedback | null): readonly LetterTileDat
   return useMemo<readonly LetterTileData[]>(
     () =>
       feedback
-        ? Array.from(feedback.word).map((char, index) => ({ id: `feedback-${feedback.id}-${index}`, char }))
+        ? Array.from(feedback.word).map((char, index) => ({
+            id: `feedback-${feedback.id}-${index}`,
+            char,
+          }))
         : EMPTY_TILES,
     [feedback],
   );
@@ -109,6 +116,8 @@ function useFeedbackTiles(feedback: GameFeedback | null): readonly LetterTileDat
  * هیچ‌وقت چرخ را جابه‌جا نمی‌کند.
  */
 export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { levelId, mode } = route.params;
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -213,9 +222,12 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
    * دیگر شرط فعال‌شدن ندارد و هیچ واژه‌ای دو بار پردازش نمی‌شود. واژه کوتاه‌تر از
    * حد مرحله هم بی‌سروصدا رها می‌شود (نه پیام خطا، نه بازنشانی کمبو).
    */
-  const handleRelease = useCallback((releasedSelection: readonly string[]) => {
-    submit({ fromRelease: true, selection: releasedSelection });
-  }, [submit]);
+  const handleRelease = useCallback(
+    (releasedSelection: readonly string[]) => {
+      submit({ fromRelease: true, selection: releasedSelection });
+    },
+    [submit],
+  );
 
   /**
    * ثبت خودکار (خواسته بازیکن: «بررسی خودکار انجام شود»).
@@ -411,7 +423,10 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     }
     const selection = session?.selection ?? EMPTY_SELECTION;
     let matched = 0;
-    while (matched < activeHint.tileIds.length && selection.includes(activeHint.tileIds[matched] as string)) {
+    while (
+      matched < activeHint.tileIds.length &&
+      selection.includes(activeHint.tileIds[matched] as string)
+    ) {
       matched += 1;
     }
     return matched;
@@ -441,13 +456,10 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   const boardFeedbackState = !showFeedbackOnBoard
     ? 'idle'
     : feedback?.status === 'accepted'
-      ? 'confirmed'
-      : 'error';
-  const toastTone = feedback?.status === 'rejected'
-    ? 'error'
-    : feedback?.kind === 'bonus'
-      ? 'bonus'
-      : 'success';
+    ? 'confirmed'
+    : 'error';
+  const toastTone =
+    feedback?.status === 'rejected' ? 'error' : feedback?.kind === 'bonus' ? 'bonus' : 'success';
 
   /** جایگاه ثابت فقط برای راهنمای فعال/آموزش است؛ toast بازخورد روی لایه‌ای جدا می‌آید. */
   const statusMessage = activeHint ? (
@@ -459,7 +471,12 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
     />
   ) : tutorialStep ? (
     <View style={[styles.tutorialRow, { height: layout.statusSlotHeight - 2 }]}>
-      <AppText variant="caption" color={colors.textPrimary} numberOfLines={2} maxFontSizeMultiplier={1.2}>
+      <AppText
+        variant="caption"
+        color={colors.textPrimary}
+        numberOfLines={2}
+        maxFontSizeMultiplier={1.2}
+      >
         {tutorialStep}
       </AppText>
     </View>
@@ -468,7 +485,11 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   return (
     <ScreenContainer edges={['top', 'bottom']}>
       <GameHeader
-        title={isDaily ? strings.daily.title : format(strings.common.levelNumber, { number: activeLevel.id })}
+        title={
+          isDaily
+            ? strings.daily.title
+            : format(strings.common.levelNumber, { number: activeLevel.id })
+        }
         difficulty={activeLevel.difficulty}
         score={session?.score ?? 0}
         coins={profile.coins}
@@ -497,7 +518,10 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
         <View style={{ height: layout.statusSlotHeight }}>{statusMessage}</View>
         <View
           pointerEvents="box-none"
-          style={[styles.feedbackOverlay, { top: Math.max(0, layout.statusSlotHeight - layout.gap) }]}
+          style={[
+            styles.feedbackOverlay,
+            { top: Math.max(0, layout.statusSlotHeight - layout.gap) },
+          ]}
         >
           <GameFeedbackToast
             visible={feedback !== null}
@@ -553,7 +577,9 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
             <IconButton
               icon="bulb"
               onPress={handleHint}
-              accessibilityLabel={format(strings.accessibility.hintButton, { cost: toPersianDigits(cheapestHintCost) })}
+              accessibilityLabel={format(strings.accessibility.hintButton, {
+                cost: toPersianDigits(cheapestHintCost),
+              })}
               disabled={!session || session.status !== 'playing'}
               background={colors.surfaceElevated}
               style={styles.iconControl}
@@ -615,86 +641,88 @@ export function GameScreen({ navigation, route }: RootScreenProps<'Game'>) {
   );
 }
 
-const styles = StyleSheet.create({
-  playArea: {
-    flex: 1,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-  },
-  wheelArea: {
-    flex: 1,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 0,
-  },
-  tutorialRow: {
-    backgroundColor: colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    justifyContent: 'center',
-    alignSelf: 'stretch',
-  },
-  feedbackOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    alignItems: 'center',
-    paddingHorizontal: spacing.xs,
-  },
-  controls: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-  },
-  submitButton: {
-    flex: 1,
-    minWidth: 0,
-    maxWidth: 260,
-  },
-  hintControl: {
-    position: 'relative',
-    width: 48,
-    height: 48,
-  },
-  iconControl: {
-    width: 48,
-    height: 48,
-  },
-  hintCost: {
-    position: 'absolute',
-    bottom: -5,
-    right: -5,
-    minWidth: 28,
-    height: 19,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-    paddingHorizontal: 4,
-    borderWidth: 1,
-    borderColor: colors.background,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceElevated,
-  },
-  wordsSection: {
-    alignSelf: 'stretch',
-    flexGrow: 0,
-    flexShrink: 1,
-  },
-  wordsContent: {
-    paddingBottom: spacing.xs,
-  },
-  missing: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.lg,
-    padding: spacing.xl,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    playArea: {
+      flex: 1,
+      alignSelf: 'stretch',
+      alignItems: 'center',
+    },
+    wheelArea: {
+      flex: 1,
+      alignSelf: 'stretch',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 0,
+    },
+    tutorialRow: {
+      backgroundColor: colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      justifyContent: 'center',
+      alignSelf: 'stretch',
+    },
+    feedbackOverlay: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      alignItems: 'center',
+      paddingHorizontal: spacing.xs,
+    },
+    controls: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      justifyContent: 'center',
+      alignItems: 'center',
+      alignSelf: 'stretch',
+    },
+    submitButton: {
+      flex: 1,
+      minWidth: 0,
+      maxWidth: 260,
+    },
+    hintControl: {
+      position: 'relative',
+      width: 48,
+      height: 48,
+    },
+    iconControl: {
+      width: 48,
+      height: 48,
+    },
+    hintCost: {
+      position: 'absolute',
+      bottom: -5,
+      right: -5,
+      minWidth: 28,
+      height: 19,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+      paddingHorizontal: 4,
+      borderWidth: 1,
+      borderColor: colors.background,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surfaceElevated,
+    },
+    wordsSection: {
+      alignSelf: 'stretch',
+      flexGrow: 0,
+      flexShrink: 1,
+    },
+    wordsContent: {
+      paddingBottom: spacing.xs,
+    },
+    missing: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.lg,
+      padding: spacing.xl,
+    },
+  });
+}

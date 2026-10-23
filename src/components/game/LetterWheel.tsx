@@ -23,7 +23,9 @@ import {
   type WheelGeometry,
   type WheelSelectionSegment,
 } from '../../services/game/wheelGesture';
-import { colors, radius } from '../../theme';
+import { radius } from '../../theme';
+import type { AppColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { format, toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { LetterTile } from './LetterTile';
@@ -100,6 +102,9 @@ export const LetterWheel = React.memo(function LetterWheel({
   guideTileIds,
   onDragStateChange,
 }: LetterWheelProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const preferred = useMemo(
     () => preferredTileSize ?? preferredTileSizeFor(diameter, Math.max(tiles.length, 1)),
     [diameter, preferredTileSize, tiles.length],
@@ -195,6 +200,9 @@ const WheelBackdrop = React.memo(function WheelBackdrop({
   foundCount,
   totalCount,
 }: WheelBackdropProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { diameter, center, tileSize } = geometry;
   const plateRadius = Math.max(tileSize, diameter / 2 - tileSize / 2);
   const progressRadius = Math.min(43, Math.max(34, diameter * 0.145));
@@ -262,7 +270,12 @@ const WheelBackdrop = React.memo(function WheelBackdrop({
         <AppText variant="numericLarge" color={colors.textPrimary} allowFontScaling={false}>
           {toPersianDigits(foundCount)}/{toPersianDigits(totalCount)}
         </AppText>
-        <AppText variant="caption" color={colors.textMuted} numberOfLines={1} allowFontScaling={false}>
+        <AppText
+          variant="caption"
+          color={colors.textMuted}
+          numberOfLines={1}
+          allowFontScaling={false}
+        >
           {strings.game.wheelHint}
         </AppText>
       </View>
@@ -300,6 +313,9 @@ const WheelSelectionLayer = React.memo(function WheelSelectionLayer({
   pointerY,
   pathOpacity,
 }: WheelSelectionLayerProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const centers = useMemo<TileCenter[]>(
     () =>
       selectedIds.reduce<TileCenter[]>((acc, id) => {
@@ -332,8 +348,14 @@ const WheelSelectionLayer = React.memo(function WheelSelectionLayer({
    * نگیرد؛ در غیر این صورت کامپوننت انیمیشنی ری‌انیمیتد در هر تغییر انتخاب،
    * props غیرانیمیشنی را دوباره غربال و ثبت می‌کرد.
    */
-  const glowBarStyle = useMemo(() => barBaseStyle(barSpan, PATH_GLOW), [barSpan]);
-  const mainBarStyle = useMemo(() => barBaseStyle(barSpan, PATH_STROKE), [barSpan]);
+  const glowBarStyle = useMemo(
+    () => barBaseStyle(barSpan, PATH_GLOW, colors.brandTeal),
+    [barSpan, colors.brandTeal],
+  );
+  const mainBarStyle = useMemo(
+    () => barBaseStyle(barSpan, PATH_STROKE, colors.brandTeal),
+    [barSpan, colors.brandTeal],
+  );
 
   /** محو شدن کل لایه در پایان کشیدن؛ فقط همین یک مقدار انیمیت می‌شود. */
   const fadeStyle = useAnimatedStyle(
@@ -391,14 +413,14 @@ const WheelSelectionLayer = React.memo(function WheelSelectionLayer({
           <View
             key={`glow-${index}-${segment.from}-${segment.to}`}
             testID={WHEEL_SELECTION_TEST_IDS.segmentGlow}
-            style={segmentStyle(segment, PATH_GLOW, PATH_GLOW_OPACITY)}
+            style={segmentStyle(segment, PATH_GLOW, PATH_GLOW_OPACITY, colors.brandTeal)}
           />
         ))}
         {segments.map((segment, index) => (
           <View
             key={`line-${index}-${segment.from}-${segment.to}`}
             testID={WHEEL_SELECTION_TEST_IDS.segmentLine}
-            style={segmentStyle(segment, PATH_STROKE, 1)}
+            style={segmentStyle(segment, PATH_STROKE, 1, colors.brandTeal)}
           />
         ))}
         <Animated.View
@@ -421,7 +443,12 @@ const WheelSelectionLayer = React.memo(function WheelSelectionLayer({
  * `rotate` به سمت درست می‌رود؛ مبدأ چرخش پیش‌فرض مرکز نما است، پس میانهٔ
  * نوار دقیقاً روی میانهٔ دو کاشی می‌نشیند.
  */
-function segmentStyle(segment: WheelSelectionSegment, thickness: number, opacity: number) {
+function segmentStyle(
+  segment: WheelSelectionSegment,
+  thickness: number,
+  opacity: number,
+  color: string,
+) {
   return {
     position: 'absolute' as const,
     left: 0,
@@ -429,7 +456,7 @@ function segmentStyle(segment: WheelSelectionSegment, thickness: number, opacity
     width: segment.length,
     height: thickness,
     borderRadius: thickness / 2,
-    backgroundColor: colors.brandTeal,
+    backgroundColor: color,
     opacity,
     transform: [
       { translateX: segment.midX - segment.length / 2 },
@@ -448,13 +475,13 @@ function segmentStyle(segment: WheelSelectionSegment, thickness: number, opacity
  * انیمیشن می‌تواند مستقیم همان «میانهٔ دو نقطه» باشد. opacity را سبک
  * انیمیشنی می‌گذارد، نه این سبک ثابت.
  */
-function barBaseStyle(span: number, thickness: number) {
+function barBaseStyle(span: number, thickness: number, color: string) {
   return {
     width: span,
     height: thickness,
     top: -thickness / 2,
     borderRadius: thickness / 2,
-    backgroundColor: colors.brandTeal,
+    backgroundColor: color,
   };
 }
 
@@ -481,7 +508,12 @@ function useTailStyle(
     'worklet';
     // تا وقتی انگشت داخل خود کاشی است خطی کشیده نمی‌شود (همان رفتار نسخهٔ وب).
     const spec = hasAnchor
-      ? buildTailSpec(visualRadius, barSpan, { x: anchorX, y: anchorY }, { x: pointerX.value, y: pointerY.value })
+      ? buildTailSpec(
+          visualRadius,
+          barSpan,
+          { x: anchorX, y: anchorY },
+          { x: pointerX.value, y: pointerY.value },
+        )
       : HIDDEN_TAIL;
     return {
       opacity: spec.visible ? baseOpacity : 0,
@@ -512,6 +544,9 @@ const WheelTiles = React.memo(function WheelTiles({
   guide,
   pulse,
 }: WheelTilesProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { tileSize } = geometry;
 
   return (
@@ -542,7 +577,9 @@ const WheelTiles = React.memo(function WheelTiles({
                   hinted
                   disabled={disabled}
                   onPress={onTilePress}
-                  accessibilityLabel={format(strings.accessibility.letterTile, { letter: position.char })}
+                  accessibilityLabel={format(strings.accessibility.letterTile, {
+                    letter: position.char,
+                  })}
                 />
               </AnimatedGuideTile>
             ) : (
@@ -553,7 +590,9 @@ const WheelTiles = React.memo(function WheelTiles({
                 selected={selectedIds.includes(position.id)}
                 disabled={disabled}
                 onPress={onTilePress}
-                accessibilityLabel={format(strings.accessibility.letterTile, { letter: position.char })}
+                accessibilityLabel={format(strings.accessibility.letterTile, {
+                  letter: position.char,
+                })}
               />
             )}
             {stepIndex >= 0 && stepIndex < guide.matched ? (
@@ -589,63 +628,65 @@ function AnimatedGuideTile({
   return <Animated.View style={style}>{children}</Animated.View>;
 }
 
-const styles = StyleSheet.create({
-  wheel: {
-    // Gesture x and SVG coordinates always grow from the physical left.
-    // React Native swaps absolute `left` to logical `start` under RTL; without
-    // an LTR island the visible side tiles (and connector bars) are mirrored
-    // while gesture hit-testing is not. Keep RTL for the rest of the game.
-    direction: 'ltr',
-    alignSelf: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
-  },
-  centerBadge: {
-    position: 'absolute',
-    // متن و شمارنده فارسی بماند؛ فقط مختصات سطح چرخ باید LTR باشد.
-    direction: 'rtl',
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  bead: {
-    position: 'absolute',
-    width: BEAD_SIZE,
-    height: BEAD_SIZE,
-    borderRadius: BEAD_SIZE / 2,
-    backgroundColor: colors.brandTeal,
-  },
-  tailBar: {
-    position: 'absolute',
-    left: 0,
-  },
-  tileSlot: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  guideRing: {
-    position: 'absolute',
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    opacity: 0.72,
-  },
-  stepBadge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    width: 20,
-    height: 20,
-    borderRadius: radius.pill,
-    backgroundColor: colors.brandTeal,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 3,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    wheel: {
+      // Gesture x and SVG coordinates always grow from the physical left.
+      // React Native swaps absolute `left` to logical `start` under RTL; without
+      // an LTR island the visible side tiles (and connector bars) are mirrored
+      // while gesture hit-testing is not. Keep RTL for the rest of the game.
+      direction: 'ltr',
+      alignSelf: 'center',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'visible',
+    },
+    centerBadge: {
+      position: 'absolute',
+      // متن و شمارنده فارسی بماند؛ فقط مختصات سطح چرخ باید LTR باشد.
+      direction: 'rtl',
+      borderRadius: radius.pill,
+      backgroundColor: colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+    },
+    bead: {
+      position: 'absolute',
+      width: BEAD_SIZE,
+      height: BEAD_SIZE,
+      borderRadius: BEAD_SIZE / 2,
+      backgroundColor: colors.brandTeal,
+    },
+    tailBar: {
+      position: 'absolute',
+      left: 0,
+    },
+    tileSlot: {
+      position: 'absolute',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 2,
+    },
+    guideRing: {
+      position: 'absolute',
+      borderRadius: radius.pill,
+      borderWidth: 2,
+      borderColor: colors.accent,
+      opacity: 0.72,
+    },
+    stepBadge: {
+      position: 'absolute',
+      top: -5,
+      right: -5,
+      width: 20,
+      height: 20,
+      borderRadius: radius.pill,
+      backgroundColor: colors.brandTeal,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 3,
+    },
+  });
+}

@@ -1,9 +1,16 @@
 import { strings } from '../constants';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { FlatList, StyleSheet, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import {
+  FlatList,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 
 import { useServices, useSettings } from '../context';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
 import { format } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
 import { Button } from '../components/ui/Button';
@@ -12,6 +19,8 @@ import { PressableScale } from '../components/ui/PressableScale';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import type { IconName } from '../types';
 import type { RootScreenProps } from '../navigation/types';
+import { useTheme } from '../context/ThemeContext';
+import type { AppColors } from '../theme/colors';
 
 interface OnboardingPage {
   key: string;
@@ -30,8 +39,18 @@ const PAGES: readonly OnboardingPage[] = [
     body: strings.onboarding.slide1Body,
     sampleLetters: ['ک', 'ت', 'ا', 'ب'],
   },
-  { key: 'build', icon: 'word', title: strings.onboarding.slide2Title, body: strings.onboarding.slide2Body },
-  { key: 'reward', icon: 'gift', title: strings.onboarding.slide3Title, body: strings.onboarding.slide3Body },
+  {
+    key: 'build',
+    icon: 'word',
+    title: strings.onboarding.slide2Title,
+    body: strings.onboarding.slide2Body,
+  },
+  {
+    key: 'reward',
+    icon: 'gift',
+    title: strings.onboarding.slide3Title,
+    body: strings.onboarding.slide3Body,
+  },
 ];
 
 /**
@@ -41,6 +60,8 @@ const PAGES: readonly OnboardingPage[] = [
  * مرحله یک بازی هم به‌عنوان آموزش تعاملی کار می‌کند.
  */
 export function OnboardingScreen({ navigation }: RootScreenProps<'Onboarding'>) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { width } = useWindowDimensions();
   const { completeOnboarding } = useSettings();
   const { analytics } = useServices();
@@ -64,7 +85,9 @@ export function OnboardingScreen({ navigation }: RootScreenProps<'Onboarding'>) 
   }, [finish, index]);
 
   const onScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const page = Math.round(event.nativeEvent.contentOffset.x / Math.max(1, event.nativeEvent.layoutMeasurement.width));
+    const page = Math.round(
+      event.nativeEvent.contentOffset.x / Math.max(1, event.nativeEvent.layoutMeasurement.width),
+    );
     setIndex(Math.max(0, Math.min(PAGES.length - 1, page)));
   }, []);
 
@@ -92,7 +115,11 @@ export function OnboardingScreen({ navigation }: RootScreenProps<'Onboarding'>) 
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onScrollEnd}
-        getItemLayout={(_, itemIndex) => ({ length: pageWidth, offset: pageWidth * itemIndex, index: itemIndex })}
+        getItemLayout={(_, itemIndex) => ({
+          length: pageWidth,
+          offset: pageWidth * itemIndex,
+          index: itemIndex,
+        })}
         renderItem={({ item }) => (
           <View style={[styles.page, { width: pageWidth }]}>
             <View style={styles.illustration}>
@@ -104,9 +131,15 @@ export function OnboardingScreen({ navigation }: RootScreenProps<'Onboarding'>) 
                   {item.sampleLetters.map((letter, letterIndex) => (
                     <View
                       key={`${item.key}-${letter}-${letterIndex}`}
-                      style={[styles.sampleTile, letterIndex < 2 ? styles.sampleTileSelected : null]}
+                      style={[
+                        styles.sampleTile,
+                        letterIndex < 2 ? styles.sampleTileSelected : null,
+                      ]}
                     >
-                      <AppText variant="heading" color={letterIndex < 2 ? colors.textInverse : colors.textPrimary}>
+                      <AppText
+                        variant="heading"
+                        color={letterIndex < 2 ? colors.textInverse : colors.textPrimary}
+                      >
                         {letter}
                       </AppText>
                     </View>
@@ -138,7 +171,9 @@ export function OnboardingScreen({ navigation }: RootScreenProps<'Onboarding'>) 
           {format(strings.onboarding.pageIndicator, { current: index + 1, total: PAGES.length })}
         </AppText>
         <Button
-          label={index === PAGES.length - 1 ? strings.onboarding.startGame : strings.common.continue}
+          label={
+            index === PAGES.length - 1 ? strings.onboarding.startGame : strings.common.continue
+          }
           icon="play"
           onPress={goNext}
         />
@@ -147,70 +182,72 @@ export function OnboardingScreen({ navigation }: RootScreenProps<'Onboarding'>) 
   );
 }
 
-const styles = StyleSheet.create({
-  skipRow: {
-    alignItems: 'flex-end',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
-  },
-  page: {
-    paddingHorizontal: spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-  },
-  illustration: {
-    alignItems: 'center',
-    gap: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  illustrationIcon: {
-    width: 110,
-    height: 110,
-    borderRadius: radius.xl,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sampleRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  sampleTile: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.tileBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sampleTileSelected: {
-    backgroundColor: colors.tileSelectedBackground,
-    borderColor: colors.tileSelectedBackground,
-  },
-  body: {
-    maxWidth: 420,
-  },
-  footer: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    gap: spacing.md,
-    alignItems: 'center',
-  },
-  dots: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.borderStrong,
-  },
-  dotActive: {
-    width: 22,
-    backgroundColor: colors.primary,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    skipRow: {
+      alignItems: 'flex-end',
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.sm,
+    },
+    page: {
+      paddingHorizontal: spacing.xl,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.md,
+    },
+    illustration: {
+      alignItems: 'center',
+      gap: spacing.lg,
+      marginBottom: spacing.lg,
+    },
+    illustrationIcon: {
+      width: 110,
+      height: 110,
+      borderRadius: radius.xl,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sampleRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    sampleTile: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1.5,
+      borderColor: colors.tileBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sampleTileSelected: {
+      backgroundColor: colors.tileSelectedBackground,
+      borderColor: colors.tileSelectedBackground,
+    },
+    body: {
+      maxWidth: 420,
+    },
+    footer: {
+      paddingHorizontal: spacing.xl,
+      paddingBottom: spacing.lg,
+      gap: spacing.md,
+      alignItems: 'center',
+    },
+    dots: {
+      flexDirection: 'row',
+      gap: spacing.xs,
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: radius.pill,
+      backgroundColor: colors.borderStrong,
+    },
+    dotActive: {
+      width: 22,
+      backgroundColor: colors.primary,
+    },
+  });
+}

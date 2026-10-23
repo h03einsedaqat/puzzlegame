@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { colors, spacing } from '../../theme';
+import { spacing } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import { AppText } from './AppText';
 import { IconButton } from './IconButton';
 
@@ -22,9 +23,12 @@ export interface ScreenHeaderProps {
  * چپ‌به‌راست هم چیدمان درست بماند.
  */
 export function ScreenHeader({ title, subtitle, onBack, backLabel, action }: ScreenHeaderProps) {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
-      {onBack ? <IconButton icon="back" onPress={onBack} accessibilityLabel={backLabel ?? 'بازگشت'} /> : null}
+      {onBack ? (
+        <IconButton icon="back" onPress={onBack} accessibilityLabel={backLabel ?? 'بازگشت'} />
+      ) : null}
       <View style={styles.titles}>
         <AppText variant="heading" numberOfLines={1}>
           {title}

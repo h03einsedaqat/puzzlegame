@@ -3,7 +3,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { DIFFICULTY_LABELS } from '../../types';
 import { strings } from '../../constants';
-import { colors, radius, spacing } from '../../theme';
+import { radius, spacing } from '../../theme';
+import type { AppColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { format, toPersianDigits } from '../../utils/format';
 import { AppText } from '../ui/AppText';
 import { Icon } from '../ui/Icon';
@@ -54,6 +56,9 @@ export const GameHeader = React.memo(function GameHeader({
   compact = false,
   height = compact ? 64 : 78,
 }: GameHeaderProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const ratio = totalTargets === 0 ? 0 : foundTargets / totalTargets;
   const progressLabel = format(strings.game.targetProgress, {
     found: foundTargets,
@@ -84,7 +89,12 @@ export const GameHeader = React.memo(function GameHeader({
             {title}
           </AppText>
           <View style={styles.difficultyPill}>
-            <AppText variant="caption" color={colors.primary} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+            <AppText
+              variant="caption"
+              color={colors.primary}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}
+            >
               {DIFFICULTY_LABELS[difficulty]}
             </AppText>
           </View>
@@ -101,63 +111,79 @@ export const GameHeader = React.memo(function GameHeader({
 
       <View style={styles.progressRow}>
         <View style={styles.progressBar}>
-          <ProgressBar ratio={ratio} height={compact ? 10 : 12} accessibilityLabel={progressLabel} />
+          <ProgressBar
+            ratio={ratio}
+            height={compact ? 10 : 12}
+            accessibilityLabel={progressLabel}
+          />
         </View>
         {!compact ? (
-          <AppText variant="caption" color={colors.textSecondary} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+          <AppText
+            variant="caption"
+            color={colors.textSecondary}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}
+          >
             {progressText}
           </AppText>
         ) : null}
-        <HeartCounter hearts={hearts} maxHearts={maxHearts} nextRefillAt={nextRefillAt} showCountdown={false} />
+        <HeartCounter
+          hearts={hearts}
+          maxHearts={maxHearts}
+          nextRefillAt={nextRefillAt}
+          showCountdown={false}
+        />
       </View>
     </View>
   );
 });
 
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing.xs + 2,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    alignSelf: 'stretch',
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-  },
-  back: {
-    flexShrink: 0,
-  },
-  titleBlock: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'flex-start',
-    gap: 1,
-  },
-  title: {
-    alignSelf: 'stretch',
-  },
-  difficultyPill: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 0,
-  },
-  stat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    flexShrink: 0,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    justifyContent: 'space-between',
-  },
-  progressBar: {
-    flex: 1,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    container: {
+      gap: spacing.xs + 2,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.xs,
+      alignSelf: 'stretch',
+    },
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flex: 1,
+    },
+    back: {
+      flexShrink: 0,
+    },
+    titleBlock: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'flex-start',
+      gap: 1,
+    },
+    title: {
+      alignSelf: 'stretch',
+    },
+    difficultyPill: {
+      backgroundColor: colors.primaryLight,
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 0,
+    },
+    stat: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      flexShrink: 0,
+    },
+    progressRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      justifyContent: 'space-between',
+    },
+    progressBar: {
+      flex: 1,
+    },
+  });
+}

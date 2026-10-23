@@ -1,7 +1,9 @@
 import React from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import { colors, radius, spacing } from '../../theme';
+import { radius, spacing } from '../../theme';
+import type { AppColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { AppText } from './AppText';
 import { Button } from './Button';
 
@@ -47,20 +49,21 @@ export function ConfirmDialog({
   footer,
   confirmDisabled = false,
 }: ConfirmDialogProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   if (!visible) {
     return null;
   }
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="fade"
-      onRequestClose={onCancel}
-      statusBarTranslucent
-    >
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel} statusBarTranslucent>
       <Pressable style={styles.backdrop} onPress={onCancel} accessibilityLabel={cancelLabel}>
-        <Pressable style={styles.dialog} onPress={event => event.stopPropagation()} accessibilityViewIsModal>
+        <Pressable
+          style={styles.dialog}
+          onPress={event => event.stopPropagation()}
+          accessibilityViewIsModal
+        >
           <AppText variant="heading" align="center">
             {title}
           </AppText>
@@ -91,30 +94,32 @@ export function ConfirmDialog({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: colors.screenOverlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  dialog: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    gap: spacing.sm,
-  },
-  body: {
-    marginTop: spacing.xs,
-  },
-  actions: {
-    marginTop: spacing.lg,
-    gap: spacing.sm,
-  },
-  footer: {
-    marginTop: spacing.sm,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: colors.screenOverlay,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xl,
+    },
+    dialog: {
+      width: '100%',
+      maxWidth: 420,
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      padding: spacing.xl,
+      gap: spacing.sm,
+    },
+    body: {
+      marginTop: spacing.xs,
+    },
+    actions: {
+      marginTop: spacing.lg,
+      gap: spacing.sm,
+    },
+    footer: {
+      marginTop: spacing.sm,
+    },
+  });
+}

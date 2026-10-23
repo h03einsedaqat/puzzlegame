@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { GAME_CONFIG, strings } from '../constants';
 import { useDaily, useGame, useProfile, useProgress, useServices } from '../context';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
 import { format, toPersianDigits } from '../utils/format';
 import { formatJalaliDate, weekdayName } from '../utils/jalali';
 import { AppText } from '../components/ui/AppText';
@@ -15,6 +15,8 @@ import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import { HeartCounter } from '../components/game/HeartCounter';
 import type { RootScreenProps } from '../navigation/types';
+import { useTheme } from '../context/ThemeContext';
+import type { AppColors } from '../theme/colors';
 
 /**
  * معرفی چالش روزانه.
@@ -24,19 +26,32 @@ import type { RootScreenProps } from '../navigation/types';
  * چالش را در دسترس می‌گذارد.
  */
 export function DailyChallengeIntroScreen({ navigation }: RootScreenProps<'DailyChallengeIntro'>) {
-  const { puzzle, streak, longestStreak, reward, canPlay, canClaim, isCompletedToday, claimReward, rewardsLocked } =
-    useDaily();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+  const {
+    puzzle,
+    streak,
+    longestStreak,
+    reward,
+    canPlay,
+    canClaim,
+    isCompletedToday,
+    claimReward,
+    rewardsLocked,
+  } = useDaily();
   const { hearts, startAttempt } = useProfile();
   const { enterLevel } = useProgress();
   const { startGame } = useGame();
   const { analytics } = useServices();
   const [noHeartsVisible, setNoHeartsVisible] = useState(false);
   const [claimedCoins, setClaimedCoins] = useState<number | null>(null);
-  const todayLabel = useMemo(() => `${weekdayName(new Date())}، ${formatJalaliDate(new Date())}`, []);
+  const todayLabel = useMemo(
+    () => `${weekdayName(new Date())}، ${formatJalaliDate(new Date())}`,
+    [],
+  );
 
   const ladder = useMemo(
-    () =>
-      GAME_CONFIG.daily.rewards.map((coins, index) => ({ day: index + 1, coins })),
+    () => GAME_CONFIG.daily.rewards.map((coins, index) => ({ day: index + 1, coins })),
     [],
   );
 
@@ -69,14 +84,23 @@ export function DailyChallengeIntroScreen({ navigation }: RootScreenProps<'Daily
         onBack={() => navigation.goBack()}
         backLabel={strings.common.back}
         action={
-          <HeartCounter hearts={hearts.hearts} maxHearts={hearts.maxHearts} nextRefillAt={hearts.nextRefillAt} showCountdown={false} />
+          <HeartCounter
+            hearts={hearts.hearts}
+            maxHearts={hearts.maxHearts}
+            nextRefillAt={hearts.nextRefillAt}
+            showCountdown={false}
+          />
         }
       />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Card variant={isCompletedToday ? 'muted' : 'accent'} padding="lg" style={styles.mainCard}>
           <View style={styles.mainHeader}>
-            <Icon name={isCompletedToday ? 'check' : 'calendar'} size={26} color={isCompletedToday ? colors.success : colors.accentDark} />
+            <Icon
+              name={isCompletedToday ? 'check' : 'calendar'}
+              size={26}
+              color={isCompletedToday ? colors.success : colors.accentDark}
+            />
             <View style={styles.mainTexts}>
               <AppText variant="subheading">
                 {isCompletedToday ? strings.daily.completedTitle : strings.daily.subtitle}
@@ -90,7 +114,9 @@ export function DailyChallengeIntroScreen({ navigation }: RootScreenProps<'Daily
           <View style={styles.streakRow}>
             <View style={styles.streakItem}>
               <Icon name="flame" size={18} color={colors.warning} />
-              <AppText variant="bodyStrong">{format(strings.daily.streakValue, { days: streak })}</AppText>
+              <AppText variant="bodyStrong">
+                {format(strings.daily.streakValue, { days: streak })}
+              </AppText>
             </View>
             <AppText variant="caption" color={colors.textMuted}>
               {strings.daily.streakTitle} · {toPersianDigits(longestStreak)}
@@ -125,9 +151,15 @@ export function DailyChallengeIntroScreen({ navigation }: RootScreenProps<'Daily
             {ladder.map(item => (
               <View
                 key={`day-${item.day}`}
-                style={[styles.ladderItem, item.day === reward.day ? styles.ladderItemCurrent : null]}
+                style={[
+                  styles.ladderItem,
+                  item.day === reward.day ? styles.ladderItemCurrent : null,
+                ]}
               >
-                <AppText variant="caption" color={item.day === reward.day ? colors.primary : colors.textMuted}>
+                <AppText
+                  variant="caption"
+                  color={item.day === reward.day ? colors.primary : colors.textMuted}
+                >
                   {toPersianDigits(item.day)}
                 </AppText>
                 <Icon
@@ -135,7 +167,10 @@ export function DailyChallengeIntroScreen({ navigation }: RootScreenProps<'Daily
                   size={14}
                   color={item.day === reward.day ? colors.coin : colors.textMuted}
                 />
-                <AppText variant="caption" color={item.day === reward.day ? colors.textPrimary : colors.textMuted}>
+                <AppText
+                  variant="caption"
+                  color={item.day === reward.day ? colors.textPrimary : colors.textMuted}
+                >
                   {toPersianDigits(item.coins)}
                 </AppText>
               </View>
@@ -143,7 +178,11 @@ export function DailyChallengeIntroScreen({ navigation }: RootScreenProps<'Daily
           </View>
 
           {canClaim ? (
-            <Button label={format(strings.daily.rewardClaimButton, { coins: reward.coins })} icon="coin" onPress={claim} />
+            <Button
+              label={format(strings.daily.rewardClaimButton, { coins: reward.coins })}
+              icon="coin"
+              onPress={claim}
+            />
           ) : (
             <AppText variant="caption" color={colors.textMuted} align="center">
               {rewardsLocked ? strings.errors.genericBody : strings.daily.nextRewardIn}
@@ -175,62 +214,64 @@ export function DailyChallengeIntroScreen({ navigation }: RootScreenProps<'Daily
   );
 }
 
-const styles = StyleSheet.create({
-  content: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-    paddingBottom: spacing.xxl,
-  },
-  mainCard: {
-    gap: spacing.md,
-  },
-  mainHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  mainTexts: {
-    flex: 1,
-    alignItems: 'flex-start',
-    gap: 2,
-  },
-  streakRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  streakItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  rewardCard: {
-    gap: spacing.md,
-  },
-  rewardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  ladder: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    justifyContent: 'space-between',
-  },
-  ladderItem: {
-    alignItems: 'center',
-    gap: 2,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    minWidth: 44,
-  },
-  ladderItemCurrent: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    content: {
+      padding: spacing.lg,
+      gap: spacing.lg,
+      paddingBottom: spacing.xxl,
+    },
+    mainCard: {
+      gap: spacing.md,
+    },
+    mainHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    mainTexts: {
+      flex: 1,
+      alignItems: 'flex-start',
+      gap: 2,
+    },
+    streakRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    streakItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    rewardCard: {
+      gap: spacing.md,
+    },
+    rewardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    ladder: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      justifyContent: 'space-between',
+    },
+    ladderItem: {
+      alignItems: 'center',
+      gap: 2,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceMuted,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      minWidth: 44,
+    },
+    ladderItemCurrent: {
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.primary,
+    },
+  });
+}

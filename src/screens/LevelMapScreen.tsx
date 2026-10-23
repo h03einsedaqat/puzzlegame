@@ -4,7 +4,9 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import { GAME_CONFIG, strings } from '../constants';
 import { LEVELS, getLevelById } from '../data/levels/levels';
 import { useGame, useProfile, useProgress, useServices } from '../context';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import type { AppColors } from '../theme/colors';
 import { format, toPersianDigits } from '../utils/format';
 import { AppText } from '../components/ui/AppText';
 import { HeartRefillDialog } from '../components/game/HeartRefillDialog';
@@ -18,7 +20,13 @@ import { Icon } from '../components/ui/Icon';
 import type { LevelSummary } from '../types';
 import type { RootScreenProps } from '../navigation/types';
 
-const WORLD_TITLES = ['آغاز واژه‌ها', 'خانه و زندگی', 'شهر و سفر', 'طبیعت و دانایی', 'قلهٔ کلمه‌ساز'] as const;
+const WORLD_TITLES = [
+  'آغاز واژه‌ها',
+  'خانه و زندگی',
+  'شهر و سفر',
+  'طبیعت و دانایی',
+  'قلهٔ کلمه‌ساز',
+] as const;
 
 /**
  * نقشه مرحله‌ها.
@@ -28,7 +36,10 @@ const WORLD_TITLES = ['آغاز واژه‌ها', 'خانه و زندگی', 'ش�
  * بازی را شروع می‌کند.
  */
 export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
-  const { progress, isLevelUnlocked, isLevelCompleted, getRecord, enterLevel, buildSummaries } = useProgress();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { progress, isLevelUnlocked, isLevelCompleted, getRecord, enterLevel, buildSummaries } =
+    useProgress();
   const { hearts, startAttempt } = useProfile();
   const { analytics } = useServices();
   const { startGame } = useGame();
@@ -72,18 +83,18 @@ export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
       const state: LevelNodeState = completed
         ? 'completed'
         : summary.id === progress.currentLevel && unlocked
-          ? 'current'
-          : unlocked
-            ? 'unlocked'
-            : 'locked';
+        ? 'current'
+        : unlocked
+        ? 'unlocked'
+        : 'locked';
 
       const accessibilityLabel = completed
         ? format(strings.accessibility.completedLevel, { number: summary.id })
         : state === 'current'
-          ? format(strings.accessibility.currentLevel, { number: summary.id })
-          : unlocked
-            ? format(strings.common.levelNumber, { number: summary.id })
-            : format(strings.accessibility.lockedLevel, { number: summary.id });
+        ? format(strings.accessibility.currentLevel, { number: summary.id })
+        : unlocked
+        ? format(strings.common.levelNumber, { number: summary.id })
+        : format(strings.accessibility.lockedLevel, { number: summary.id });
 
       return (
         <LevelNode
@@ -153,7 +164,11 @@ export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
                 </AppText>
               </View>
               <ProgressBar
-                ratio={world.length === 0 ? 0 : world.filter(summary => isLevelCompleted(summary.id)).length / world.length}
+                ratio={
+                  world.length === 0
+                    ? 0
+                    : world.filter(summary => isLevelCompleted(summary.id)).length / world.length
+                }
                 height={7}
                 color={colors.brandTeal}
               />
@@ -170,64 +185,63 @@ export function LevelMapScreen({ navigation }: RootScreenProps<'LevelMap'>) {
         )}
       />
 
-      <HeartRefillDialog
-        visible={noHeartsVisible}
-        onClose={() => setNoHeartsVisible(false)}
-      />
+      <HeartRefillDialog visible={noHeartsVisible} onClose={() => setNoHeartsVisible(false)} />
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  bannerWrapper: {
-    paddingHorizontal: spacing.lg,
-  },
-  listContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.xl,
-  },
-  world: {
-    gap: spacing.sm,
-  },
-  worldHeader: {
-    alignSelf: 'stretch',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  worldHeadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  worldTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  worldTitleCopy: {
-    alignItems: 'flex-start',
-    gap: 0,
-  },
-  nodes: {
-    gap: 0,
-  },
-  nodeRow: {
-    alignItems: 'center',
-  },
-  connector: {
-    // خط مسیر بین مرحله‌ها: نقطه‌چینِ طلایی، مثل مسیرِ بازی‌های کلمه‌ای
-    width: 6,
-    height: spacing.lg,
-    borderRadius: 3,
-    backgroundColor: colors.pathStep,
-    borderWidth: 1,
-    borderColor: colors.pathStepBorder,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    bannerWrapper: {
+      paddingHorizontal: spacing.lg,
+    },
+    listContent: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xxl,
+      gap: spacing.xl,
+    },
+    world: {
+      gap: spacing.sm,
+    },
+    worldHeader: {
+      alignSelf: 'stretch',
+      gap: spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    worldHeadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+    },
+    worldTitle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    worldTitleCopy: {
+      alignItems: 'flex-start',
+      gap: 0,
+    },
+    nodes: {
+      gap: 0,
+    },
+    nodeRow: {
+      alignItems: 'center',
+    },
+    connector: {
+      // خط مسیر بین مرحله‌ها: نقطه‌چینِ طلایی، مثل مسیرِ بازی‌های کلمه‌ای
+      width: 6,
+      height: spacing.lg,
+      borderRadius: 3,
+      backgroundColor: colors.pathStep,
+      borderWidth: 1,
+      borderColor: colors.pathStepBorder,
+    },
+  });
+}
